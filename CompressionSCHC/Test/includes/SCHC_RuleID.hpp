@@ -45,7 +45,7 @@ struct FieldDescription {
     char FID[16]; //Field Identifier
     uint8_t FL; //Field Length in bytes
     bool FP; //Field Position
-    void** FV; //Field Value (pointer to pointer to void to allow any data type created in the RuleID class)
+    void* TV; //Target Value (pointer to pointer to void to allow any data type created in the RuleID class)
     direction_indicator_t DI; //Direction Indicator
     matching_operator_t MO; //Matching Operator
     uint8_t MsbLength; //MSB Length (only used if MO is MSB)
@@ -65,14 +65,14 @@ class SCHC_RuleID {
         //dudas si dejar el contenido de TV dentro de la clase o definirlo fuera de ella por problemas de memoria
     public:
         SCHC_RuleID(); //Default Constructor
-        SCHC_RuleID(uint32_t rid, uint8_t cid, FieldDescription* flds); //Constructor
+        SCHC_RuleID(uint8_t rid, uint8_t cid, FieldDescription* flds); //Constructor
         ~SCHC_RuleID(); //Destructor
 
-        uint32_t getRuleID(); //Getter for Rule ID
+        uint8_t getRuleID(); //Getter for Rule ID
         uint8_t getCreatorID(); //Getter for Creator ID
         FieldDescription* getFields(); //Getter for Fields
 
-        bool setFID(uint32_t ruleNumber, uint8_t creatorNumber, FieldDescription* flds); //Setter for RuleID
+        bool setFID(uint8_t ruleNumber, uint8_t creatorNumber, FieldDescription* flds); //Setter for RuleID
         
 
         void printRule() const; //Print Rule Details
