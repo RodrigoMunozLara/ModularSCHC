@@ -1,10 +1,10 @@
 #ifndef PREDEFINED_RULES_HPP
 #define PREDEFINED_RULES_HPP
 
-#include "SCHC_RuleId.hpp"
+#include "SCHC_RuleID.hpp"
+#include <vector>
 
 // Declaración de función para cargar reglas predefinidas
-// Devuelve un arreglo de reglas (o usa un vector si prefieres)
-SCHC_RuleID* loadPredefinedRules(int& numRules);  // numRules indica cuántas reglas se cargaron
+std::vector<SCHC_RuleID> loadPredefinedRules();
 
 #endif // PREDEFINED_RULES_HPP

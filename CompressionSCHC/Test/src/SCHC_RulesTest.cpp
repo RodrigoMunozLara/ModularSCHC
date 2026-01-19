@@ -2,12 +2,12 @@
 #include "SCHC_RulesTest.hpp"
 #include "SCHC_MACROS.hpp"
 #include <cstring>  // Para strcpy
+#include <vector>
 
 // Función para cargar reglas predefinidas
-SCHC_RuleID* loadPredefinedRules(int& numRules) {
-    static SCHC_RuleID rules[MAX_RULES];  // Arreglo estático de 2 reglas (ajusta el tamaño)
-    numRules = 2;  // Número de reglas cargadas
-    int* POINTER = &numRules; //solamente para diferenciar un puntero nulo de uno con valor
+std::vector<SCHC_RuleID> loadPredefinedRules() {
+    std::vector<SCHC_RuleID> rules;
+    int* POINTER = nullptr; //solamente para diferenciar un puntero nulo de uno con valor
     // Regla 1
     FieldDescription fields1[4];
     strcpy(fields1[0].FID, "IPv6 Version");
@@ -47,7 +47,7 @@ SCHC_RuleID* loadPredefinedRules(int& numRules) {
     fields1[3].CDA = cd_action_t::NOT_SENT;
 
 
-    rules[0] = SCHC_RuleID(0x01, 0x10, fields1);
+    rules.push_back(SCHC_RuleID(0x01, 0x10, fields1));
     
     // Regla 2
     FieldDescription fields2[4];
@@ -93,7 +93,7 @@ SCHC_RuleID* loadPredefinedRules(int& numRules) {
     fields2[3].CDA = cd_action_t::COMPUTE;
 
     
-    rules[1] = SCHC_RuleID(0x02, 0x10, fields2);
+    rules.push_back(SCHC_RuleID(0x02, 0x10, fields2));
     
-    return rules;  // Devuelve el puntero al arreglo
+    return rules;  // Devuelve el vector
 }
