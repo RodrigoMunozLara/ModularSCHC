@@ -3,11 +3,14 @@
 #include <cstring>
 
 // Default Constructor
-SCHC_RuleID::SCHC_RuleID() : rule_id(0), creator_id(0), fields(nullptr) {}
+SCHC_RuleID::SCHC_RuleID(){}
+
+// Default Constructor implementation
+SCHC_RuleID::SCHC_RuleID() : rule_id(0), rule_id_length(0), fields(nullptr) {}
 
 // Constructor
-SCHC_RuleID::SCHC_RuleID(uint8_t rid, uint8_t cid, FieldDescription* flds)
-    : rule_id(rid), creator_id(cid), fields(flds) {}
+SCHC_RuleID::SCHC_RuleID(uint8_t rid, uint16_t rid_length, FieldDescription* flds) 
+    : rule_id(rid), rule_id_length(rid_length), fields(flds) {}
 
 // Destructor
 SCHC_RuleID::~SCHC_RuleID() {
@@ -19,10 +22,7 @@ uint8_t SCHC_RuleID::getRuleID() {
     return rule_id;
 }
 
-// Getter for Creator ID
-uint8_t SCHC_RuleID::getCreatorID() {
-    return creator_id;
-}
+
 
 // Getter for Fields
 FieldDescription* SCHC_RuleID::getFields() {
@@ -30,9 +30,9 @@ FieldDescription* SCHC_RuleID::getFields() {
 }
 
 // Setter for RuleID
-bool SCHC_RuleID::setFID(uint8_t ruleNumber, uint8_t creatorNumber, FieldDescription* flds) {
+bool SCHC_RuleID::setFID(uint8_t ruleNumber, uint16_t ruleNumberLength, FieldDescription* flds) {
     rule_id = ruleNumber;
-    creator_id = creatorNumber;
+    rule_id_length = ruleNumberLength;
     fields = flds;
     return true;
 }
@@ -40,7 +40,7 @@ bool SCHC_RuleID::setFID(uint8_t ruleNumber, uint8_t creatorNumber, FieldDescrip
 // Print Rule Details
 void SCHC_RuleID::printRule() const {
     std::cout << "Rule ID: " << static_cast<int>(rule_id) << std::endl;
-    std::cout << "Creator ID: " << static_cast<int>(creator_id) << std::endl;
+    std::cout << "Rule ID Length: " << static_cast<int>(rule_id_length) << std::endl;
     if (fields) {
         std::cout << "Fields: " << std::endl;
         // Assuming fields is an array, but need to know how many

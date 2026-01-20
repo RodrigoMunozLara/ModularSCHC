@@ -60,19 +60,19 @@ struct FieldDescription {
 class SCHC_RuleID {
     private:
         uint32_t rule_id; //Rule ID
-        uint8_t creator_id; //ID del creador de la regla
+        uint16_t rule_id_length; //Rule ID Length in bits
         FieldDescription* fields; //Arreglo de descripciones de campos
         //dudas si dejar el contenido de TV dentro de la clase o definirlo fuera de ella por problemas de memoria
     public:
         SCHC_RuleID(); //Default Constructor
-        SCHC_RuleID(uint8_t rid, uint8_t cid, FieldDescription* flds); //Constructor
+        SCHC_RuleID(uint8_t rid, uint16_t rid_length, FieldDescription* flds); //Constructor
         ~SCHC_RuleID(); //Destructor
 
         uint8_t getRuleID(); //Getter for Rule ID
-        uint8_t getCreatorID(); //Getter for Creator ID
+        uint16_t getRuleIDLength(); //Getter for Rule ID Length in bits
         FieldDescription* getFields(); //Getter for Fields
 
-        bool setFID(uint8_t ruleNumber, uint8_t creatorNumber, FieldDescription* flds); //Setter for RuleID
+        bool setFID(uint8_t ruleNumber, uint16_t ruleIDLength, FieldDescription* flds); //Setter for RuleID
         
 
         void printRule() const; //Print Rule Details
