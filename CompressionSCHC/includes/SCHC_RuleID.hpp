@@ -15,16 +15,17 @@ Also contains enum parameters for the Rules created.
 #pragma once
 
 enum class matching_operator_t : uint8_t {
-    EQUAL = 0,
-    IGNORE = 1,
-    MSB = 2,
-    MATCH_MAPPING = 3
+    IGNORE_ = 0,
+    EQUAL_ = 1,
+    MSB_ = 2,
+    MATCH_MAPPING_ = 3
 };
 
 enum class direction_indicator_t : uint8_t {
     UP = 0,
     DOWN = 1,
-    BI = 2
+    BI = 2,
+    SKIP = 3 //para cosntruir regla default o paquetes sin compresión
 };
 
 enum class cd_action_t : uint8_t {
@@ -42,9 +43,9 @@ enum class cd_action_t : uint8_t {
 //Estructura que define cada campo de una regla SCHC
 
 struct FieldDescription {
-    char FID[16]; //Field Identifier
-    uint8_t FL; //Field Length in bytes
-    bool FP; //Field Position
+    char FID[32]; //Field Identifier
+    uint8_t FL; //Field Length in bits
+    uint32_t FP; //Field Position
     void* TV; //Target Value (pointer to pointer to void to allow any data type created in the RuleID class)
     direction_indicator_t DI; //Direction Indicator
     matching_operator_t MO; //Matching Operator
@@ -61,18 +62,20 @@ class SCHC_RuleID {
     private:
         uint32_t rule_id; //Rule ID
         uint16_t rule_id_length; //Rule ID Length in bits
+        uint8_t dev_id; //Device ID
         FieldDescription* fields; //Arreglo de descripciones de campos
         //dudas si dejar el contenido de TV dentro de la clase o definirlo fuera de ella por problemas de memoria
     public:
         SCHC_RuleID(); //Default Constructor
-        SCHC_RuleID(uint8_t rid, uint16_t rid_length, FieldDescription* flds); //Constructor
+        SCHC_RuleID(uint32_t rid, uint16_t rid_length, uint8_t dev_id, FieldDescription* flds); //Constructor
         ~SCHC_RuleID(); //Destructor
 
-        uint8_t getRuleID(); //Getter for Rule ID
+        uint32_t getRuleID(); //Getter for Rule ID
+        uint8_t getDevID(); //Getter for Device ID
         uint16_t getRuleIDLength(); //Getter for Rule ID Length in bits
         FieldDescription* getFields(); //Getter for Fields
 
-        bool setFID(uint8_t ruleNumber, uint16_t ruleIDLength, FieldDescription* flds); //Setter for RuleID
+        bool setFID(uint32_t ruleNumber, uint16_t ruleIDLength, uint8_t devID, FieldDescription* flds); //Setter for RuleID
         
 
         void printRule() const; //Print Rule Details
