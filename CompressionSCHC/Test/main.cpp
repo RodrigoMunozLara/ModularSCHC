@@ -118,10 +118,10 @@ int main() {
             spdlog::info("Reglas impresas.");
         }
         else if (choice == 2) {
-            std::cout << "Ingrese ruta del archivo (Enter = tramas/demo.txt): ";
+            std::cout << "Ingrese ruta del archivo (Enter = packet/demo.txt): ";
             std::string path;
             std::getline(std::cin, path);
-            if (path.empty()) path = "packets/demo.txt";
+            if (path.empty()) path = "packet/demo.txt";
 
             process_hex_file(path);
 

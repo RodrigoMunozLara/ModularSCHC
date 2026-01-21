@@ -43,10 +43,6 @@ void SCHC_RuleID::printRule() const {
     std::cout << "Device ID: " << static_cast<int>(dev_id) << std::endl;
     if (fields) {
         std::cout << "Fields: " << std::endl;
-        // Assuming fields is an array, but need to know how many
-        // For now, print first field or something, but since it's a pointer, perhaps loop until null or something.
-        // The code uses fixed arrays, so perhaps print as is.
-        // To keep simple, print the pointer or something.
         std::cout << "Fields pointer: " << fields << std::endl;
     }
 }
