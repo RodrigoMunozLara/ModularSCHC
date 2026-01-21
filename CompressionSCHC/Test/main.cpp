@@ -1,89 +1,138 @@
 #include <iostream>
-#include <vector>
+#include <fstream>
+#include <string>
 #include <map>
-#include <limits>  // Para std::numeric_limits
-#include <spdlog/spdlog.h>  // Agrega para logging
-#include <spdlog/sinks/basic_file_sink.h>  // Para log a archivo
+#include <limits>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
 #include "SCHC_Packet.hpp"
 #include "SCHC_RuleID.hpp"
-#include "SCHC_RulesTest.hpp"
-#include "SCHC_RulesPreLoad.hpp"
+#include "SCHC_RulesParserIni.hpp"
+#include "SCHC_PacketParser.hpp"
 
-// Cambia printRules para trabajar con std::map<std::string, LoadedRule>
-void printRules(const std::map<std::string, LoadedRule>& rules) {
-    std::cout << "Número de reglas cargadas: " << rules.size() << std::endl;
-    for (const auto& pair : rules) {
-        const std::string& name = pair.first;
-        const LoadedRule& rule = pair.second;
-        std::cout << "Regla: " << name << " (ID: " << rule.ruleid << ")" << std::endl;
-        if (rule.devid) {
-            std::cout << "  DevID: " << *rule.devid << std::endl;
-        } else {
-            std::cout << "  DevID: NONE" << std::endl;
-        }
-        std::cout << "  Campos (" << rule.fieldCount << "):" << std::endl;
-        for (size_t i = 0; i < rule.fieldCount; ++i) {
-            const FieldDescription& f = rule.fields[i];
-            std::cout << "    " << f.FID << " - FL: " << (int)f.FL << ", FP: " << f.FP << ", DI: " << (int)f.DI << ", MO: " << (int)f.MO << ", CDA: " << (int)f.CDA << std::endl;
-        }
-        std::cout << std::endl;
+// Lee una opción de menú de forma segura (evita cin en fail-state)
+static int read_menu_choice() {
+    while (true) {
+        std::cout << "Seleccione una opcion: ";
+        std::string s;
+        if (!std::getline(std::cin, s)) return 3; // EOF => salir
+
+        // trim simple
+        while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.pop_back();
+        size_t i = 0;
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+        s = s.substr(i);
+
+        if (s == "1" || s == "2" || s == "3") return (s[0] - '0');
+
+        std::cout << "Opcion invalida. Intente de nuevo.\n";
+        spdlog::warn("Input invalido en menu: '{}'", s);
     }
 }
 
-// Remueve addRule o ajusta si es necesario (por simplicidad, lo dejo, pero no funcionará directamente con el mapa)
+static void process_hex_file(const std::string& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        spdlog::error("No se pudo abrir archivo de tramas: '{}'", path);
+        std::cout << "No se pudo abrir: " << path << "\n";
+        return; // vuelve al menú, no mata el programa
+    }
+
+    std::string line;
+    size_t lineNum = 0;
+    size_t ok = 0, fail = 0;
+
+    spdlog::info("Procesando archivo de tramas: '{}'", path);
+
+    while (std::getline(in, line)) {
+        ++lineNum;
+
+        // ignora líneas vacías o comentarios
+        if (line.empty() || line[0] == '#' || line.rfind("//", 0) == 0) continue;
+
+        try {
+            auto bytes = hex_to_bytes_one_line(line);
+            if (bytes.empty()) continue;
+
+            auto frame = parseIPv6UdpRaw(bytes);
+
+            spdlog::info("OK linea {}: nextHeader={} payload_bytes={}",
+                         lineNum, int(frame.ipv6_header.next_header), frame.payload.size());
+            ++ok;
+        } catch (const std::exception& e) {
+            spdlog::error("Error linea {}: {}", lineNum, e.what());
+            ++fail;
+        }
+    }
+
+    spdlog::info("Fin procesamiento '{}': ok={} fail={}", path, ok, fail);
+    std::cout << "Procesamiento terminado: ok=" << ok << " fail=" << fail << "\n";
+
+    auto bytes = hex_to_bytes_one_line(line);
+    auto frame = parseIPv6UdpRaw(bytes);
+
+    // Mostrar paquete parseado
+    dumpIPv6UdpFrame(frame);
+
+}
 
 int main() {
-    // Configura logging a archivo
+    // ---- Logging a archivo ----
     try {
         auto logger = spdlog::basic_logger_mt("basic_logger", "logs.txt");
         spdlog::set_default_logger(logger);
+        spdlog::set_level(spdlog::level::info);
+        spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v");
         spdlog::info("Programa iniciado.");
     } catch (const spdlog::spdlog_ex& ex) {
         std::cerr << "Error configurando logging: " << ex.what() << std::endl;
         return 1;
     }
 
+    // ---- Precarga de reglas ----
     spdlog::info("Cargando reglas desde RulesPreLoad.ini...");
-    std::string iniPath = "RulesPreLoad.ini";
     std::map<std::string, LoadedRule> rules;
+
     try {
-        rules = load_rules_ini(iniPath.c_str());
-        spdlog::info("Reglas cargadas exitosamente. Número: {}", rules.size());
+        rules = load_rules_ini("RulesPreLoad.ini");
+        spdlog::info("Reglas cargadas exitosamente. Numero: {}", rules.size());
     } catch (const std::exception& e) {
         spdlog::error("Error cargando reglas: {}", e.what());
         std::cerr << "Error cargando reglas: " << e.what() << std::endl;
         return 1;
     }
-    
-    int choice;
-    do {
-        std::cout << "\nMenu:" << std::endl;
-        std::cout << "1. Imprimir reglas cargadas" << std::endl;
-        std::cout << "2. Cerrar el programa" << std::endl;
-        std::cout << "Seleccione una opcion: ";
-        std::cin >> choice;
-        
-        switch(choice) {
-            case 1:
-                spdlog::info("Imprimiendo reglas...");
-                printRules(rules);
-                spdlog::info("Reglas impresas.");
-                break;
-            case 2:
-                spdlog::info("Cerrando el programa...");
-                std::cout << "Cerrando el programa..." << std::endl;
-                break;
-            default:
-                spdlog::warn("Opción inválida seleccionada: {}", choice);
-                std::cout << "Opcion invalida. Intente de nuevo." << std::endl;
-        }
-    } while(choice != 2);
-    
-    spdlog::info("Programa finalizado.");
-    // Pausa para mantener abierta la consola
-    std::cout << "\nPresiona Enter para salir..." << std::endl;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    std::cin.get();
 
+    // ---- Menú ----
+    for (;;) {
+        std::cout << "\nMenu:\n";
+        std::cout << "1. Imprimir reglas cargadas\n";
+        std::cout << "2. Cargar/parsear paquete IPv6-UDP desde archivo\n";
+        std::cout << "3. Cerrar el programa\n";
+
+        int choice = read_menu_choice();
+
+        if (choice == 1) {
+            spdlog::info("Imprimiendo reglas...");
+            printRules(rules);
+            spdlog::info("Reglas impresas.");
+        }
+        else if (choice == 2) {
+            std::cout << "Ingrese ruta del archivo (Enter = tramas/demo.txt): ";
+            std::string path;
+            std::getline(std::cin, path);
+            if (path.empty()) path = "packets/demo.txt";
+
+            process_hex_file(path);
+
+        }
+        else if (choice == 3) {
+            spdlog::info("Cerrando el programa...");
+            std::cout << "Cerrando el programa...\n";
+            break;
+        }
+    }
+
+    spdlog::info("Programa finalizado.");
     return 0;
 }

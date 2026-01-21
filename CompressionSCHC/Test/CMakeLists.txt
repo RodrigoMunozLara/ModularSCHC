@@ -8,9 +8,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(SOURCES
     main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_RulesTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_RulesParserIni.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_PacketParser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_RuleID.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_RulesPreLoad.cpp
 )
 
 add_executable(CompressionSCHC_Test ${SOURCES})
@@ -27,6 +27,11 @@ add_custom_command(TARGET CompressionSCHC_Test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_SOURCE_DIR}/../config/config.ini
         $<TARGET_FILE_DIR:CompressionSCHC_Test>
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/../packets
+        $<TARGET_FILE_DIR:CompressionSCHC_Test>/packets
+
+    
 )
 
 include(CTest)

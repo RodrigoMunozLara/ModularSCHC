@@ -1,7 +1,7 @@
 #define SI_SUPPORT_IOSTREAMS
 #include "SimpleIni.h"
 #include "SCHC_RuleID.hpp"
-#include "SCHC_RulesPreLoad.hpp"
+#include "SCHC_RulesParserIni.hpp"
 #include <spdlog/spdlog.h>  
 
 #include <algorithm>
@@ -144,12 +144,6 @@ static cd_action_t parse_CDA(const std::string& s) {
 }
 //+--------------------------------------------------------------+
 
-
-
-
-
-
-
 //Función para parsear una línea de field y devolver FieldDescription
 static FieldDescription parse_field_line(const std::string& rhs, TVOwner& ownerOut) {
     spdlog::info("Parsing field line: {}", rhs);  // Agrega logging aquí
@@ -250,4 +244,51 @@ std::map<std::string, LoadedRule> load_rules_ini(const char* path) {
     }
 
     return out;
+}
+
+
+std::vector<SCHC_RuleID> loadPredefinedRules() {
+    std::vector<SCHC_RuleID> rules;
+    try {
+        auto loaded = load_rules_ini("../config/RulesPreLoad.ini");
+        for (const auto& [name, lr] : loaded) {
+            uint8_t dev_id = 0; // default
+            if (lr.devid) {
+                try {
+                    dev_id = static_cast<uint8_t>(std::stoi(*lr.devid));
+                } catch (...) {
+                    dev_id = 0;
+                }
+            }
+            uint16_t rid_length = 8; // assume 8 bits for rule ID length
+            SCHC_RuleID rule(lr.ruleid, rid_length, dev_id, lr.fields.get());
+            rules.push_back(rule);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading rules from INI: " << e.what() << std::endl;
+        // Fallback to dummy rule
+        FieldDescription* fields = nullptr;
+        rules.push_back(SCHC_RuleID(1, 8, 1, fields));
+    }
+    return rules;
+}
+//Función auxiliar para imprimir reglas cargadas (para depuración)
+void printRules(const std::map<std::string, LoadedRule>& rules) {
+    std::cout << "Número de reglas cargadas: " << rules.size() << std::endl;
+    for (const auto& pair : rules) {
+        const std::string& name = pair.first;
+        const LoadedRule& rule = pair.second;
+        std::cout << "Regla: " << name << " (ID: " << rule.ruleid << ")" << std::endl;
+        if (rule.devid) {
+            std::cout << "  DevID: " << *rule.devid << std::endl;
+        } else {
+            std::cout << "  DevID: NONE" << std::endl;
+        }
+        std::cout << "  Campos (" << rule.fieldCount << "):" << std::endl;
+        for (size_t i = 0; i < rule.fieldCount; ++i) {
+            const FieldDescription& f = rule.fields[i];
+            std::cout << "    " << f.FID << " - FL: " << (int)f.FL << ", FP: " << f.FP << ", DI: " << (int)f.DI << ", MO: " << (int)f.MO << ", CDA: " << (int)f.CDA << std::endl;
+        }
+        std::cout << std::endl;
+    }
 }

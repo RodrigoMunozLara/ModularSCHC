@@ -11,7 +11,6 @@ Also contains enum parameters for the Rules created.
 //Se optimiza el uso de memoria usando uint8_t en lugar de int
 
 #include <cstdint>
-
 #pragma once
 
 enum class matching_operator_t : uint8_t {
