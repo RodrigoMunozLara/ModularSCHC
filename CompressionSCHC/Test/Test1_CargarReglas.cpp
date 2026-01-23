@@ -6,7 +6,7 @@
 #include <spdlog/sinks/basic_file_sink.h>  // Para log a archivo
 #include "SCHC_Packet.hpp"
 #include "SCHC_RuleID.hpp"
-#include "SCHC_RulesParserIni.hpp"
+#include "SCHC_RulesManager.hpp"
 
 // Cambia printRules para trabajar con std::map<std::string, LoadedRule>
 void printRules(const std::map<std::string, LoadedRule>& rules) {
@@ -46,7 +46,7 @@ int main() {
     //Codigo para precargar reglas desde archivo INI
     spdlog::info("Cargando reglas desde RulesPreLoad.ini...");
     std::string iniPath = "RulesPreLoad.ini";
-    std::map<std::string, LoadedRule> rules;
+    std::unordered_map<uint32_t, LoadedRule> rules;
     try {
         rules = load_rules_ini(iniPath.c_str());
         spdlog::info("Reglas cargadas exitosamente. Número: {}", rules.size());
