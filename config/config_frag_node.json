@@ -1,0 +1,29 @@
+{
+  "general": {
+    "app_name": "schc_node",
+    "stacks": ["lorawan_at_stack","backhaul_ipv6_stack"]
+  },
+  "logging": {
+    "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
+    "log_level": "WARN"
+  },
+  "lorawan": {
+    "n_devices": "1",
+    "deviceId_1": "eui-ac1f09fffe0cefd0",
+
+  },
+  "backhaul_ipv6": {
+    "deviceId_1": "eui-ac1f09fffe0cefd0",
+    
+  },
+  "mqtt": {
+    "host": "nam1.cloud.thethings.network",
+    "port": "1883",
+    "username": "rmunoz-schc@ttn",
+    "password": "NNSXS.ZVFHMBVPW2ADFEQB2ISOJLBDUYJZHWRRQYSNLFI.2JSIEKGBB7YZWGAXBBPO27NQ54VH6JIECCOURGEW3WR7FRKGMH7A"
+  },
+  "schc": {
+    "schc_ack_mode": "1",
+    "error_prob": "0"
+  }
+}
