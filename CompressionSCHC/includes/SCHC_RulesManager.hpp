@@ -1,8 +1,9 @@
-#ifndef SCHC_RULES_PARSERINI_HPP
-#define SCHC_RULES_PARSERINI_HPP
+#ifndef SCHC_RULES_MANAGER_HPP
+#define SCHC_RULES_MANAGER_HPP
 
 #include "SCHC_RuleID.hpp"   // Debe traer FieldDescription, direction_indicator_t, etc.
 #include <cstdint>
+#include <unordered_map>
 #include <map>
 #include <memory>
 #include <optional>
@@ -32,15 +33,11 @@ struct LoadedRule {
 // API pública
 // =====================
 
-std::map<std::string, LoadedRule> load_rules_ini(const char* path);
+std::unordered_map<uint32_t, LoadedRule> load_rules_ini(const char* path);
 std::vector<SCHC_RuleID> loadPredefinedRules();
+void printRules(const std::unordered_map<uint32_t, LoadedRule>& rules);
+LoadedRule create_rule() ;
+void writeRuleToIni(const std::string& iniPath, const LoadedRule& rule);
 
-// =====================
-// Helpers: Funciones auxiliares para parsear
-// =====================
-
-std::map<std::string, LoadedRule> load_rules_ini(const char* path);
-std::vector<SCHC_RuleID> loadPredefinedRules();
-void printRules(const std::map<std::string, LoadedRule>& rules);
 
 #endif // SCHC_RULES_PARSERINI_HPP

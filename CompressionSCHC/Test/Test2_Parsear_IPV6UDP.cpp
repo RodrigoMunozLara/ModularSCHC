@@ -8,7 +8,7 @@
 
 #include "SCHC_Packet.hpp"
 #include "SCHC_RuleID.hpp"
-#include "SCHC_RulesManager.hpp"
+#include "SCHC_RulesParserIni.hpp"
 #include "SCHC_PacketParser.hpp"
 
 // Lee una opción de menú de forma segura (evita cin en fail-state)
@@ -60,8 +60,8 @@ static void process_hex_file(const std::string& path) {
             spdlog::info("OK linea {}: nextHeader={} payload_bytes={}",
                          lineNum, int(frame.ipv6_header.next_header), frame.payload.size());
             ++ok;
-        } catch (const spdlog::spdlog_ex& ex) {
-            spdlog::error("Error linea {}: {}", lineNum, ex.what());
+        } catch (const std::exception& e) {
+            spdlog::error("Error linea {}: {}", lineNum, e.what());
             ++fail;
         }
     }
@@ -82,8 +82,7 @@ int main() {
     try {
         auto logger = spdlog::basic_logger_mt("basic_logger", "logs.txt");
         spdlog::set_default_logger(logger);
-        spdlog::flush_on(spdlog::level::trace);
-        spdlog::set_level(spdlog::level::trace);
+        spdlog::set_level(spdlog::level::info);
         spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v");
         spdlog::info("Programa iniciado.");
     } catch (const spdlog::spdlog_ex& ex) {
@@ -93,14 +92,14 @@ int main() {
 
     // ---- Precarga de reglas ----
     spdlog::info("Cargando reglas desde RulesPreLoad.ini...");
-    std::unordered_map<uint32_t, LoadedRule> rules;
+    std::map<uint32_t, LoadedRule> rules;
 
     try {
         rules = load_rules_ini("RulesPreLoad.ini");
         spdlog::info("Reglas cargadas exitosamente. Numero: {}", rules.size());
-    } catch (const spdlog::spdlog_ex& ex) {
-        spdlog::error("Error cargando reglas: {}", ex.what());
-        std::cerr << "Error cargando reglas: " << ex.what() << std::endl;
+    } catch (const std::exception& e) {
+        spdlog::error("Error cargando reglas: {}", e.what());
+        std::cerr << "Error cargando reglas: " << e.what() << std::endl;
         return 1;
     }
 
@@ -108,9 +107,8 @@ int main() {
     for (;;) {
         std::cout << "\nMenu:\n";
         std::cout << "1. Imprimir reglas cargadas\n";
-        std::cout << "2. Crear nueva regla\n";
-        std::cout << "3. Cargar/parsear paquete IPv6-UDP desde archivo\n";
-        std::cout << "4. Cerrar el programa\n";
+        std::cout << "2. Cargar/parsear paquete IPv6-UDP desde archivo\n";
+        std::cout << "3. Cerrar el programa\n";
 
         int choice = read_menu_choice();
 
@@ -119,37 +117,8 @@ int main() {
             printRules(rules);
             spdlog::info("Reglas impresas.");
         }
-        else if(choice == 2) {
-            std::cout << "Se pedirán los campos en un formato para crear una nueva regla\n";
-            std::cout << "como también cuantos descriptores de campo (FID) contenga la regla\n";
-            LoadedRule newRule = create_rule();
-            uint32_t id = newRule.ruleid;
-
-            // Inserta/actualiza en memoria
-            spdlog::debug("intenta poner en memoria");
-            bool existed = (rules.find(id) != rules.end());
-            
-            rules[id] = std::move(newRule);
-            spdlog::debug("logró poner regla en memoria");
-
-            std::cout << (existed ? "Regla actualizada ID=" : "Regla creada ID=") << id << "\n";
-            spdlog::info("{} regla ID={}", (existed ? "Actualizada" : "Creada"), id);
-
-            // Guarda al INI en la sección rule_<id>
-            try {
-                spdlog::debug("Intento de guardar regla en INI");
-                writeRuleToIni("RulesPreLoad.ini", rules.at(id));
-                spdlog::info("Regla ID={} guardada en INI '{}' (seccion rule_{})", id, "RulesPreLoad.ini", id);
-                std::cout << "Guardada en INI: seccion rule_" << id << "\n";
-            } catch (const std::exception& e) {
-                spdlog::debug("No se pudo guardar regla ID={} en INI: {}", id, e.what());
-                std::cout << "No se pudo guardar en INI: " << e.what() << "\n";
-            }
-            spdlog::debug("terminó opción 2 del menú");
-
-        }
-        else if (choice == 3) {
-            std::cout << "Ingrese ruta del archivo (Enter = packets/demo.txt): ";
+        else if (choice == 2) {
+            std::cout << "Ingrese ruta del archivo (Enter = packet/demo.txt): ";
             std::string path;
             std::getline(std::cin, path);
             if (path.empty()) path = "packet/demo.txt";
@@ -165,6 +134,5 @@ int main() {
     }
 
     spdlog::info("Programa finalizado.");
-    spdlog::shutdown();
     return 0;
 }

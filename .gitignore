@@ -1,3 +1,7 @@
 build/
+CompressionSCHC/Test/build/
+CompressionSCHC/Test/CMakeFiles/
 *.o
 .vscode/
+C++_Version.code-workspace
+readme_comands.txt
