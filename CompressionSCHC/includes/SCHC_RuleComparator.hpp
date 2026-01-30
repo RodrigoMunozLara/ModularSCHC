@@ -1,1 +1,0 @@
-// Rule comparator for SCHC Rules

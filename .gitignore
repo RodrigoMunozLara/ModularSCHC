@@ -1,5 +1,6 @@
 build/
 CompressionSCHC/Test/build/
+libyang/
 CompressionSCHC/Test/CMakeFiles/
 *.o
 .vscode/

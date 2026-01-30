@@ -1,48 +1,43 @@
 #include "SCHC_RuleID.hpp"
 #include <iostream>
+#include <utility>
 #include <cstring>
 
 // Default Constructor implementation
-SCHC_RuleID::SCHC_RuleID() : rule_id(0), rule_id_length(0), dev_id(0), fields(nullptr) {}
+SCHC_RuleID::SCHC_RuleID() 
+    : rule_id(0), 
+      rule_id_length(0),
+      nature_type(nature_type_t::COMPRESSION),
+      fields() {}
 
 // Constructor
-SCHC_RuleID::SCHC_RuleID(uint32_t rid, uint16_t rid_length, uint8_t dev_id, FieldDescription* flds) 
-    : rule_id(rid), rule_id_length(rid_length), dev_id(dev_id), fields(flds) {}
+SCHC_RuleID::SCHC_RuleID(uint32_t rid, uint8_t rid_length, nature_type_t nature, std::vector<SCHC_Entry> flds) 
+    : rule_id(rid), rule_id_length(rid_length), nature_type(nature),  fields(std::move(flds)) {}
 
 // Destructor
-SCHC_RuleID::~SCHC_RuleID() {
-    // Assuming fields is managed externally, no delete here
-}
+SCHC_RuleID::~SCHC_RuleID() = default;
 
 // Getter for Rule ID
-uint32_t SCHC_RuleID::getRuleID() {
+uint32_t SCHC_RuleID::getRuleID() const {
     return rule_id;
 }
-// Getter for Device ID
-uint8_t SCHC_RuleID::getDevID() {
-    return dev_id;
-}
-// Getter for Fields
-FieldDescription* SCHC_RuleID::getFields() {
-    return fields;
-}
+
 
 // Setter for RuleID
-bool SCHC_RuleID::setFID(uint32_t ruleNumber, uint16_t ruleNumberLength, uint8_t devID, FieldDescription* flds) {
-    rule_id = ruleNumber;
-    rule_id_length = ruleNumberLength;
-    dev_id = devID;
-    fields = flds;
+bool SCHC_RuleID::setFID(uint32_t ruleNumber, uint8_t ruleid_length, nature_type_t nature, const std::vector<SCHC_Entry> &flds) {
+    this->rule_id = ruleNumber;
+    this->rule_id_length = ruleid_length;
+    this->nature_type = nature;
+    this->fields = flds;
     return true;
 }
 
 // Print Rule Details
-void SCHC_RuleID::printRule() const {
-    std::cout << "Rule ID: " << static_cast<int>(rule_id) << std::endl;
-    std::cout << "Rule ID Length: " << static_cast<int>(rule_id_length) << std::endl;
-    std::cout << "Device ID: " << static_cast<int>(dev_id) << std::endl;
-    if (fields) {
-        std::cout << "Fields: " << std::endl;
-        std::cout << "Fields pointer: " << fields << std::endl;
-    }
+void SCHC_RuleID::printRuleOut() const {
+    std::cout << "Rule ID: " << rule_id << '\n';
+    std::cout << "Rule ID Length: " << static_cast<unsigned>(rule_id_length) << '\n';
+    std::cout << "Fields count: " << fields.size() << '\n';
+    printFields(fields);
+    
 }
+

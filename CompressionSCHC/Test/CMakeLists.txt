@@ -22,10 +22,10 @@ target_include_directories(CompressionSCHC_Test PRIVATE
 # Copia archivos de config/ al directorio del ejecutable
 add_custom_command(TARGET CompressionSCHC_Test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/../config/RulesPreLoad.ini
-        $<TARGET_FILE_DIR:CompressionSCHC_Test>
+        ${CMAKE_CURRENT_SOURCE_DIR}/yang
+        $<TARGET_FILE_DIR:CompressionSCHC_Test>/yang
     COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/../config/config.ini
+        ${CMAKE_CURRENT_SOURCE_DIR}/../config/rules.json
         $<TARGET_FILE_DIR:CompressionSCHC_Test>
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/../packets
