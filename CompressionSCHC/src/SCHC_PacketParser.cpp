@@ -2,6 +2,9 @@
 #include "spdlog/spdlog.h"
 #include <algorithm>  // std::copy
 #include <stdexcept>
+#include <fstream>
+#include <vector>
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 
@@ -88,7 +91,7 @@ static inline uint8_t hex_nibble(char c) {
         spdlog::error("parseIPv6UdpRaw(): No es UDP (NextHeader={})", int(f.ipv6_header.next_header));
         throw std::runtime_error("No es UDP (Next Header != 17)");
     }
-
+    // UDP header (8 bytes) + payload
     std::copy(b.begin() + 40, b.begin() + 42, f.udp_header.src_port.begin());
     std::copy(b.begin() + 42, b.begin() + 44, f.udp_header.dst_port.begin());
     std::copy(b.begin() + 44, b.begin() + 46, f.udp_header.length.begin());
@@ -167,4 +170,51 @@ void dumpIPv6UdpFrame(const IPv6UDPFrameRaw& f) {
     }
 
     spdlog::info("=======================================");
+}
+
+
+void process_hex_file(const std::string& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        spdlog::error("No se pudo abrir archivo de tramas: '{}'", path);
+        std::cout << "No se pudo abrir: " << path << "\n";
+        return; // vuelve al menú, no mata el programa
+    }
+
+    std::string line;
+    size_t lineNum = 0;
+    size_t ok = 0, fail = 0;
+
+    spdlog::info("Procesando archivo de tramas: '{}'", path);
+
+    while (std::getline(in, line)) {
+        ++lineNum;
+
+        // ignora líneas vacías o comentarios
+        if (line.empty() || line[0] == '#' || line.rfind("//", 0) == 0) continue;
+
+        try {
+            auto bytes = hex_to_bytes_one_line(line);
+            if (bytes.empty()) continue;
+
+            auto frame = parseIPv6UdpRaw(bytes);
+
+            spdlog::info("OK linea {}: nextHeader={} payload_bytes={}",
+                         lineNum, int(frame.ipv6_header.next_header), frame.payload.size());
+            ++ok;
+        } catch (const spdlog::spdlog_ex& ex) {
+            spdlog::error("Error linea {}: {}", lineNum, ex.what());
+            ++fail;
+        }
+    }
+
+    spdlog::info("Fin procesamiento '{}': ok={} fail={}", path, ok, fail);
+    std::cout << "Procesamiento terminado: ok=" << ok << " fail=" << fail << "\n";
+
+    auto bytes = hex_to_bytes_one_line(line);
+    auto frame = parseIPv6UdpRaw(bytes);
+
+    // Mostrar paquete parseado
+    dumpIPv6UdpFrame(frame);
+
 }

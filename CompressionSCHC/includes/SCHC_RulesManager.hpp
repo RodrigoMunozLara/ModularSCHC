@@ -1,43 +1,25 @@
-#ifndef SCHC_RULES_MANAGER_HPP
-#define SCHC_RULES_MANAGER_HPP
-
-#include "SCHC_RuleID.hpp"   // Debe traer FieldDescription, direction_indicator_t, etc.
-#include <cstdint>
-#include <unordered_map>
-#include <map>
-#include <memory>
-#include <optional>
+#ifndef SCHC_RULES_MANAGER.HPP
+#define SCHC_RULES_MANAGER.HPP
+#include "SCHC_RuleID.hpp"
 #include <string>
 #include <vector>
+#include <unordered_map>
+
+#include <nlohmann/json.hpp>    
+//String to enum class types helpers
+direction_indicator_t di_from_string(const std::string& s);
+matching_operator_t mo_from_string(const std::string& s);
+cd_action_t cda_from_string(const std::string& s);
 
 
 
-// =====================
-// Estructuras de soporte
-// =====================
+std::vector<uint8_t> base64_to_hex(const std::string &in);
 
-struct TVOwner {
-    std::unique_ptr<uint64_t> num;
-    std::unique_ptr<std::vector<uint64_t>> vec;
-};
+using json = nlohmann::json;
+using RuleContext = std::unordered_map<uint32_t, SCHC_RuleID>;
 
-struct LoadedRule {
-    uint32_t ruleid{};
-    std::optional<std::string> devid;
-    std::unique_ptr<FieldDescription[]> fields;
-    size_t fieldCount{0};
-    std::vector<TVOwner> tvOwners;
-};
-
-// =====================
-// API pública
-// =====================
-
-std::unordered_map<uint32_t, LoadedRule> load_rules_ini(const char* path);
-std::vector<SCHC_RuleID> loadPredefinedRules();
-void printRules(const std::unordered_map<uint32_t, LoadedRule>& rules);
-LoadedRule create_rule() ;
-void writeRuleToIni(const std::string& iniPath, const LoadedRule& rule);
+RuleContext load_rules_from_json(const std::string &filename);
+void printRuleContext(const RuleContext &ctx);
 
 
-#endif // SCHC_RULES_PARSERINI_HPP
+#endif

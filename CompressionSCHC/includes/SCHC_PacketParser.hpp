@@ -1,8 +1,12 @@
+#ifndef SCHC_PACKETPARSER.HPP
+#define SCHC_PACKETPARSER.HPP
+
+
 #include <cstdint>
 #include <array>
 #include <string>
 #include <vector>
-#pragma once
+
 
 //+-------------- Structs for raw packet headers -----------------------+
 struct IPv6HeaderRaw {
@@ -35,6 +39,9 @@ std::vector<uint8_t> hex_to_bytes_one_line(const std::string& s);
 
 
 IPv6UDPFrameRaw parseIPv6UdpRaw(const std::vector<uint8_t>& b);
+void process_hex_file(const std::string& path);
 
 
 void dumpIPv6UdpFrame(const IPv6UDPFrameRaw& f);
+
+#endif
