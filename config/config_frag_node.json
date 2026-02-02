@@ -1,20 +1,24 @@
 {
   "general": {
-    "app_name": "schc_node",
-    "stacks": ["lorawan_at_stack","backhaul_ipv6_stack"]
+    "cores": ["schc_core","backhaul_core"]
   },
   "logging": {
     "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
-    "log_level": "WARN"
+    "log_level": "DEBUG"
   },
-  "lorawan": {
-    "n_devices": "1",
-    "deviceId_1": "eui-ac1f09fffe0cefd0",
-
+  "backhaul_core": {
+    "_comment": "IPv6 socket configuration",
+    "interface": "lo"
   },
-  "backhaul_ipv6": {
-    "deviceId_1": "eui-ac1f09fffe0cefd0",
+  "schc_core": {
+    "_comment": ["node_type: schc_node, schc_gateway", "schc_ack_mode: ack_end_win, ack_end_session, compound_ack"],
+    "schc_l2_protocol": "lorawan",
+    "schc_type": "schc_node",
+    "schc_reliability" : "false",
+    "schc_ack_mechanism": "ack_end_win",
+    "error_prob": "0"
     
+
   },
   "mqtt": {
     "host": "nam1.cloud.thethings.network",
@@ -22,8 +26,7 @@
     "username": "rmunoz-schc@ttn",
     "password": "NNSXS.ZVFHMBVPW2ADFEQB2ISOJLBDUYJZHWRRQYSNLFI.2JSIEKGBB7YZWGAXBBPO27NQ54VH6JIECCOURGEW3WR7FRKGMH7A"
   },
-  "schc": {
-    "schc_ack_mode": "1",
-    "error_prob": "0"
+  "lorawan_node": {
+    "deviceId": "eui-ac1f09fffe0cefd0"
   }
 }
