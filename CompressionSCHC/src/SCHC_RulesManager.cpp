@@ -2,13 +2,117 @@
 
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <cstring>
 #include <vector>  
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include "SCHC_RuleID.hpp"
+#include <cctype> 
+#include <algorithm>
+#include "SCHC_Rule.hpp"
 #include "SCHC_RulesManager.hpp"
 
+
+
+
+//Auxiliar Functions to adapt the strings to enum types
+direction_indicator_t di_from_string(const std::string& s) {
+    if (s == "ietf-schc:di-up"|| s == "up") return direction_indicator_t::UP;
+    if (s == "ietf-schc:di-down"|| s == "down") return direction_indicator_t::DOWN;
+    if (s == "ietf-schc:di-bidirectional"|| s == "bidirectional") return direction_indicator_t::BI;
+    spdlog::error("DI inválido: {}" , s);
+    throw std::runtime_error("DI inválido: " + s);
+}
+
+matching_operator_t mo_from_string(const std::string& s) {
+    if (s == "ietf-schc:mo-ignore" || s == "ignore") return matching_operator_t::IGNORE_;
+    if (s == "ietf-schc:mo-equal"|| s == "equal") return matching_operator_t::EQUAL_;
+    if (s == "ietf-schc:mo-match-mapping"|| s == "match-mapping") return matching_operator_t::MATCH_MAPPING_;
+    if (s == "ietf-schc:mo-msb"|| s == "msb") return matching_operator_t::MSB_;
+    spdlog::error("MO inválido: {}" , s);
+    throw std::runtime_error("MO inválido: " + s);
+}
+
+cd_action_t cda_from_string(const std::string& s) {
+    if (s == "ietf-schc:cda-not-sent" || s == "not-sent") return cd_action_t::NOT_SENT;
+    if (s == "ietf-schc:cda-value-sent" || "value-sent") return cd_action_t::VALUE_SENT;
+    if (s == "ietf-schc:cda-mapping-sent"||s == "mapping-sent") return cd_action_t::MAPPING_SENT;
+    if (s == "ietf-schc:cda-lsb" || s == "lsb") return cd_action_t::LSB;
+    if (s == "ietf-schc:cda-compute" || s == "compute") return cd_action_t::COMPUTE;
+    spdlog::error("CDA inválido: {}",s);
+    throw std::runtime_error("CDA inválido: " + s);
+}
+
+nature_type_t nature_from_string(const std::string& s) {
+    if (s == "ietf-schc:nature-compression" || s == "compression") return nature_type_t::COMPRESSION;
+    if (s == "ietf-schc:nature-no-compression" || s == "no-compression") return nature_type_t::NO_COMPRESSION;
+    if (s == "ietf-schc:nature-fragmentation" || "fragmentation") return nature_type_t::FRAGMENTATION;
+    spdlog::error("Nature Type inválido: {}", s);
+    throw std::runtime_error("Nature Type inválido: " + s);
+}
+//-----------------------------------------------------------------------------------//
+
+//Auxiliar functions to adapt enum types to string
+std::string di_to_json(direction_indicator_t di) {
+    switch (di) {
+        case direction_indicator_t::UP:
+            return "ietf-schc:di-up";
+        case direction_indicator_t::DOWN:
+            return "ietf-schc:di-down";
+        case direction_indicator_t::BI:
+            return "ietf-schc:di-bidirectional";
+    }
+    spdlog::error("DI inválido (enum desconocido)");
+    throw std::runtime_error("DI inválido (enum desconocido)");
+}
+
+std::string mo_to_json(matching_operator_t mo) {
+    switch (mo) {
+        case matching_operator_t::IGNORE_:
+            return "ietf-schc:mo-ignore";
+        case matching_operator_t::EQUAL_:
+            return "ietf-schc:mo-equal";
+        case matching_operator_t::MATCH_MAPPING_:
+            return "ietf-schc:mo-match-mapping";
+        case matching_operator_t::MSB_:
+            return "ietf-schc:mo-msb";
+    }
+
+    spdlog::error("MO inválido (enum desconocido)");
+    throw std::runtime_error("MO inválido (enum desconocido)");
+}
+
+std::string cda_to_json(cd_action_t cda) {
+    switch (cda) {
+        case cd_action_t::NOT_SENT:
+            return "ietf-schc:cda-not-sent";
+        case cd_action_t::VALUE_SENT:
+            return "ietf-schc:cda-value-sent";
+        case cd_action_t::MAPPING_SENT:
+            return "ietf-schc:cda-mapping-sent";
+        case cd_action_t::LSB:
+            return "ietf-schc:cda-lsb";
+        case cd_action_t::COMPUTE:
+            return "ietf-schc:cda-compute-length";
+    }
+    spdlog::error("CDA inválido (enum desconocido)");
+    throw std::runtime_error("CDA inválido (enum desconocido)");
+}
+
+std::string nature_to_json(nature_type_t n) {
+    switch (n) {
+        case nature_type_t::COMPRESSION:
+            return "ietf-schc:nature-compression";
+        case nature_type_t::NO_COMPRESSION:
+            return "ietf-schc:nature-no-compression";
+        case nature_type_t::FRAGMENTATION:
+            return "ietf-schc:nature-fragmentation";
+    }
+    spdlog::error("Nature Type inválido (enum desconocido)");
+    throw std::runtime_error("Nature Type inválido (enum desconocido)");
+}
+//----------------------------------------------------------------------------//
 
 //To load json file with nlohmann
 using json = nlohmann::json;
@@ -16,35 +120,101 @@ using json = nlohmann::json;
 json load_json_file(const std::string &filename){ //Function to read and load json file
     std::ifstream f(filename);
     if(!f.is_open()){
+        spdlog::error("No se pudo abrir el archivo JSON");
         throw std::runtime_error("No se pudo abrir el archivo JSON");
 
     }
     return json::parse(f);
 }
+//to save rules to a json file
+void write_rule_to_json(const std::string& base_filename,
+                        const std::string& out_filename,
+                        const SCHC_Rule& rule)
+{
+    json j;
 
-//Auxiliar Functions to adapt the strings to enum types
-direction_indicator_t di_from_string(const std::string& s) {
-    if (s == "ietf-schc:di-uplink") return direction_indicator_t::UP;
-    if (s == "ietf-schc:di-downlink") return direction_indicator_t::DOWN;
-    if (s == "ietf-schc:di-bidirectional") return direction_indicator_t::BI;
-    throw std::runtime_error("DI inválido: " + s);
-}
+    try {
+        j = load_json_file(base_filename);
+    } catch (...) {
+        j = json::object();
+    }
 
-matching_operator_t mo_from_string(const std::string& s) {
-    if (s == "ietf-schc:mo-ignore") return matching_operator_t::IGNORE_;
-    if (s == "ietf-schc:mo-equal") return matching_operator_t::EQUAL_;
-    if (s == "ietf-schc:mo-match-mapping") return matching_operator_t::MATCH_MAPPING_;
-    if (s == "ietf-schc:mo-msb") return matching_operator_t::MSB_;
-    throw std::runtime_error("MO inválido: " + s);
-}
+    //Verify the root of the model
+    if (!j.contains("ietf-schc:schc") || !j["ietf-schc:schc"].is_object()) {
+        j["ietf-schc:schc"] = json::object();
+    }
+    if (!j["ietf-schc:schc"].contains("rule") || !j["ietf-schc:schc"]["rule"].is_array()) {
+        j["ietf-schc:schc"]["rule"] = json::array();
+    }
 
-cd_action_t cda_from_string(const std::string& s) {
-    if (s == "not-sent") return cd_action_t::NOT_SENT;
-    if (s == "value-sent") return cd_action_t::VALUE_SENT;
-    if (s == "mapping-sent") return cd_action_t::MAPPING_SENT;
-    if (s == "lsb") return cd_action_t::LSB;
-    if (s == "compute-length") return cd_action_t::COMPUTE;
-    throw std::runtime_error("CDA inválido: " + s);
+    //Write Rule
+    json jr;
+    jr["rule-id-value"]  = rule.getRuleID();
+    jr["rule-id-length"] = rule.getRuleIDLength();
+    jr["rule-nature"]    = nature_to_json(rule.getNatureType());
+
+    jr["compression"] = json::object();
+    //Entries of the rule
+    jr["compression"]["entry"] = json::array();
+
+    for (const auto& e:   rule.getFields()) {
+        json je;
+
+        je["field-id"]            = std::string(e.FID);
+        je["field-position"]      = e.FP;
+        je["direction-indicator"] = di_to_json(e.DI);
+
+
+        if (e.FL.type == "FIXED") {
+            je["field-length"] = e.FL.bit_length;
+        } else {
+            je["field-length"] = e.FL.type;
+        }
+
+        je["target-value"] = json::array();
+        for (uint16_t idx = 0; idx < static_cast<uint16_t>(e.TV.value.size()); ++idx) {
+            json tv;
+            tv["index"] = idx;
+
+            // Cada elemento lo serializamos como 1 byte binario (base64)
+            std::vector<uint8_t> one_byte = { e.TV.value[idx] };
+            tv["value"] = bytes_to_base64(one_byte);
+
+            je["target-value"].push_back(tv);
+        }
+
+        // matching-operator
+        je["matching-operator"] = mo_to_json(e.MO);
+
+        // matching-operator-value:
+        if (e.MO == matching_operator_t::MSB_) {
+            je["matching-operator-value"] = json::array();
+
+            json mov;
+            mov["index"] = 0;
+
+            // MSB length saved in base64
+            std::vector<uint8_t> msb_bytes = { static_cast<uint8_t>(e.MsbLength) };
+            mov["value"] = bytes_to_base64(msb_bytes);
+
+            je["matching-operator-value"].push_back(mov);
+        }
+
+        // comp-decomp-action
+        je["comp-decomp-action"] = cda_to_json(e.CDA);
+
+        jr["compression"]["entry"].push_back(je);
+    }
+    //Append
+    j["ietf-schc:schc"]["rule"].push_back(jr);
+
+    //Write in the temporal file
+    std::ofstream out(out_filename, std::ios::trunc);
+    if (!out.is_open()) {
+        spdlog::error("No se pudo abrir JSON para escritura: {}", out_filename);
+        throw std::runtime_error("No se pudo abrir JSON para escritura: " + out_filename);
+    }
+    out << j.dump(2);
 }
 
 //Decoder Base64:
@@ -59,7 +229,8 @@ std::vector<uint8_t> base64_to_hex(const std::string& in) {
     for (int i = 0; i < 64; i++) T[base64_chars[i]] = i;
 
     int val = 0, valb = -8;
-    for (uint8_t c : in) {
+    for (uint8_t c:   in) {
+        if (c == '=' || std::isspace(c)) continue;
         if (T[c] == -1) break;
         val = (val << 6) + T[c];
         valb += 6;
@@ -70,40 +241,71 @@ std::vector<uint8_t> base64_to_hex(const std::string& in) {
     }
     return out; //returns a vector of bytes
 }
-//
+//Encoder base64:
+std::string bytes_to_base64(const std::vector<uint8_t>& data) {
+    static const char* b64 =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    int val = 0, valb = -6;
+    for (uint8_t c:   data) {
+        val = (val << 8) + c;
+        valb += 8;
+        while (valb >= 0) {
+            out.push_back(b64[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+    if (valb > -6) out.push_back(b64[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (out.size() % 4) out.push_back('=');
+    return out;
+}
 
-using RuleContext = std::unordered_map<uint32_t, SCHC_RuleID>;
+
+
+using RuleContext = std::unordered_map<uint32_t, SCHC_Rule>;
 
 RuleContext load_rules_from_json(const std::string &filename ){
 
  json j = load_json_file(filename);
     RuleContext context;
     
-    if (!j.contains("rule") || !j["rule"].is_array()) {
+    
+    if (!j.contains("ietf-schc:schc") || !j["ietf-schc:schc"].is_object()) {
+        spdlog::error("El JSON no posee un contenedor 'ietf-schc:schc'");
+        throw std::runtime_error("El JSON no posee un contenedor 'ietf-schc:schc'");
+    }
+
+    auto &root = j["ietf-schc:schc"];
+    if (!root.contains("rule") || !root["rule"].is_array()) {
+        spdlog::error("El JSON no contiene un array 'rule'");
         throw std::runtime_error("El JSON no contiene un array 'rule'");
     }
 
-    //Parsing a rule in json into a SCHC_RuleID
+    //Parsing a rule in json into a SCHC_Rule
 
-    for (const auto &jr : j["rule"]){ //recorrer los items dentro de la etiqueta rules
-        uint32_t rule_id       = jr.at("rule_id").get<uint32_t>();
-        uint8_t  rule_id_len   = jr.at("rule_id_length").get<uint8_t>();
-        nature_type_t nature   = static_cast<nature_type_t>( //Casting type string into enum class
-                                    jr.at("nature_type").get<int>());
-        SCHC_RuleID rule(rule_id, rule_id_len, nature);
+    for (const auto &jr:   root["rule"]){ //recorrer los items dentro de la etiqueta rules
+        uint32_t rule_id       = jr.at("rule-id-value").get<uint32_t>();
+        uint8_t  rule_id_len   = jr.at("rule-id-length").get<uint8_t>();
+        nature_type_t nature   = nature_from_string(jr.at("rule-nature").get<std::string>());
+        SCHC_Rule rule(rule_id, rule_id_len, nature);
 
-        if (!jr.contains("entry") || !j["rule"].is_array()) {
-        throw std::runtime_error("The rule doesn't have entrys (FIDs)");
+        if (!jr.contains("entry") && (rule_id != 0)) {
+            spdlog::error("The rule doesn't have entrys (FIDs)");
+            throw std::runtime_error("The rule doesn't have entrys (FIDs)");
+        }
+        else if (!jr.contains("entry") && (rule_id == 0)) {
+            spdlog::info("RuleID = 0, Rule default");
+            continue;
         }
 
-        for(const auto &je : jr["entry"]){
+        for(const auto &je:   jr["entry"]){
             SCHC_Entry entry{};
 
             const std::string fid = je.at("field-id").get<std::string>();
             std::strncpy(entry.FID, fid.c_str(), sizeof(entry.FID)-1);
-            entry.FID[sizeof(entry.FID-1)] = '\0';
+            entry.FID[sizeof(entry.FID)-1] = '\0';
             
-            const auto &jfl = je.at("fiel-length");
+            const auto &jfl = je.at("field-length");
             if (!jfl.is_number()) {
                 entry.FL.bit_length = 0;
                 entry.FL.type = jfl.get<std::string>();
@@ -114,15 +316,66 @@ RuleContext load_rules_from_json(const std::string &filename ){
 
             entry.FP = je.at("field-position").get<uint8_t>();;
             entry.DI = di_from_string(je.at("direction-indicator").get<std::string>());
+            
+    
+            entry.TV.value.clear();
+            if (je.contains("target-value")) {
+                const auto& tv_arr = je.at("target-value");
+                if (!tv_arr.is_array()) {
+                    spdlog::error("target-value debe ser array");
+                    throw std::runtime_error("target-value debe ser array");
+                }
+
+                // Ordenar por index por si viene desordenado
+                std::vector<std::pair<uint16_t, uint8_t>> tv_items;
+                tv_items.reserve(tv_arr.size());
+
+                for (const auto& tv:   tv_arr) {
+                    uint16_t idx = tv.at("index").get<uint16_t>();
+                    std::string b64 = tv.at("value").get<std::string>();
+
+                    auto bytes = base64_to_hex(b64);
+                    if (bytes.empty()) {
+                        spdlog::error("target-value.value (binary) vacío/ inválido");
+                        throw std::runtime_error("target-value.value (binary) vacío/ inválido");
+                    }
+                    // En tu writer estabas guardando 1 byte por item
+                    tv_items.push_back({idx, bytes[0]});
+                }
+
+                std::sort(tv_items.begin(), tv_items.end(),
+                          [](auto& a, auto& b){ return a.first < b.first; });
+
+                entry.TV.value.reserve(tv_items.size());
+                for (auto& p:   tv_items) {
+                    entry.TV.value.push_back(p.second);
+                }
+                entry.TV.index = static_cast<uint16_t>(entry.TV.value.size());
+            } else {
+                entry.TV.index = 0;
+            }
+
+            
             matching_operator_t aux = mo_from_string(je.at("matching-operator").get<std::string>());
             entry.MO = aux;
-            if(static_cast<uint8_t>(aux) > 2){ //cast MO to verify if it is MSB
-                std::string value_aux;
-                value_aux = je.at("matching-operator-value")[0].at("value").get<std::string>();
-                entry.MsbLength = base64_to_hex(value_aux)[0]; //MO-value always is one value
-            }
-            else
-            {
+            if (aux == matching_operator_t::MSB_) { //Verify that the rule has matching-operator-value if MSB
+                if (!je.contains("matching-operator-value") || !je["matching-operator-value"].is_array()) {
+                    spdlog::error("MO=MSB pero falta matching-operator-value (YANG must)");
+                    throw std::runtime_error("MO=MSB pero falta matching-operator-value (YANG must)");
+                }
+
+                const auto& mov_arr = je.at("matching-operator-value");
+                if (mov_arr.empty()) {
+                    spdlog::error("matching-operator-value vacío");
+                    throw std::runtime_error("matching-operator-value vacío");
+                }
+
+                // 
+                const auto& mov0 = mov_arr.at(0);
+                std::string b64 = mov0.at("value").get<std::string>();
+                auto bytes = base64_to_hex(b64);
+                entry.MsbLength = bytes.empty() ? 0:   bytes[0];
+            } else {
                 entry.MsbLength = 0;
             }
             
@@ -130,6 +383,15 @@ RuleContext load_rules_from_json(const std::string &filename ){
         
             rule.addField(entry);
         }
+        auto [it, inserted] =
+            context.emplace(rule.getRuleID(), std::move(rule));
+
+        if (!inserted) {
+            spdlog::error("RuleID duplicado en JSON: {}", rule_id);
+            throw std::runtime_error( 
+                "RuleID duplicado en JSON: " + std::to_string(rule_id));
+            }
+        
     }
     return context;
 }
@@ -138,19 +400,101 @@ void printRuleContext(const RuleContext &ctx){
     std::cout << "Rules" << ctx.size()<<"\n";
     for (const auto & [rid, rule]:ctx){
         std::cout << "\n== Rule " << rid
-                  << ") ==\n";
+                  << " ==\n";
         rule.printRuleOut();
     }
 
 
 }
 
-SCHC_RuleID create_rule(uint32_t rule_id,
-                        uint8_t rule_id_length,
-                        nature_type_t nature,
-                        const std::vector<SCHC_Entry>& entries) {
-    SCHC_RuleID r(rule_id, rule_id_length, nature);
-    for (const auto& e : entries) r.addField(e);
-    return r;
+//Auxiliar input function
+std::string input_line(const std::string& prompt) {
+    std::cout << prompt;
+    std::string s;
+    std::getline(std::cin, s);
+    return s;
+}
+
+void create_rule(SCHC_Rule &newrule) {
+    
+    std::cout << "|--- Ingrese los campos de la nueva regla en siguiendo el modelo YANG SCHC ---| \n";
+    std::cout << "  numero id \n"
+                <<"  largo id  \n"
+                << "  ietf-schc:nature-type' (compression/no-compression/fragmentation)\n" 
+                << "  ietf-schc:fid-type (ipv6-type/udp-type/coap-type) \n"
+                << "  ietf-schc:di-type (up/down/bidirectional) \n"
+                << "  valores para TV \n"
+                << "  ietf-schc:mo-type (equal/ignore/msb/match-mapping) \n"        
+                << "  ietf-schc:cda-type  (value-sent/compute/appiid/deviid/not-sent/lsb/mapping-sent)\n";
+    uint32_t newID = static_cast<uint32_t>(std::stoul(input_line("Ingrese el ID para la nueva regla:  ")));
+    uint8_t newrule_id_length = static_cast<uint8_t>(std::stoul(input_line("Ingrese rule ID Length in bits:  "))); 
+    nature_type_t newnature;
+    newnature  = nature_from_string((input_line("|-- Ingrese Nature Type :  ")));
+    
+
+    size_t n = 0;
+    while (n == 0) {
+        n = static_cast<size_t>(std::stoul(input_line("|-- Ingrese cantidad de Field Descriptors (>=1):  ")));
+        if (n == 0) std::cout << "Debe ser >= 1.\n";
+    }
+
+    std::vector<SCHC_Entry> entries;
+    entries.reserve(n);
+
+    for(size_t i = 0; i<n ;i++){
+            SCHC_Entry entry{};
+            std::string auxiliar_in = input_line("|-- Ingrese Field Identifier:  ");
+            std::strncpy(entry.FID, auxiliar_in.c_str(), sizeof(entry.FID)-1);
+            entry.FID[sizeof(entry.FID)-1] = '\0';
+
+            auxiliar_in = input_line("|-- Ingrese Field Length:  ");
+            //To verify if FL ingressed is a number or a string (for variable length functions)
+            int aux = std::all_of(auxiliar_in.begin(), auxiliar_in.end(), [](unsigned char c){
+                return std::isdigit(c);
+            });
+
+            if ((!auxiliar_in.empty()) && aux) { //if FL is number
+                entry.FL.bit_length = static_cast<uint8_t>(std::stoul(auxiliar_in));
+                entry.FL.type = "FIXED";
+                
+            } else {//if it is variable
+                entry.FL.bit_length = 0;
+                entry.FL.type = auxiliar_in;
+            }
+            entry.FP = static_cast<uint8_t>(std::stoul(input_line("|-- Ingrese Field Position:  ")));
+            entry.DI = di_from_string(input_line("|-- Ingrese Direction Indicator:  "));
+            
+            entry.TV.index = static_cast<uint16_t>(std::stoul(input_line("|-- Indique cuantos items tiene la lista de Target Value:  ")));
+            entry.TV.value.reserve(entry.TV.index);
+            for(size_t k; k<=(entry.TV.index)-1; k++){
+                entry.TV.value.push_back(static_cast<uint8_t>(std::stoul(input_line("|-- Ingrese el valor en formato hex:  "))));
+            }
+
+            entry.MO = mo_from_string(input_line("|-- Ingrese Matching Operator:  "));
+            if(entry.MO == matching_operator_t::MSB_){ //cast MO to verify if it is MSB
+                entry.MsbLength = static_cast<uint8_t>(std::stoul(input_line("|-- Ingrese cantidad de bits:  ")));
+                
+            }
+            else
+            {
+                entry.MsbLength = 0;
+            }
+            
+
+            entry.CDA = cda_from_string(input_line("|-- Ingrese Compression Decompression Action:  "));
+            entries.push_back(entry);
+            spdlog::info("entry agregada {}", i);
+        }
+        newrule.setRule(newID, newrule_id_length, newnature, entries);
+        spdlog::info("Nueva regla completada");
 
 }
+void insert_rule_into_context(RuleContext& ctx, const SCHC_Rule& rule) {
+    auto [it, inserted] = ctx.emplace(rule.getRuleID(), rule); // copia
+    if (!inserted) {
+        spdlog::error("RuleID duplicado en memoria: {}", rule.getRuleID());
+        throw std::runtime_error("RuleID duplicado en memoria: " + std::to_string(rule.getRuleID()));
+        
+    }
+}
+

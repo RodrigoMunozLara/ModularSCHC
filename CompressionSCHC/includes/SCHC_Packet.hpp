@@ -1,11 +1,13 @@
-/*
-SCHC Packet Definition
+#ifndef SCHC_PACKET_HPP
+#define SCHC_PACKET_HPP
+
+/*SCHC Packet Definition
 This header file defines the structures and enumerations necessary for representing SCHC (Static Context Header Compression) packets.
 */
 
+
 #include <cstdint>
 #include <vector>
-#pragma once
 //+------------------------------------------------------------------------------------------------------+
 
 class SCHC_Compressed_Packet {
@@ -26,3 +28,5 @@ class SCHC_Compressed_Packet {
 
         void printPacket() const; //Print Packet Details
 };
+
+#endif

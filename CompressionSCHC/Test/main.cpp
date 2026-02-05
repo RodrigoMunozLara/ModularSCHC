@@ -2,21 +2,23 @@
 #include <fstream>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <limits>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
+#include <filesystem>
 #include "SCHC_Packet.hpp"
-#include "SCHC_RuleID.hpp"
+#include "SCHC_Rule.hpp"
 #include "SCHC_RulesManager.hpp"
-#include "SCHC_PacketParser.hpp"
+#include "PacketParser.hpp"
+#include "SCHC_Yang.hpp"
 
 // Lee una opción de menú de forma segura (evita cin en fail-state)
 static int read_menu_choice() {
     while (true) {
         std::cout << "Seleccione una opcion: ";
         std::string s;
-        if (!std::getline(std::cin, s)) return 3; // EOF => salir
+        if (!std::getline(std::cin, s)) return 4; // EOF => salir
 
         // trim simple
         while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.pop_back();
@@ -24,67 +26,26 @@ static int read_menu_choice() {
         while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
         s = s.substr(i);
 
-        if (s == "1" || s == "2" || s == "3") return (s[0] - '0');
-
-        std::cout << "Opcion invalida. Intente de nuevo.\n";
+        if (s == "1" || s == "2" || s == "3" || s == "4") return (s[0] - '0');
         spdlog::warn("Input invalido en menu: '{}'", s);
+        std::cout << "Opcion invalida. Intente de nuevo.\n";
+        
     }
-}
-
-static void process_hex_file(const std::string& path) {
-    std::ifstream in(path);
-    if (!in.is_open()) {
-        spdlog::error("No se pudo abrir archivo de tramas: '{}'", path);
-        std::cout << "No se pudo abrir: " << path << "\n";
-        return; // vuelve al menú, no mata el programa
-    }
-
-    std::string line;
-    size_t lineNum = 0;
-    size_t ok = 0, fail = 0;
-
-    spdlog::info("Procesando archivo de tramas: '{}'", path);
-
-    while (std::getline(in, line)) {
-        ++lineNum;
-
-        // ignora líneas vacías o comentarios
-        if (line.empty() || line[0] == '#' || line.rfind("//", 0) == 0) continue;
-
-        try {
-            auto bytes = hex_to_bytes_one_line(line);
-            if (bytes.empty()) continue;
-
-            auto frame = parseIPv6UdpRaw(bytes);
-
-            spdlog::info("OK linea {}: nextHeader={} payload_bytes={}",
-                         lineNum, int(frame.ipv6_header.next_header), frame.payload.size());
-            ++ok;
-        } catch (const spdlog::spdlog_ex& ex) {
-            spdlog::error("Error linea {}: {}", lineNum, ex.what());
-            ++fail;
-        }
-    }
-
-    spdlog::info("Fin procesamiento '{}': ok={} fail={}", path, ok, fail);
-    std::cout << "Procesamiento terminado: ok=" << ok << " fail=" << fail << "\n";
-
-    auto bytes = hex_to_bytes_one_line(line);
-    auto frame = parseIPv6UdpRaw(bytes);
-
-    // Mostrar paquete parseado
-    dumpIPv6UdpFrame(frame);
-
 }
 
 int main() {
     // ---- Logging a archivo ----
+    
     try {
         auto logger = spdlog::basic_logger_mt("basic_logger", "logs.txt");
         spdlog::set_default_logger(logger);
         spdlog::flush_on(spdlog::level::trace);
         spdlog::set_level(spdlog::level::trace);
         spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v");
+        
+        spdlog::info("\n");
+        
+        spdlog::info("------------------------");
         spdlog::info("Programa iniciado.");
     } catch (const spdlog::spdlog_ex& ex) {
         std::cerr << "Error configurando logging: " << ex.what() << std::endl;
@@ -92,11 +53,15 @@ int main() {
     }
 
     // ---- Precarga de reglas ----
-    spdlog::info("Cargando reglas desde RulesPreLoad.ini...");
-    std::unordered_map<uint32_t, LoadedRule> rules;
-
+    const std::string rule_path = "config/rules.json";
+    const std::string tmp_path   = "config/rules.tmp.json";
+    RuleContext rules;
+    
     try {
-        rules = load_rules_ini("RulesPreLoad.ini");
+        spdlog::info("Validando Rules.json con yang");
+        validate_json_schc("./yang", rule_path);
+        spdlog::info("Cargando reglas desde Rules.json");
+        rules = load_rules_from_json("config/rules.json");
         spdlog::info("Reglas cargadas exitosamente. Numero: {}", rules.size());
     } catch (const spdlog::spdlog_ex& ex) {
         spdlog::error("Error cargando reglas: {}", ex.what());
@@ -116,35 +81,48 @@ int main() {
 
         if (choice == 1) {
             spdlog::info("Imprimiendo reglas...");
-            printRules(rules);
+            printRuleContext(rules);
             spdlog::info("Reglas impresas.");
         }
         else if(choice == 2) {
             std::cout << "Se pedirán los campos en un formato para crear una nueva regla\n";
             std::cout << "como también cuantos descriptores de campo (FID) contenga la regla\n";
-            LoadedRule newRule = create_rule();
-            uint32_t id = newRule.ruleid;
 
-            // Inserta/actualiza en memoria
-            spdlog::debug("intenta poner en memoria");
-            bool existed = (rules.find(id) != rules.end());
-            
-            rules[id] = std::move(newRule);
-            spdlog::debug("logró poner regla en memoria");
+            SCHC_Rule newRule;
+            create_rule(newRule);
 
-            std::cout << (existed ? "Regla actualizada ID=" : "Regla creada ID=") << id << "\n";
-            spdlog::info("{} regla ID={}", (existed ? "Actualizada" : "Creada"), id);
+            try{
+                spdlog::debug("Escribiendo regla en archivo temporal");
+                write_rule_to_json(rule_path, tmp_path, newRule);
+                        
+                spdlog::info("Validando rules.tmp.json con yang");
+                validate_json_schc("./yang", tmp_path);
+                insert_rule_into_context(rules, newRule);
 
-            // Guarda al INI en la sección rule_<id>
-            try {
-                spdlog::debug("Intento de guardar regla en INI");
-                writeRuleToIni("RulesPreLoad.ini", rules.at(id));
-                spdlog::info("Regla ID={} guardada en INI '{}' (seccion rule_{})", id, "RulesPreLoad.ini", id);
-                std::cout << "Guardada en INI: seccion rule_" << id << "\n";
-            } catch (const std::exception& e) {
-                spdlog::debug("No se pudo guardar regla ID={} en INI: {}", id, e.what());
-                std::cout << "No se pudo guardar en INI: " << e.what() << "\n";
+                std::error_code ec;
+                std::filesystem::rename(tmp_path, rule_path, ec);
+
+                if(ec){
+                    std::filesystem::remove(rule_path,ec);
+                    ec.clear();
+                    std::filesystem::rename(tmp_path, rule_path, ec);
+                    if(ec) {
+                        spdlog::error("No se pudo reemplazar rules.json {}", ec.message());
+                        throw std::runtime_error("No se pudo reemplazar rules.json"+ec.message());
+                        
+                    }
+                }
+                spdlog::info("regla nueva validada y guarda");
+
+                
+            }catch(const std::exception& e){
+                spdlog::debug("No se pudo guardar/validar regla ID={} en json: {}", newRule.getRuleID(), e.what());
+                std::cout << "No se pudo guardar/validar en json: " << e.what() << "\n";
+
+                std::error_code ec;
+                std::filesystem::remove(tmp_path, ec);
             }
+
             spdlog::debug("terminó opción 2 del menú");
 
         }
@@ -152,12 +130,12 @@ int main() {
             std::cout << "Ingrese ruta del archivo (Enter = packets/demo.txt): ";
             std::string path;
             std::getline(std::cin, path);
-            if (path.empty()) path = "packet/demo.txt";
+            if (path.empty()) path = "packets/demo.txt";
 
             process_hex_file(path);
 
         }
-        else if (choice == 3) {
+        else if (choice == 4) {
             spdlog::info("Cerrando el programa...");
             std::cout << "Cerrando el programa...\n";
             break;

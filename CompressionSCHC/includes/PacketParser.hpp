@@ -1,5 +1,5 @@
-#ifndef SCHC_PACKETPARSER.HPP
-#define SCHC_PACKETPARSER.HPP
+#ifndef PACKETPARSER_HPP
+#define PACKETPARSER_HPP
 
 
 #include <cstdint>

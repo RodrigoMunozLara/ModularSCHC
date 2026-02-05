@@ -1,6 +1,6 @@
-#ifndef SCHC_RULES_MANAGER.HPP
-#define SCHC_RULES_MANAGER.HPP
-#include "SCHC_RuleID.hpp"
+#ifndef SCHC_RULES_MANAGER_HPP
+#define SCHC_RULES_MANAGER_HPP
+#include "SCHC_Rule.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -12,14 +12,37 @@ matching_operator_t mo_from_string(const std::string& s);
 cd_action_t cda_from_string(const std::string& s);
 
 
+//Enum class to string helpers
+std::string di_to_json(direction_indicator_t di);
+std::string mo_to_json(matching_operator_t mo);
+std::string cda_to_json(cd_action_t cda);
+std::string nature_to_json(nature_type_t n);
 
+//Decoder Base64
 std::vector<uint8_t> base64_to_hex(const std::string &in);
 
-using json = nlohmann::json;
-using RuleContext = std::unordered_map<uint32_t, SCHC_RuleID>;
+//Encoder Base64
+std::string bytes_to_base64(const std::vector<uint8_t>& data);
 
+
+using json = nlohmann::json;
+using RuleContext = std::unordered_map<uint32_t, SCHC_Rule>;
+
+std::string input_line(const std::string& prompt);
+
+
+void write_rule_to_json(const std::string& base_filename,
+                        const std::string& out_filename,
+                        const SCHC_Rule& rule);
+                        
 RuleContext load_rules_from_json(const std::string &filename);
 void printRuleContext(const RuleContext &ctx);
+
+void create_rule(SCHC_Rule &newrule);
+void insert_rule_into_context(RuleContext& ctx, const SCHC_Rule& rule);
+
+
+
 
 
 #endif

@@ -1,4 +1,4 @@
-#include "SCHC_PacketParser.hpp"
+#include "PacketParser.hpp"
 #include "spdlog/spdlog.h"
 #include <algorithm>  // std::copy
 #include <stdexcept>
