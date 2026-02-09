@@ -115,29 +115,40 @@ std:: ostream& operator <<(std:: ostream& os, const cd_action_t & cda){ // For p
 }
 std::ostream& operator<<(std::ostream& os, const TV_item& tv) {
     // Si no hay TV
-    if (tv.value.empty()) {
+    if (tv.index== 0 || tv.value_matrix.empty()) {
         return os << "[]";
     }
 
-    // Guardar estado del stream
+    //Clase base para stream de salida
     std::ios old_state(nullptr);
+    //Copiar el formato de stream de salida antes de sobrecargarlo
     old_state.copyfmt(os);
 
     os << "[";
     os << std::hex << std::setfill('0');
 
-    for (size_t i = 0; i < tv.value.size(); ++i) {
-        os << "0x" << std::setw(2) << static_cast<int>(tv.value[i]);
-        if (i + 1 < tv.value.size()) {
-            os << ", ";
+    const size_t n = std::min<size_t>(tv.index, tv.value_matrix.size());
+
+    for(size_t i = 0; i<n ; i++){
+        const auto &item = tv.value_matrix[i];
+        os <<"[";
+        for (size_t j = 0; j < item.size(); j++)
+        {
+            os<<"0x"<< std::setw(2) <<static_cast<int>(item[j]);
+            if(j+1 <item.size()) {
+                os << ", ";
+            };
+        }
+        os << "]";
+        if(i+1 <n){
+            os<<", ";
         }
     }
-
     os << "]";
-    
-    // Restaurar estado
+    //restrablecer el formato de stream original
     os.copyfmt(old_state);
     return os;
+
 }
 
 

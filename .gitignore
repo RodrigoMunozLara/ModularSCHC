@@ -1,4 +1,5 @@
 build/
+CompressionSCHC/rulestest.txt
 CompressionSCHC/Test/build/
 libyang/
 CompressionSCHC/Test/CMakeFiles/

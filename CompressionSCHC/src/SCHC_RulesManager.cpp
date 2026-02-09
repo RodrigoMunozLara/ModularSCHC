@@ -20,7 +20,7 @@
 direction_indicator_t di_from_string(const std::string& s) {
     if (s == "ietf-schc:di-up"|| s == "up") return direction_indicator_t::UP;
     if (s == "ietf-schc:di-down"|| s == "down") return direction_indicator_t::DOWN;
-    if (s == "ietf-schc:di-bidirectional"|| s == "bidirectional") return direction_indicator_t::BI;
+    if (s == "ietf-schc:di-bidirectional"|| s == "bidirectional" || s == "bi") return direction_indicator_t::BI;
     spdlog::error("DI inválido: {}" , s);
     throw std::runtime_error("DI inválido: " + s);
 }
@@ -36,8 +36,8 @@ matching_operator_t mo_from_string(const std::string& s) {
 
 cd_action_t cda_from_string(const std::string& s) {
     if (s == "ietf-schc:cda-not-sent" || s == "not-sent") return cd_action_t::NOT_SENT;
-    if (s == "ietf-schc:cda-value-sent" || "value-sent") return cd_action_t::VALUE_SENT;
-    if (s == "ietf-schc:cda-mapping-sent"||s == "mapping-sent") return cd_action_t::MAPPING_SENT;
+    if (s == "ietf-schc:cda-value-sent" || s == "value-sent") return cd_action_t::VALUE_SENT;
+    if (s == "ietf-schc:cda-mapping-sent"|| s == "mapping-sent") return cd_action_t::MAPPING_SENT;
     if (s == "ietf-schc:cda-lsb" || s == "lsb") return cd_action_t::LSB;
     if (s == "ietf-schc:cda-compute" || s == "compute") return cd_action_t::COMPUTE;
     spdlog::error("CDA inválido: {}",s);
@@ -47,7 +47,7 @@ cd_action_t cda_from_string(const std::string& s) {
 nature_type_t nature_from_string(const std::string& s) {
     if (s == "ietf-schc:nature-compression" || s == "compression") return nature_type_t::COMPRESSION;
     if (s == "ietf-schc:nature-no-compression" || s == "no-compression") return nature_type_t::NO_COMPRESSION;
-    if (s == "ietf-schc:nature-fragmentation" || "fragmentation") return nature_type_t::FRAGMENTATION;
+    if (s == "ietf-schc:nature-fragmentation" || s =="fragmentation") return nature_type_t::FRAGMENTATION;
     spdlog::error("Nature Type inválido: {}", s);
     throw std::runtime_error("Nature Type inválido: " + s);
 }
@@ -153,9 +153,8 @@ void write_rule_to_json(const std::string& base_filename,
     jr["rule-id-length"] = rule.getRuleIDLength();
     jr["rule-nature"]    = nature_to_json(rule.getNatureType());
 
-    jr["compression"] = json::object();
     //Entries of the rule
-    jr["compression"]["entry"] = json::array();
+    jr["entry"] = json::array();
 
     for (const auto& e:   rule.getFields()) {
         json je;
@@ -171,17 +170,20 @@ void write_rule_to_json(const std::string& base_filename,
             je["field-length"] = e.FL.type;
         }
 
+        //Target Value List
         je["target-value"] = json::array();
-        for (uint16_t idx = 0; idx < static_cast<uint16_t>(e.TV.value.size()); ++idx) {
+
+        const size_t n = std::min<size_t>(e.TV.index, e.TV.value_matrix.size());
+
+        for (uint16_t idx = 0; idx < static_cast<uint16_t>(n); idx++)
+        {
             json tv;
             tv["index"] = idx;
-
-            // Cada elemento lo serializamos como 1 byte binario (base64)
-            std::vector<uint8_t> one_byte = { e.TV.value[idx] };
-            tv["value"] = bytes_to_base64(one_byte);
-
+            //Se guarda el item de la matriz como un solo string base64
+            tv["value"] = bytes_to_base64(e.TV.value_matrix[idx]);
             je["target-value"].push_back(tv);
         }
+    
 
         // matching-operator
         je["matching-operator"] = mo_to_json(e.MO);
@@ -203,7 +205,7 @@ void write_rule_to_json(const std::string& base_filename,
         // comp-decomp-action
         je["comp-decomp-action"] = cda_to_json(e.CDA);
 
-        jr["compression"]["entry"].push_back(je);
+        jr["entry"].push_back(je);
     }
     //Append
     j["ietf-schc:schc"]["rule"].push_back(jr);
@@ -214,7 +216,9 @@ void write_rule_to_json(const std::string& base_filename,
         spdlog::error("No se pudo abrir JSON para escritura: {}", out_filename);
         throw std::runtime_error("No se pudo abrir JSON para escritura: " + out_filename);
     }
+    spdlog::info("Se escribió la regla nueva en el archivo json {}", out_filename);
     out << j.dump(2);
+    
 }
 
 //Decoder Base64:
@@ -257,11 +261,82 @@ std::string bytes_to_base64(const std::vector<uint8_t>& data) {
     }
     if (valb > -6) out.push_back(b64[((val << 8) >> (valb + 8)) & 0x3F]);
     while (out.size() % 4) out.push_back('=');
+    //returns a base64 string of the uint8_t type vector value
+    return out;
+}
+//Function to parse string hex input to a vector of bytes
+static std::vector<uint8_t> parse_hex_bytes(std::string s) {
+    // Caso A: formato tipo "0xaa 0x4e" o "aa 4e"
+    // Caso B: formato pegado tipo "aa4e"
+    // Caso C: con comas / corchetes "[0xaa, 0x4e]"
+
+    // Normalizamos: dejamos separadores como espacio
+    for (char& c : s) {
+        if (c == '[' || c == ']' || c == ',' || c == ';') c = ' ';
+    }
+
+    // Si viene con tokens (espacios), parseamos token a token
+    std::vector<uint8_t> out;
+    std::stringstream ss(s);
+    std::string tok;
+
+    bool had_tokens = false;
+    while (ss >> tok) {
+        had_tokens = true;
+
+        // quitar "0x" o "0X"
+        if (tok.rfind("0x", 0) == 0 || tok.rfind("0X", 0) == 0) {
+            tok = tok.substr(2);
+        }
+
+        // Si el token no es hex, lo saltamos
+        if (tok.empty() || !std::all_of(tok.begin(), tok.end(), [](unsigned char ch){
+            return std::isxdigit(ch);
+        })) {
+            continue;
+        }
+
+        // Soportar token de 1 o 2+ hex: si es 1 hex -> 0?x
+        if (tok.size() == 1) tok = "0" + tok;
+
+        // Si el token tiene más de 2 hex, lo interpretamos como bytes pegados (aa4e -> aa 4e)
+        if (tok.size() > 2) {
+            if (tok.size() % 2 != 0) {
+                throw std::runtime_error("Hex inválido (cantidad impar de dígitos): " + tok);
+            }
+            for (size_t i = 0; i < tok.size(); i += 2) {
+                auto byte_str = tok.substr(i, 2);
+                uint8_t v = static_cast<uint8_t>(std::stoul(byte_str, nullptr, 16));
+                out.push_back(v);
+            }
+        } else {
+            uint8_t v = static_cast<uint8_t>(std::stoul(tok, nullptr, 16));
+            out.push_back(v);
+        }
+    }
+
+    // Si no habían tokens, intentamos “pegado” (ej: "aa4e")
+    if (!had_tokens) {
+        // limpiar a sólo hex
+        std::string hex;
+        for (unsigned char c : s) {
+            if (std::isxdigit(c)) hex.push_back(static_cast<char>(c));
+        }
+        if (hex.empty()) return {};
+        if (hex.size() % 2 != 0) {
+            throw std::runtime_error("Hex inválido (cantidad impar de dígitos): " + hex);
+        }
+        for (size_t i = 0; i < hex.size(); i += 2) {
+            uint8_t v = static_cast<uint8_t>(std::stoul(hex.substr(i, 2), nullptr, 16));
+            out.push_back(v);
+        }
+    }
+
     return out;
 }
 
 
-
+//---------------------------------------------------------------------------//
 using RuleContext = std::unordered_map<uint32_t, SCHC_Rule>;
 
 RuleContext load_rules_from_json(const std::string &filename ){
@@ -318,7 +393,7 @@ RuleContext load_rules_from_json(const std::string &filename ){
             entry.DI = di_from_string(je.at("direction-indicator").get<std::string>());
             
     
-            entry.TV.value.clear();
+            entry.TV.value_matrix.clear();
             if (je.contains("target-value")) {
                 const auto& tv_arr = je.at("target-value");
                 if (!tv_arr.is_array()) {
@@ -327,7 +402,7 @@ RuleContext load_rules_from_json(const std::string &filename ){
                 }
 
                 // Ordenar por index por si viene desordenado
-                std::vector<std::pair<uint16_t, uint8_t>> tv_items;
+                std::vector<std::pair<uint16_t, std::vector<uint8_t>>> tv_items;
                 tv_items.reserve(tv_arr.size());
 
                 for (const auto& tv:   tv_arr) {
@@ -339,18 +414,17 @@ RuleContext load_rules_from_json(const std::string &filename ){
                         spdlog::error("target-value.value (binary) vacío/ inválido");
                         throw std::runtime_error("target-value.value (binary) vacío/ inválido");
                     }
-                    // En tu writer estabas guardando 1 byte por item
-                    tv_items.push_back({idx, bytes[0]});
+                    tv_items.push_back({idx, std::move(bytes)});
                 }
 
                 std::sort(tv_items.begin(), tv_items.end(),
                           [](auto& a, auto& b){ return a.first < b.first; });
 
-                entry.TV.value.reserve(tv_items.size());
+                entry.TV.value_matrix.reserve(tv_items.size());
                 for (auto& p:   tv_items) {
-                    entry.TV.value.push_back(p.second);
+                    entry.TV.value_matrix.push_back(std::move(p.second));
                 }
-                entry.TV.index = static_cast<uint16_t>(entry.TV.value.size());
+                entry.TV.index = static_cast<uint16_t>(entry.TV.value_matrix.size());
             } else {
                 entry.TV.index = 0;
             }
@@ -441,9 +515,16 @@ void create_rule(SCHC_Rule &newrule) {
     std::vector<SCHC_Entry> entries;
     entries.reserve(n);
 
-    for(size_t i = 0; i<n ;i++){
+    for(size_t i= 0 ; i<n ;i++){
+            std:: cout << "\n+\nField Descriptor n°:" << i;
             SCHC_Entry entry{};
-            std::string auxiliar_in = input_line("|-- Ingrese Field Identifier:  ");
+            std::cout << "\n |-- Ingrese Field Identifier en minúscula y separado con '-'";
+            std::string auxiliar_in;
+            if(i==0){
+                auxiliar_in = "ietf-schc:fid-" + input_line("\nEjemplo ipv6-version, udp-length, etc:  ");
+            }else{
+                auxiliar_in = "ietf-schc:fid-" + input_line(" :  ");
+            }
             std::strncpy(entry.FID, auxiliar_in.c_str(), sizeof(entry.FID)-1);
             entry.FID[sizeof(entry.FID)-1] = '\0';
 
@@ -465,10 +546,23 @@ void create_rule(SCHC_Rule &newrule) {
             entry.DI = di_from_string(input_line("|-- Ingrese Direction Indicator:  "));
             
             entry.TV.index = static_cast<uint16_t>(std::stoul(input_line("|-- Indique cuantos items tiene la lista de Target Value:  ")));
-            entry.TV.value.reserve(entry.TV.index);
-            for(size_t k; k<=(entry.TV.index)-1; k++){
-                entry.TV.value.push_back(static_cast<uint8_t>(std::stoul(input_line("|-- Ingrese el valor en formato hex:  "))));
+            entry.TV.value_matrix.clear();
+            entry.TV.value_matrix.reserve(entry.TV.index);
+
+            for (uint16_t k = 0; k < entry.TV.index; ++k) {
+                std::string line = input_line(
+                    "|-- Ingrese el item TV #" + std::to_string(k) +
+                    " como bytes hex (ej: [0xaa, 0x4e] o aa4e):  ");
+                auto bytes = parse_hex_bytes(line);
+                if (bytes.empty()) {
+                    throw std::runtime_error("TV item vacío o inválido en k=" + std::to_string(k));
+                }
+                entry.TV.value_matrix.push_back(std::move(bytes));
             }
+
+            // por seguridad, sincronizamos index con el tamaño real
+            entry.TV.index = static_cast<uint16_t>(entry.TV.value_matrix.size());
+
 
             entry.MO = mo_from_string(input_line("|-- Ingrese Matching Operator:  "));
             if(entry.MO == matching_operator_t::MSB_){ //cast MO to verify if it is MSB
