@@ -9,7 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(SOURCES
     main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_RulesManager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_PacketParser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/PacketParser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Rule.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Yang.cpp
 )

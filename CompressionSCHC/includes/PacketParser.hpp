@@ -3,45 +3,38 @@
 
 
 #include <cstdint>
-#include <array>
-#include <string>
 #include <vector>
+#include <string>
+#include <stdexcept>
+#include <cstring>
+#include <algorithm>
 
-
-//+-------------- Structs for raw packet headers -----------------------+
-struct IPv6HeaderRaw {
-    std::array<uint8_t, 4>  ver_tc_fl;     // 4 bytes: Version+TC+FlowLabel
-    std::array<uint8_t, 2>  payload_len;   // 2 bytes BE
-    uint8_t next_header;
-    uint8_t hop_limit;
-    std::array<uint8_t,16> src;
-    std::array<uint8_t,16> dst;
+struct FieldValue {
+    std::string fid;              // e.g., "ietf-schc:fid-ipv6-version"
+    std::vector<uint8_t> value;   // big-endian bytes (packed)
+    uint16_t bit_length = 0;      // exact length in bits (important for SCHC)
 };
 
-struct UDPHeaderRaw {
-    std::array<uint8_t,2> src_port;  // BE
-    std::array<uint8_t,2> dst_port;  // BE
-    std::array<uint8_t,2> length;    // BE
-    std::array<uint8_t,2> checksum;  // BE
-};
+// -------------------- helpers --------------------
 
-struct IPv6UDPFrameRaw
-{
-    IPv6HeaderRaw ipv6_header;
-    UDPHeaderRaw udp_header;
-    std::vector<uint8_t> payload; // Flexible array member for payload data
-};
+static inline uint16_t read_u16_be(const uint8_t* p) ;
 
+static inline uint32_t read_u32_be(const uint8_t* p) ;
 
-//+--------------Functions for parsing raw packet header------------------+
+// Extract nbits starting at bit offset 'bit_off' from a big-endian buffer.
+// Returns packed bytes big-endian (minimal bytes), and sets bit_length.
+static std::vector<uint8_t> extract_bits_be(const uint8_t* data, size_t data_len,
+                                            size_t bit_off, uint16_t nbits);
 
-std::vector<uint8_t> hex_to_bytes_one_line(const std::string& s);
+static void push_field(std::vector<FieldValue>& out,
+                       const std::string& fid,
+                       const std::vector<uint8_t>& val,
+                       uint16_t bitlen);
 
-
-IPv6UDPFrameRaw parseIPv6UdpRaw(const std::vector<uint8_t>& b);
-void process_hex_file(const std::string& path);
-
-
-void dumpIPv6UdpFrame(const IPv6UDPFrameRaw& f);
+// -------------------- main parser: IPv6 + UDP --------------------
+// direction_uplink = true means packet is device->app (uplink).
+// That decides how you populate fid-ipv6-devprefix vs fid-ipv6-appprefix, etc.
+std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
+                                              bool direction_uplink);
 
 #endif

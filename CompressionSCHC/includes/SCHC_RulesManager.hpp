@@ -2,6 +2,7 @@
 #define SCHC_RULES_MANAGER_HPP
 #include "SCHC_Rule.hpp"
 #include <string>
+#include <cstddef>
 #include <vector>
 #include <unordered_map>
 
@@ -26,7 +27,7 @@ std::string bytes_to_base64(const std::vector<uint8_t>& data);
 
 
 using json = nlohmann::json;
-using RuleContext = std::unordered_map<uint32_t, SCHC_Rule>;
+using RuleContext = std::vector<SCHC_Rule>;
 
 std::string input_line(const std::string& prompt);
 
@@ -42,6 +43,21 @@ void create_rule(SCHC_Rule &newrule);
 void insert_rule_into_context(RuleContext& ctx, const SCHC_Rule& rule);
 
 
+//-------------- Functions to check sizes  in memory ------------
+
+std::size_t deep_size_string(const std::string& s);
+// Estima memoria usada por vector<uint8_t> (buffer)
+std::size_t deep_size_vec_u8(const std::vector<uint8_t>& v);
+// Estima memoria deep de un SCHC_Entry
+std::size_t deep_size_entry(const SCHC_Entry& e);
+
+// Estima memoria deep de un SCHC_Rule
+std::size_t deep_size_rule(const SCHC_Rule& r);
+
+// Estima memoria deep de ctx = vector<SCHC_Rule>
+std::size_t deep_size_ctx(const RuleContext& ctx);
+
+void print_sizes(const RuleContext& ctx) ;
 
 
 

@@ -17,7 +17,6 @@ Also contains enum parameters for the Rules created.
 #include <iostream>
 #include <vector>
 #include <iomanip>
-#pragma once
 
 enum class nature_type_t : uint8_t {
     COMPRESSION = 0,
@@ -69,7 +68,7 @@ struct FieldLenght { //to respect the YANG SCHC model
 //represents an entry in the YANG model for SCHC Rules
 
 struct SCHC_Entry {
-    char FID[64]; //Field Identifier as string
+    std::string FID; //Field Identifier as string
     FieldLenght FL;
     TV_item TV;
     uint8_t FP; //Field Position

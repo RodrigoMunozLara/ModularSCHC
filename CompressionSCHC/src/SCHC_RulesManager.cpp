@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cstddef>
 #include <string>
 #include <cstring>
 #include <vector>  
@@ -94,7 +95,7 @@ std::string cda_to_json(cd_action_t cda) {
         case cd_action_t::LSB:
             return "ietf-schc:cda-lsb";
         case cd_action_t::COMPUTE:
-            return "ietf-schc:cda-compute-length";
+            return "ietf-schc:cda-compute";
     }
     spdlog::error("CDA inválido (enum desconocido)");
     throw std::runtime_error("CDA inválido (enum desconocido)");
@@ -159,7 +160,7 @@ void write_rule_to_json(const std::string& base_filename,
     for (const auto& e:   rule.getFields()) {
         json je;
 
-        je["field-id"]            = std::string(e.FID);
+        je["field-id"]            = e.FID;
         je["field-position"]      = e.FP;
         je["direction-indicator"] = di_to_json(e.DI);
 
@@ -337,7 +338,7 @@ static std::vector<uint8_t> parse_hex_bytes(std::string s) {
 
 
 //---------------------------------------------------------------------------//
-using RuleContext = std::unordered_map<uint32_t, SCHC_Rule>;
+using RuleContext = std::vector<SCHC_Rule>;
 
 RuleContext load_rules_from_json(const std::string &filename ){
 
@@ -375,10 +376,7 @@ RuleContext load_rules_from_json(const std::string &filename ){
 
         for(const auto &je:   jr["entry"]){
             SCHC_Entry entry{};
-
-            const std::string fid = je.at("field-id").get<std::string>();
-            std::strncpy(entry.FID, fid.c_str(), sizeof(entry.FID)-1);
-            entry.FID[sizeof(entry.FID)-1] = '\0';
+            entry.FID  = je.at("field-id").get<std::string>();
             
             const auto &jfl = je.at("field-length");
             if (!jfl.is_number()) {
@@ -457,23 +455,25 @@ RuleContext load_rules_from_json(const std::string &filename ){
         
             rule.addField(entry);
         }
-        auto [it, inserted] =
-            context.emplace(rule.getRuleID(), std::move(rule));
+        auto dup = std::find_if(context.begin(), context.end(),
+                                [&](const SCHC_Rule& r){ return r.getRuleID() == rule.getRuleID(); });
 
-        if (!inserted) {
+        if (dup != context.end()) {
             spdlog::error("RuleID duplicado en JSON: {}", rule_id);
-            throw std::runtime_error( 
-                "RuleID duplicado en JSON: " + std::to_string(rule_id));
-            }
-        
+            throw std::runtime_error("RuleID duplicado en JSON: " + std::to_string(rule_id));
+        }
+
+        // insertar al final
+        context.push_back(std::move(rule));
     }
+
     return context;
 }
 
 void printRuleContext(const RuleContext &ctx){
     std::cout << "Rules" << ctx.size()<<"\n";
-    for (const auto & [rid, rule]:ctx){
-        std::cout << "\n== Rule " << rid
+    for (const auto &rule : ctx){
+        std::cout << "\n== Rule " << rule.getRuleID() 
                   << " ==\n";
         rule.printRuleOut();
     }
@@ -525,8 +525,7 @@ void create_rule(SCHC_Rule &newrule) {
             }else{
                 auxiliar_in = "ietf-schc:fid-" + input_line(" :  ");
             }
-            std::strncpy(entry.FID, auxiliar_in.c_str(), sizeof(entry.FID)-1);
-            entry.FID[sizeof(entry.FID)-1] = '\0';
+            entry.FID = auxiliar_in;
 
             auxiliar_in = input_line("|-- Ingrese Field Length:  ");
             //To verify if FL ingressed is a number or a string (for variable length functions)
@@ -583,12 +582,89 @@ void create_rule(SCHC_Rule &newrule) {
         spdlog::info("Nueva regla completada");
 
 }
+
 void insert_rule_into_context(RuleContext& ctx, const SCHC_Rule& rule) {
-    auto [it, inserted] = ctx.emplace(rule.getRuleID(), rule); // copia
-    if (!inserted) {
+    auto dup = std::find_if(ctx.begin(), ctx.end(),
+                            [&](const SCHC_Rule& r){ return r.getRuleID() == rule.getRuleID(); });
+
+    if (dup != ctx.end()) {
         spdlog::error("RuleID duplicado en memoria: {}", rule.getRuleID());
         throw std::runtime_error("RuleID duplicado en memoria: " + std::to_string(rule.getRuleID()));
-        
     }
+
+    ctx.push_back(rule); // copia (o std::move si recibes rvalue)
 }
 
+
+
+//-------------- Functions to check sizes  in memory ------------
+
+std::size_t deep_size_string(const std::string& s) {
+    return s.capacity() * sizeof(char);
+}
+
+// Estima memoria usada por vector<uint8_t> (buffer)
+std::size_t deep_size_vec_u8(const std::vector<uint8_t>& v) {
+    return v.capacity() * sizeof(uint8_t);
+}
+
+// Estima memoria deep de un SCHC_Entry
+std::size_t deep_size_entry(const SCHC_Entry& e) {
+    std::size_t bytes = 0;
+
+    // FL.type (string)
+    bytes += deep_size_string(e.FL.type);
+
+    // TV.value_matrix: vector<vector<uint8_t>>
+    bytes += e.TV.value_matrix.capacity() * sizeof(std::vector<uint8_t>);
+
+    // buffers de cada vector<uint8_t> interno
+    for (const auto& inner : e.TV.value_matrix) {
+        bytes += deep_size_vec_u8(inner);
+    }
+
+    return bytes;
+}
+
+// Estima memoria deep de un SCHC_Rule
+std::size_t deep_size_rule(const SCHC_Rule& r) {
+    std::size_t bytes = 0;
+
+    const auto& f = r.getFields();
+
+    // Buffer del vector<SCHC_Entry>
+    bytes += f.capacity() * sizeof(SCHC_Entry);
+
+    // Dinámicos internos por entry
+    for (const auto& e : f) {
+        bytes += deep_size_entry(e);
+    }
+
+    return bytes;
+}
+
+// Estima memoria deep de ctx = vector<SCHC_Rule>
+std::size_t deep_size_ctx(const std::vector<SCHC_Rule>& ctx) {
+    std::size_t bytes = 0;
+
+    // Buffer del vector de reglas
+    bytes += ctx.capacity() * sizeof(SCHC_Rule);
+
+    // Dinámicos internos de cada regla
+    for (const auto& r : ctx) {
+        bytes += deep_size_rule(r);
+    }
+
+    return bytes;
+}
+
+void print_sizes(const std::vector<SCHC_Rule>& ctx) {
+    std::cout << "sizeof(SCHC_Rule) = " << sizeof(SCHC_Rule) << " bytes\n";
+    std::cout << "sizeof(SCHC_Entry) = " << sizeof(SCHC_Entry) << " bytes\n";
+    std::cout << "ctx.size() = " << ctx.size() << "\n";
+    std::cout << "ctx.capacity() = " << ctx.capacity() << "\n";
+    std::cout << "ctx buffer (shallow) ~= " << ctx.capacity() * sizeof(SCHC_Rule) << " bytes\n";
+
+    std::size_t deep = deep_size_ctx(ctx);
+    std::cout << "ctx deep (aprox) ~= " << deep << " bytes\n";
+}

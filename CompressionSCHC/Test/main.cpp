@@ -69,6 +69,8 @@ int main() {
         return 1;
     }
 
+    
+
     // ---- Menú ----
     for (;;) {
         std::cout << "\nMenu:\n";
@@ -83,6 +85,12 @@ int main() {
             spdlog::info("Imprimiendo reglas...");
             printRuleContext(rules);
             spdlog::info("Reglas impresas.");
+            bool sizes = stoul(input_line("\n Desea imprimir tamaños? Si:1  No: 0 \n"));
+            if (sizes)
+            {
+             print_sizes(rules);
+            }
+
         }
         else if(choice == 2) {
             std::cout << "Se pedirán los campos en un formato para crear una nueva regla\n";
@@ -131,8 +139,20 @@ int main() {
             std::string path;
             std::getline(std::cin, path);
             if (path.empty()) path = "packets/demo.txt";
+            
+            std::string text = read_file_to_string(path);
+            //* se debe cambiar el tipo de dato de entrada a la esperada por el dispositivo
+            std::vector<uint8_t> pkt = hex_to_bytes(text);
 
-            process_hex_file(path);
+            bool uplink = true; // o false según tu test
+            auto fields = parse_ipv6_udp_fields(pkt, uplink);
+
+                // imprimir campos (demo)
+            for (const auto& f : fields) {
+                std::cout << f.fid << " (" << f.bit_length << " bits) = ";
+                for (uint8_t b : f.value) std::cout << std::hex << (int)b << " ";
+                std::cout << std::dec << "\n";
+            }
 
         }
         else if (choice == 4) {
