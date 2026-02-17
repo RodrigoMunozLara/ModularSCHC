@@ -5,25 +5,24 @@
 #include "Types.hpp"
 #include "SCHCCore.hpp"
 #include "ConfigStructs.hpp"
-#include "SCHCLoRaWANStack.hpp"
-#include "SCHCAckOnErrorSender_INIT.hpp"
-#include "SCHCAckOnErrorSender_SEND.hpp"
-#include "SCHCAckOnErrorSender_WAIT_X_ACK.hpp"
-#include "SCHCAckOnErrorSender_RESEND_MISSING_FRAG.hpp"
-#include "SCHCAckOnErrorSender_ERROR.hpp"
-#include "SCHCAckOnErrorSender_END.hpp"
 #include "SCHCTimer.hpp"
+#include "SCHCAckOnErrorReceiver_INIT.hpp"
+#include "SCHCAckOnErrorReceiver_RCV_WINDOW.hpp"
+#include "SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG.hpp"
+#include "SCHCAckOnErrorReceiver_WAIT_END.hpp"
+#include "SCHCAckOnErrorReceiver_END.hpp"
+#include "SCHCAckOnErrorReceiver_ERROR.hpp"
 
 #include <cmath>
 #include <spdlog/spdlog.h>
 
 class SCHCSession;
 
-class SCHCAckOnErrorSender: public ISCHCStateMachine
+class SCHCAckOnErrorReceiver: public ISCHCStateMachine
 {
     public:
-        SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCore& schcCore, SCHCSession& schcSession);
-        ~SCHCAckOnErrorSender() override;
+        SCHCAckOnErrorReceiver(SCHCFragDir dir, AppConfig& appConfig, SCHCCore& schcCore, SCHCSession& schcSession);
+        ~SCHCAckOnErrorReceiver() override;
         void        execute(const std::vector<uint8_t>& msg = {}) override;
         void        timerExpired() override;
         void        release() override;
@@ -36,11 +35,11 @@ class SCHCAckOnErrorSender: public ISCHCStateMachine
         SCHCCore&       _schcCore;
         SCHCSession&    _schcSession;
         
-        std::unique_ptr<ISCHCState> _currentState;
-        ISCHCStack*                 _stack;
-        SCHCTimer                   _timer;
-        SCHCAckOnErrorSenderStates  _currentStateStr;
-        SCHCAckOnErrorSenderStates  _nextStateStr;
+        std::unique_ptr<ISCHCState>     _currentState;
+        ISCHCStack*                     _stack;
+        SCHCTimer                       _timer;
+        SCHCAckOnErrorReceiverStates    _currentStateStr;
+        SCHCAckOnErrorReceiverStates    _nextStateStr;
 
 
         /* Static SCHC parameters*/
@@ -55,8 +54,9 @@ class SCHCAckOnErrorSender: public ISCHCStateMachine
         uint8_t             _windowSize;            // tiles in a SCHC window
         uint8_t             _t;                     // bits of the DTag field
         uint8_t             _maxAckReq;             // max number of ACK Request msg
-        int                 _retransTimer;          // Retransmission timer in seconds
         int                 _inactivityTimer;       // Inactivity timer in seconds
+        int                 _nMaxWindows;           // In LoRaWAN: 4
+        int                 _nTotalTiles;
 
         /* Dynamic SCHC parameters */
         uint8_t                             _currentWindow;
@@ -77,5 +77,29 @@ class SCHCAckOnErrorSender: public ISCHCStateMachine
         uint8_t                             _rtxAttemptsCounter;
         uint32_t                            _current_L2_MTU;
 
-        bool                                _send_schc_ack_req_flag;
+        
+        std::string                         _dev_id;
+        int                                 _last_window;   // stores the number of the last window
+        uint8_t                             _error_prob;
+
+        /* Este flag permite indicarle al gateway que descarte un SCHC ACK REQ. 
+        El SCHC ACK REQ recibido fue usado para empujar un SCHC ACK que estaba 
+        en el Network Server. */
+        bool                                _wait_pull_ack_req_flag;
+
+
+        /* This flag is used by the gateway to determine how the SCHC ACK should be sent. 
+        If the flag is true, it means that the gateway sent the ACK but it was lost and did not reach the sender. 
+        In this case, the gateway responds with a SCHC ACK (with c=1).
+        If the flag is false, it means that the gateway never realized that the window had just been received 
+        (probably because the tile with FCN=0 did not reach the gateway). In this case, the gateway responds 
+        with an SCHC ACK (with c=0).*/
+        bool                                _first_ack_sent_flag;
+
+        int                                 _counter;
+
+
+
+
+
 };

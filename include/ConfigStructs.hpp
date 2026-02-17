@@ -29,10 +29,15 @@ struct MQTTConfig {
     int port;
     std::string username;
     std::string password;
+    std::vector<std::string> devices;
 };
 
 struct LoRaWAN_Node_Config {
-    std::string deviceId;
+    std::string data_rate;
+    std::string serial_port;
+    std::string deveui;
+    std::string appeui;
+    std::string appkey;
 };
 
 

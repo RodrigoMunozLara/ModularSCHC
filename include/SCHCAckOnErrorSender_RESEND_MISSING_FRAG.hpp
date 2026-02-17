@@ -13,9 +13,14 @@ class SCHCAckOnErrorSender_RESEND_MISSING_FRAG: public ISCHCState
     public:
         SCHCAckOnErrorSender_RESEND_MISSING_FRAG(SCHCAckOnErrorSender& ctx);
         ~SCHCAckOnErrorSender_RESEND_MISSING_FRAG();
-        void execute(char* msg=nullptr, int len =-1) override;
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
         void release() override;
     
     private:
+        int                     getCurrentTile_ptr(int window, int bitmap_ptr);
+        uint8_t                 get_current_fcn(int bitmap_ptr);
+        std::vector<uint8_t>    extractTiles(uint8_t firstTileID, uint8_t nTiles);
+
         SCHCAckOnErrorSender& _ctx;
 };

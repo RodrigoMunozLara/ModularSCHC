@@ -1,8 +1,10 @@
 #pragma once
 
+#include <SCHCNodeMessage.hpp>
 #include "ISCHCState.hpp"
 #include "ISCHCStack.hpp"
 #include <memory>
+#include <spdlog/spdlog.h>
 
 class SCHCAckOnErrorSender;   // ← forward declaration
 
@@ -13,9 +15,11 @@ class SCHCAckOnErrorSender_SEND: public ISCHCState
     public:
         SCHCAckOnErrorSender_SEND(SCHCAckOnErrorSender& ctx);
         ~SCHCAckOnErrorSender_SEND();
-        void execute(char* msg=nullptr, int len =-1) override;
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
         void release() override;
     
     private:
+        std::vector<uint8_t> extractTiles(uint8_t firstTileID, uint8_t nTiles);
         SCHCAckOnErrorSender& _ctx;
 };

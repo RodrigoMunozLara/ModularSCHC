@@ -3,12 +3,13 @@
 
 Orchestrator::Orchestrator()
 {
-    SPDLOG_INFO("Executing Orchestrator constructor()");
+    SPDLOG_DEBUG("Executing Orchestrator constructor()");
 }
 
 Orchestrator::~Orchestrator()
 {
-    SPDLOG_INFO("Executing Orchestrator destructor()");
+    SPDLOG_DEBUG("Executing Orchestrator destructor()");
+
 }
 
 void Orchestrator::onMessageFromCore(std::unique_ptr<RoutedMessage> msg)
@@ -38,7 +39,7 @@ void Orchestrator::registerCore(CoreId id, ICore* core)
         throw std::runtime_error("Core already registered");
     }
 
-    SPDLOG_INFO("Registered Core {}", static_cast<int>(id));
+    SPDLOG_DEBUG("Registered Core {}", static_cast<int>(id));
 }
 
 CoreId Orchestrator::selectDestination(const RoutedMessage& msg)
@@ -50,12 +51,12 @@ CoreId Orchestrator::selectDestination(const RoutedMessage& msg)
      */
 
     if (msg.meta.ingress == CoreId::BACKHAUL) {
-        SPDLOG_INFO("Receiving message from BACKHAUL Core. Message routed to SCHC Core");
+        SPDLOG_DEBUG("Receiving message from BACKHAUL Core. Message routed to SCHC Core");
         return CoreId::SCHC;
     }
 
     if (msg.meta.ingress == CoreId::SCHC) {
-        SPDLOG_INFO("Receiving message from SCHC Core. Message routed to BACKHAUL Core");
+        SPDLOG_DEBUG("Receiving message from SCHC Core. Message routed to BACKHAUL Core");
         return CoreId::BACKHAUL;
     }
 
@@ -83,5 +84,14 @@ void Orchestrator::forwardToCore(CoreId dst, std::unique_ptr<RoutedMessage> msg)
 
 }
 
+void Orchestrator::stop()
+{
+    for (auto const& [id, core] : cores) {
+        if (core != nullptr) {
+            SPDLOG_DEBUG("Stoping Core: {}", static_cast<int>(id));
+            core->stop();
+        }
+    }
 
+}
 

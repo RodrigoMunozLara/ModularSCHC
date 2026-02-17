@@ -35,14 +35,15 @@ int main()
 
     /* Reading and Loading configuration file */
     AppConfig appConfig;
-    std::string configFile = "config_frag_node.json";
+    std::string configFile = "config_frag.json";
     if (!loadConfig(configFile, appConfig))
     {
         std::cerr << "Error reading configuration file: " << configFile << "\n";
         return 1;
     }
 
-    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-20!s][%-30!!][%#] %v");
+    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-40!s][%#] %v");
     spdlog::set_level(parseLogLevel(appConfig.logging.log_level));
 
     SPDLOG_CRITICAL("Logging initialized with level: {}", appConfig.logging.log_level);
@@ -71,8 +72,6 @@ int main()
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    backhaulCore.stop();
-    schcCore.stop();
-
+    orchestrator.stop();
 
 }

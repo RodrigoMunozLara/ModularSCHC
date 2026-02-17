@@ -43,12 +43,12 @@ public:
     ~BackhaulCore() override;
     CoreId          id() override;
     void            enqueueFromOrchestator(std::unique_ptr<RoutedMessage> msg) override;
-    void            enqueueFromStack(std::unique_ptr<RoutedMessage> msg) override;
     void            start() override;
     void            stop() override;
 private:
     void            runTx() override;
     void            runRx() override;
+    void            runCleaner() override;
     void            handleRxFrame(const std::vector<uint8_t>& frame);
     void            sendFrame(const std::vector<uint8_t>& frame);
     IPv6Addresses   getIPv6Addresses(const std::vector<uint8_t>& buffer);

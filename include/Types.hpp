@@ -4,7 +4,10 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <string>
 
+
+/************** Enum class Generales *****************/
 enum class CoreId {
     BACKHAUL,
     SCHC
@@ -28,6 +31,29 @@ struct RoutedMessage {
     std::vector<uint8_t> payload;
 };
 
+struct StackMessage {
+    uint8_t ruleId;
+    std::string deviceId;
+    int len;
+    std::vector<uint8_t> payload;
+};
+
+enum class EventType
+{
+    TimerExpired,
+    StackMsgReceived,
+    SCHCCoreMsgReceived,
+    ExecuteAgain,
+};
+
+struct EventMessage {
+    EventType evType;
+    std::vector<uint8_t> payload;
+};
+
+
+
+/************** SCHC enum class *****************/
 enum class SCHCFragDir {
     UPLINK_DIR,
     DOWNLINK_DIR
@@ -38,11 +64,6 @@ enum class SCHCFragMode {
     ACK_ALWAYS,
     NO_ACK,
     ARQ_FEC
-};
-
-enum class SCHCStates {
-    STATE_TX_INIT
-
 };
 
 enum class SCHCAckMechanism{
@@ -67,4 +88,20 @@ enum class SCHCAckOnErrorReceiverStates{
     STATE_WAIT_END,
     STATE_ERROR,
     STATE_END,
+};
+
+enum class SCHCMsgType {
+    SCHC_REGULAR_FRAGMENT_MSG,
+    SCHC_ALL1_FRAGMENT_MSG,
+    SCHC_ACK_MSG,
+    SCHC_ACK_REQ_MSG,
+    SCHC_SENDER_ABORT_MSG,
+    SCHC_RECEIVER_ABORT_MSG,
+    SCHC_COMPOUND_ACK,
+    SCHC_ACK_RESIDUAL_MSG,
+};
+
+enum class SCHCLoRaWANFragRule : uint8_t{
+    SCHC_FRAG_UPDIR_RULE_ID = 20,
+    SCHC_FRAG_DOWNDIR_RULE_ID = 21
 };

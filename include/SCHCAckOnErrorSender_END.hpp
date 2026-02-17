@@ -5,6 +5,7 @@
 #include <memory>
 
 class SCHCAckOnErrorSender;   // ← forward declaration
+class SCHCSession;
 
 class SCHCAckOnErrorSender_END: public ISCHCState
 {
@@ -13,7 +14,8 @@ class SCHCAckOnErrorSender_END: public ISCHCState
     public:
         SCHCAckOnErrorSender_END(SCHCAckOnErrorSender& ctx);
         ~SCHCAckOnErrorSender_END();
-        void execute(char* msg=nullptr, int len =-1) override;
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
         void release() override;
     
     private:

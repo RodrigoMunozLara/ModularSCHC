@@ -2,22 +2,23 @@
 
 #include "ISCHCState.hpp"
 #include "ISCHCStack.hpp"
+#include <spdlog/spdlog.h>
 #include <memory>
 
-class SCHCAckOnErrorSender;   // ← forward declaration
-class SCHCSession;
+class SCHCAckOnErrorReceiver;   // ← forward declaration
 
-class SCHCAckOnErrorSender_ERROR: public ISCHCState
+class SCHCAckOnErrorReceiver_INIT: public ISCHCState
 {
     private:
         /* data */
     public:
-        SCHCAckOnErrorSender_ERROR(SCHCAckOnErrorSender& ctx);
-        ~SCHCAckOnErrorSender_ERROR();
+        SCHCAckOnErrorReceiver_INIT(SCHCAckOnErrorReceiver& ctx);
+        ~SCHCAckOnErrorReceiver_INIT();
         void execute(const std::vector<uint8_t>& msg = {}) override;
         void timerExpired() override;
         void release() override;
     
     private:
-        SCHCAckOnErrorSender& _ctx;
+
+        SCHCAckOnErrorReceiver& _ctx;
 };

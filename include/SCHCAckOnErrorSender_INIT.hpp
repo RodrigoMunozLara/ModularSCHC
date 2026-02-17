@@ -14,12 +14,13 @@ class SCHCAckOnErrorSender_INIT: public ISCHCState
     public:
         SCHCAckOnErrorSender_INIT(SCHCAckOnErrorSender& ctx);
         ~SCHCAckOnErrorSender_INIT();
-        void execute(char* msg=nullptr, int len =-1) override;
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
         void release() override;
     
     private:
-        void        divideInTiles(char *buffer, int len);
-        uint32_t    calculate_crc32(const char *data, size_t length); 
+        void        divideInTiles(const std::vector<uint8_t>& msg);
+        uint32_t    calculate_crc32(const std::vector<uint8_t>& msg); 
 
         SCHCAckOnErrorSender& _ctx;
 };

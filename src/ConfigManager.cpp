@@ -3,7 +3,6 @@
 
 bool loadConfig(const std::string& filePath, AppConfig& config) 
 {
-    SPDLOG_TRACE("Entering the function");
     std::ifstream inFile(filePath);
     if (!inFile.is_open()) {
         std::cerr << "Could not open configuration file: " << filePath << "\n";
@@ -34,57 +33,53 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     config.mqtt.port = std::stoi(j["mqtt"]["port"].get<std::string>());
     config.mqtt.username = j["mqtt"]["username"].get<std::string>();
     config.mqtt.password = j["mqtt"]["password"].get<std::string>();
+    config.mqtt.devices = j["mqtt"]["devices"].get<std::vector<std::string>>();
 
     // LoRaWAN Node
-    config.lorawan_node.deviceId = j["lorawan_node"]["deviceId"].get<std::string>();
+    config.lorawan_node.serial_port = j["lorawan_node"]["serial_port"].get<std::string>();
+    config.lorawan_node.deveui = j["lorawan_node"]["deveui"].get<std::string>();
+    config.lorawan_node.appeui = j["lorawan_node"]["appeui"].get<std::string>();
+    config.lorawan_node.appkey = j["lorawan_node"]["appkey"].get<std::string>();
+    config.lorawan_node.data_rate = j["lorawan_node"]["data_rate"].get<std::string>();
+    
 
-    SPDLOG_TRACE("Leaving the function");
     return true;
 }
 
 spdlog::level::level_enum parseLogLevel(const std::string& levelStr)
 {
-    SPDLOG_TRACE("Entering the function");
     std::string l = levelStr;
     std::transform(l.begin(), l.end(), l.begin(), ::toupper);
 
     if (l == "TRACE")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::trace;
     } 
     else if (l == "DEBUG")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::debug;
     }
     else if (l == "INFO")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::info;
     }
     else if (l == "WARN")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::warn;
     }
     else if (l == "ERROR")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::err;
     }
     else if (l == "CRITICAL")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::critical;
     }
     else if (l == "OFF")
     {
-        SPDLOG_TRACE("Leaving the function");
         return spdlog::level::off;
     }
 
-    SPDLOG_TRACE("Leaving the function");
     return spdlog::level::info; // Por defecto
 }
 

@@ -5,6 +5,7 @@
 #include "Types.hpp"
 #include "ConfigStructs.hpp"
 #include "SCHCLoRaWANStack.hpp"
+#include "SCHCLoRaWAN_NS_MQTT_Stack.hpp"
 
 #include <thread>
 #include <atomic>
@@ -25,16 +26,14 @@ class SCHCCore : public ICore
         ~SCHCCore() override;
         CoreId id() override;
         void enqueueFromOrchestator(std::unique_ptr<RoutedMessage> msg) override;
-        void enqueueFromStack(std::unique_ptr<RoutedMessage> msg) override;
+        void enqueueFromStack(std::unique_ptr<StackMessage> msg);
         void start() override;
         void stop() override;
-
     private:
         void runTx() override;
         void runRx() override;
-        SCHCSession* findUnassignedSession(std::map<uint32_t, std::unique_ptr<SCHCSession>>& sessions);
+        void runCleaner() override;
 
-    private:
 
         Orchestrator&   orchestrator;
         AppConfig       _appConfig;
@@ -43,6 +42,7 @@ class SCHCCore : public ICore
 
         std::thread rxThread;
         std::thread txThread;
+        std::thread cleanerThread;
 
         // Queue for messages from the Orchestrator
         std::queue<std::unique_ptr<RoutedMessage>> txQueue;
@@ -50,7 +50,7 @@ class SCHCCore : public ICore
         std::condition_variable txCv;
 
         // Queue for messages from the Protocol
-        std::queue<std::unique_ptr<RoutedMessage>> protoQueue;
+        std::queue<std::unique_ptr<StackMessage>> protoQueue;
         std::mutex protoMtx;
         std::condition_variable protoCv;
 
@@ -58,8 +58,15 @@ class SCHCCore : public ICore
         use Dtag MUST define a unique identifier for each session. 
         For example, LoRaWAN uses fPort. */
         std::mutex sessionsMtx;
-        std::map<uint32_t, std::unique_ptr<SCHCSession>> uplinkSessions;
-        std::map<uint32_t, std::unique_ptr<SCHCSession>> downlinkSessions; 
+        std::map<uint8_t, std::unique_ptr<SCHCSession>> uplinkSessions;
+        std::map<uint8_t, std::unique_ptr<SCHCSession>> downlinkSessions;
+        uint8_t     _uplinkSessionCounter;
+        uint8_t     _uplinkSessionCounterMax;
+        uint8_t     _downlinkSessionCounter;
+        uint8_t     _downlinkSessionCounterMax;
+
+        std::mutex cleanerMtx;
+        std::condition_variable cleanerCv;
 
     public:
         std::unique_ptr<ISCHCStack> _stack;

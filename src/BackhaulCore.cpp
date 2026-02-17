@@ -3,29 +3,32 @@
 
 BackhaulCore::BackhaulCore(Orchestrator& orch, AppConfig& appConfig): orchestrator(orch), _appConfig(appConfig)
 {
-    SPDLOG_INFO("Executing BackhaulCore constructor()");
+    SPDLOG_DEBUG("Executing BackhaulCore constructor()");
 }
 
 BackhaulCore::~BackhaulCore()
 {
-    SPDLOG_INFO("Executing BackhaulCore destructor()");
+    SPDLOG_DEBUG("Executing BackhaulCore destructor()");
 
 }
 
 CoreId BackhaulCore::id()
 {
-    SPDLOG_TRACE("Entering the function");
     return CoreId::BACKHAUL;
-    SPDLOG_TRACE("Leaving the function");
 }
 
 void BackhaulCore::enqueueFromOrchestator(std::unique_ptr<RoutedMessage> msg)
 {
+    {
+        std::lock_guard<std::mutex> lock(txMtx);
+        txQueue.push(std::move(msg));
+    }
+
+    txCv.notify_one();
 }
 
 void BackhaulCore::start()
 {
-    SPDLOG_TRACE("Entering the function");
     if (running.load())
     {
         SPDLOG_ERROR("The BackhaulCore::start() method cannot be called when the BackhaulCore is already running.");
@@ -33,65 +36,67 @@ void BackhaulCore::start()
     }
     else
     {
-        SPDLOG_ERROR("Setting the BackhaulCore as active");
         running.store(true);
     }
 
+    if(_appConfig.schc.schc_type.compare("schc_node") == 0)
+    {
+        stopfd = eventfd(0, EFD_NONBLOCK);
 
-    stopfd = eventfd(0, EFD_NONBLOCK);
+        // name of the interface to which the socket will be associated
+        const char* iface = _appConfig.backhaul.interface_name.c_str();
 
-    // name of the interface to which the socket will be associated
-    const char* iface = _appConfig.backhaul.interface_name.c_str();
+        // Create RAW socket for ICMPv6/IPv6 packets
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
+        if (sockfd < 0) {
+            SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
+            return;
+        }
 
-    // Create RAW socket for ICMPv6/IPv6 packets
-    sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
-    if (sockfd < 0) {
-        SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
-        return;
+        // Obtain interface index
+        struct ifreq ifr;
+        int ifindex;
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
+            SPDLOG_ERROR("Failed to obtain interface index");
+            close(sockfd);
+            return;
+        }
+        else
+        {
+            ifindex = ifr.ifr_ifindex;
+            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
+        }
+
+
+        // Prepare sockaddr_ll for bind
+        struct sockaddr_ll addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sll_family = AF_PACKET;
+        addr.sll_protocol = htons(ETH_P_IPV6);
+        addr.sll_ifindex = ifindex;
+
+        // Associate socket with interface
+        if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+            SPDLOG_ERROR("Failed to associate socket with interface");
+            close(sockfd);
+            return;
+        }
+        SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
+
+        SPDLOG_DEBUG("Starting threads...");
+        rxThread = std::thread(&BackhaulCore::runRx, this);
+        txThread = std::thread(&BackhaulCore::runTx, this);
+        SPDLOG_DEBUG("BackhaulCore::runRx thread STARTED");
+        SPDLOG_DEBUG("BackhaulCore::runTx thread STARTED");
     }
 
-    // Obtain interface index
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
-    if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
-        SPDLOG_ERROR("Failed to obtain interface index");
-        close(sockfd);
-        return;
-    }
-    int ifindex = ifr.ifr_ifindex;
-    SPDLOG_INFO("Obtained interface index '{}' with index '{}'", iface, ifindex);
-
-
-    // Prepare sockaddr_ll for bind
-    struct sockaddr_ll addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sll_family = AF_PACKET;
-    addr.sll_protocol = htons(ETH_P_IPV6);
-    addr.sll_ifindex = ifindex;
-
-    // Associate socket with interface
-    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        SPDLOG_ERROR("Failed to associate socket with interface");
-        close(sockfd);
-        return;
-    }
-    SPDLOG_INFO("Socket AF_PACKET associated with '{}'", iface);
-
-    SPDLOG_INFO("Starting threads...");
-    rxThread = std::thread(&BackhaulCore::runRx, this);
-    txThread = std::thread(&BackhaulCore::runTx, this);
-    SPDLOG_INFO("BackhaulCore::runRx thread STARTED");
-    SPDLOG_INFO("BackhaulCore::runTx thread STARTED");
-
-    SPDLOG_INFO("BackhaulCore STARTED");
-    SPDLOG_TRACE("Leaving the function");
+    SPDLOG_DEBUG("BackhaulCore STARTED");
 }
 
 void BackhaulCore::stop()
 {
-    SPDLOG_TRACE("Entering the function");
-
     running.store(false);
 
     uint64_t one = 1;
@@ -106,7 +111,7 @@ void BackhaulCore::stop()
         shutdown(sockfd, SHUT_RDWR);
         close(sockfd);
         sockfd = -1;
-        SPDLOG_INFO("sockfd closed");
+        SPDLOG_DEBUG("sockfd closed");
     }
 
     if (rxThread.joinable()) {
@@ -117,14 +122,11 @@ void BackhaulCore::stop()
         txThread.join();
     }
 
-    SPDLOG_INFO("BackhaulCore stopped");
-    SPDLOG_TRACE("Leaving the function");
+    SPDLOG_DEBUG("Backhaul successfully stopped");
 }
 
 void BackhaulCore::runRx()
 {
-    SPDLOG_TRACE("Entering the function");
-
     struct pollfd fds[2];
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
@@ -134,7 +136,7 @@ void BackhaulCore::runRx()
 
     while (running.load())
     {
-        int ret = poll(fds, 2, -1); // bloqueante
+        int ret = poll(fds, 2, 100); // bloqueante
         if (ret < 0) {
             SPDLOG_ERROR("Poll");
             break;
@@ -142,7 +144,7 @@ void BackhaulCore::runRx()
 
         // Señal de salida
         if (fds[1].revents & POLLIN) {
-            SPDLOG_INFO("Stop signal received");
+            SPDLOG_DEBUG("Stop signal received");
             break;
         }
 
@@ -176,48 +178,38 @@ void BackhaulCore::runRx()
         }
     }
 
-    SPDLOG_INFO("Thread finished");
-    SPDLOG_TRACE("Leaving the function");
+    SPDLOG_DEBUG("Thread finished");
+}
+
+void BackhaulCore::runCleaner()
+{
 }
 
 void BackhaulCore::handleRxFrame(const std::vector<uint8_t>& frame)
 {
-    SPDLOG_TRACE("Entering the function");
     auto msg = std::make_unique<RoutedMessage>();
 
     // Populate minimal routing metadata
     msg->meta.ingress = CoreId::BACKHAUL;
+    msg->meta.payloadSize = frame.size();
     msg->payload = frame;
 
-    SPDLOG_INFO("Message in hex: {:Xp}", spdlog::to_hex(frame)); 
+    SPDLOG_DEBUG("Message in hex: {:Xp}", spdlog::to_hex(frame));
+    SPDLOG_DEBUG("Message size: {}", msg->meta.payloadSize);
 
 
     IPv6Addresses addrs = getIPv6Addresses(frame);
-    SPDLOG_INFO("IPv6 src: {}", addrs.src);
-    SPDLOG_INFO("IPv6 dst: {}", addrs.dst);
+    SPDLOG_DEBUG("IPv6 src: {}", addrs.src);
+    SPDLOG_DEBUG("IPv6 dst: {}", addrs.dst);
 
 
 
     // Forward immediately to the Orchestrator
     orchestrator.onMessageFromCore(std::move(msg));
-    SPDLOG_TRACE("Leaving the function");
-}
-
-void BackhaulCore::enqueueFromStack(std::unique_ptr<RoutedMessage> msg)
-{
-    SPDLOG_TRACE("Entering the function");
-    {
-        std::lock_guard<std::mutex> lock(txMtx);
-        txQueue.push(std::move(msg));
-    }
-
-    txCv.notify_one();
-    SPDLOG_TRACE("Leaving the function");
 }
 
 void BackhaulCore::runTx()
 {
-    SPDLOG_TRACE("Entering the function");
     while (running.load()) {
 
         std::unique_ptr<RoutedMessage> msg;
@@ -247,13 +239,12 @@ void BackhaulCore::runTx()
         sendFrame(msg->payload);
     }
 
-    SPDLOG_INFO("Thread finished");
-    SPDLOG_TRACE("Leaving the function");
+    SPDLOG_DEBUG("Thread finished");
 }
 
 void BackhaulCore::sendFrame(const std::vector<uint8_t>& frame)
 {
-    SPDLOG_TRACE("Entering the function");
+    SPDLOG_DEBUG("Sending frame");
     ssize_t sent = send(
         sockfd,
         frame.data(),
@@ -265,7 +256,11 @@ void BackhaulCore::sendFrame(const std::vector<uint8_t>& frame)
     {
         SPDLOG_ERROR("Failed to send IPv6 frame on BackhaulCore TX");
     }
-    SPDLOG_TRACE("Leaving the function");
+    else
+    {
+        SPDLOG_DEBUG("Frame sent successfully");
+    }
+    
 }
 
 IPv6Addresses BackhaulCore::getIPv6Addresses(const std::vector<uint8_t>& buffer) {

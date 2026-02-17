@@ -1,7 +1,8 @@
 #include "SCHCAckOnErrorSender.hpp"
+#include "SCHCSession.hpp"
 
 
-SCHCAckOnErrorSender::SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCore& schcCore): _dir(dir), _appConfig(appConfig), _schcCore(schcCore)
+SCHCAckOnErrorSender::SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCore& schcCore, SCHCSession& schcSession): _dir(dir), _appConfig(appConfig), _schcCore(schcCore), _schcSession(schcSession)
 {
     _stack = _schcCore._stack.get();
 
@@ -13,7 +14,7 @@ SCHCAckOnErrorSender::SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig
         _dTag                   = -1;
         _windowSize             = 63;
         _tileSize               = 10;
-        _retransTimer           = 12 * 60 * 60;
+        _retransTimer           = 5; /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
 
@@ -24,95 +25,157 @@ SCHCAckOnErrorSender::SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig
         /* Dynamic SCHC parameters */
         _nFullTiles             = 0;
         _lastTileSize           = 0;             
-        _rtxAttemptsCounter     = 0; 
+        _rtxAttemptsCounter     = 0;
         _all_tiles_sent         = false;
         _last_confirmed_window  = -1;
+        _current_L2_MTU         = _schcCore._stack->getMtu();
+        SPDLOG_DEBUG("Using MTU: {}", _current_L2_MTU);
+
+        SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in false");
+        _send_schc_ack_req_flag = false;
+
+        SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+        _currentState = std::make_unique<SCHCAckOnErrorSender_INIT>(*this);
 
     }
-
-
-
 }
 
 SCHCAckOnErrorSender::~SCHCAckOnErrorSender()
 {
+    SPDLOG_DEBUG("Executing SCHCAckOnErrorSender destructor()");
 }
 
-void SCHCAckOnErrorSender::start(char* schc_packet, int len)
+void SCHCAckOnErrorSender::execute(const std::vector<uint8_t>& msg)
 {
-    if(_appConfig.schc.schc_l2_protocol.compare("lorawan") == 0)
+    if (msg.empty()) 
     {
-        /*
-             8.4.3.1. Sender Behavior
-
-            At the beginning of the fragmentation of a new SCHC Packet:
-            the fragment sender MUST select a RuleID and DTag value pair 
-            for this SCHC Packet. A Rule MUST NOT be selected if the values 
-            of M and WINDOW_SIZE for that Rule are such that the SCHC Packet 
-            cannot be fragmented in (2^M) * WINDOW_SIZE tiles or less.
-            the fragment sender MUST initialize the Attempts counter to 0 for 
-            that RuleID and DTag value pair
-        */
-
-        if(len > (pow(2,_m)*_windowSize)*_tileSize)
-        {
-            SPDLOG_ERROR("The message is larger than {} tiles ", (int)pow(2,_m)*_windowSize);
-            return;
-        }
-    }    
-
-    setState(SCHCAckOnErrorSenderStates::STATE_INIT);
-    _currentState->execute(schc_packet, len);
-
-}
-
-void SCHCAckOnErrorSender::execute(char* msg, int len)
-{
-    if (msg !=nullptr)
-    {
-        _currentState->execute(msg, len);
-    }
-    else
-    {
+        SPDLOG_DEBUG("Calling the execute() method of the state machine");
         _currentState->execute();
+    } 
+    else 
+    {
+        SPDLOG_DEBUG("Calling the execute(msg) method of the state machine");
+        _currentState->execute(msg);
     }
+
+    if(_currentStateStr != _nextStateStr)
+    {
+        if(_nextStateStr == SCHCAckOnErrorSenderStates::STATE_INIT)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_INIT>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_INIT;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_SEND)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_SEND");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_SEND>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_SEND;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_x_ACK");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_WAIT_X_ACK>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_RESEND_MISSING_FRAG");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_RESEND_MISSING_FRAG>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_END)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_END");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_END>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_END;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_ERROR)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_ERROR");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_ERROR>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_ERROR;
+        }
+        
+    }
+
+}
+
+void SCHCAckOnErrorSender::timerExpired()
+{
+    _currentState->timerExpired();
+
+    if(_currentStateStr != _nextStateStr)
+    {
+        if(_nextStateStr == SCHCAckOnErrorSenderStates::STATE_INIT)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_INIT>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_INIT;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_SEND)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_SEND");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_SEND>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_SEND;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_x_ACK");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_WAIT_X_ACK>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_RESEND_MISSING_FRAG");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_RESEND_MISSING_FRAG>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_END)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_END");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_END>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_END;
+        }
+        else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_ERROR)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_ERROR");
+            _currentState = std::make_unique<SCHCAckOnErrorSender_ERROR>(*this);
+            _currentStateStr = SCHCAckOnErrorSenderStates::STATE_ERROR;
+        }
+        
+    }
+
 }
 
 void SCHCAckOnErrorSender::release()
 {
+    SPDLOG_DEBUG("Releasing the memory of the current state");
+    _currentState.reset();
 }
 
-void SCHCAckOnErrorSender::setState(SCHCAckOnErrorSenderStates state)
+void SCHCAckOnErrorSender::executeAgain()
 {
-    if(state == SCHCAckOnErrorSenderStates::STATE_INIT)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_INIT");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_INIT>(*this);
-    }
-    else if (state == SCHCAckOnErrorSenderStates::STATE_SEND)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_SEND");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_SEND>(*this);
-    }
-    else if (state == SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_WAIT_x_ACK");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_WAIT_X_ACK>(*this);
-    }
-    else if (state == SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_RESEND_MISSING_FRAG");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_RESEND_MISSING_FRAG>(*this);
-    }
-    else if (state == SCHCAckOnErrorSenderStates::STATE_ERROR)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_ERROR");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_ERROR>(*this);
-    }
-    else if (state == SCHCAckOnErrorSenderStates::STATE_END)
-    {
-        SPDLOG_INFO("Changing STATE to STATE_END");
-        _currentState = std::make_unique<SCHCAckOnErrorSender_END>(*this);
-    }
-    
+    SPDLOG_DEBUG("Enqueueing an ExecuteAgain event");
+    auto evMsg = std::make_unique<EventMessage>();
+    evMsg->evType = EventType::ExecuteAgain;
+    std::vector<uint8_t> v;
+    evMsg->payload = v;
+    _schcSession.enqueueEvent(std::move(evMsg));
+}
+
+void SCHCAckOnErrorSender::executeTimer()
+{
+    _timer.start(std::chrono::seconds(_retransTimer), [&]() { enqueueTimer(); });
+
+}
+
+void SCHCAckOnErrorSender::enqueueTimer() 
+{
+    SPDLOG_DEBUG("Enqueueing an TimerExpired event");
+    auto evMsg = std::make_unique<EventMessage>();
+    evMsg->evType = EventType::TimerExpired;
+    std::vector<uint8_t> v;
+    evMsg->payload = v;
+    _schcSession.enqueueEvent(std::move(evMsg));
 }

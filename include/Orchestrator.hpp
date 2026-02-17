@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <mutex>
 #include <stdexcept>
-//#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include <spdlog/spdlog.h>
 
 class Orchestrator
@@ -16,6 +15,7 @@ class Orchestrator
         ~Orchestrator();
         void onMessageFromCore(std::unique_ptr<RoutedMessage> msg);
         void registerCore(CoreId id, ICore* core);
+        void stop();
 
     private:
         CoreId selectDestination(const RoutedMessage& msg);

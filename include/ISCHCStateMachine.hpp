@@ -8,10 +8,12 @@ class ISCHCStateMachine
 {
     public:
         virtual ~ISCHCStateMachine() = default;
-        virtual void start(char* schc_packet, int len) = 0;
-        virtual void execute(char* msg = nullptr, int len =-1) = 0;
+        virtual void execute(const std::vector<uint8_t>& msg = {}) = 0;
+        virtual void timerExpired() = 0;
         virtual void release() = 0;
-        virtual void setState(SCHCAckOnErrorSenderStates state) = 0;
+        virtual void executeAgain() = 0;
+        virtual void executeTimer() = 0;
+        virtual void enqueueTimer() = 0;
     private:
         ISCHCState* estado = nullptr;
 };
