@@ -16,7 +16,8 @@ class BitWriter {
         uint32_t bitlen = 0;
 
     public:
-        void write_bits(uint32_t value, uint8_t nbits);
+        void write_bits(uint16_t value ,uint8_t nbits);
+        void write_bits(const std::vector<uint8_t>& bytes, uint8_t nbits);
         const std::vector<uint8_t> &bytes() const;
         uint32_t bitLength() const;
     };
@@ -26,7 +27,6 @@ class SCHC_Compressed_Packet {
     private:
         uint8_t compressionRuleID; //Compression Rule ID. 1 byte
         BitWriter compressionResidue; //Compression Residue. 4 bytes for item. Dinamic size
-        uint8_t paddingBits; 
         BitWriter packetRaw; //Raw packet with RuleID + CompressionResidue
 
     public:
@@ -35,7 +35,7 @@ class SCHC_Compressed_Packet {
 
         uint32_t getPacketLength(); //Getter for packet length
 
-        void setPacketData(uint8_t rule, BitWriter& residue, uint8_t padBits); //Setter for packet data and length
+        void setPacketData(uint8_t rule, BitWriter& residue); //Setter for packet data and length
 
         void printPacket() const; //Print Packet Details
 };

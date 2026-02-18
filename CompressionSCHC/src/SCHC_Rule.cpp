@@ -115,7 +115,7 @@ std:: ostream& operator <<(std:: ostream& os, const cd_action_t & cda){ // For p
 }
 std::ostream& operator<<(std::ostream& os, const TV_item& tv) {
     // Si no hay TV
-    if (tv.index== 0 || tv.value_matrix.empty()) {
+    if (tv.size== 0 || tv.value_matrix.empty()) {
         return os << "[]";
     }
 
@@ -127,7 +127,7 @@ std::ostream& operator<<(std::ostream& os, const TV_item& tv) {
     os << "[";
     os << std::hex << std::setfill('0');
 
-    const size_t n = std::min<size_t>(tv.index, tv.value_matrix.size());
+    const size_t n = std::min<size_t>(tv.size, tv.value_matrix.size());
 
     for(size_t i = 0; i<n ; i++){
         const auto &item = tv.value_matrix[i];
