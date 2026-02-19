@@ -12,6 +12,14 @@ SCHCAckOnErrorSender_RESEND_MISSING_FRAG::~SCHCAckOnErrorSender_RESEND_MISSING_F
 
 void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t>& msg)
 {
+
+
+    if(!msg.empty())
+    {
+        SPDLOG_DEBUG("In this state, it is not appropriate to receive messages from stack");
+        return;
+    }
+
     SCHCNodeMessage encoder;           // encoder
 
     // Buscar el primer cero y cuenta los ceros contiguos
@@ -21,47 +29,6 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
 
     if(_ctx._ackMechanism == SCHCAckMechanism::ACK_END_WIN)
     {
-        /* Se envía un SCHC ACK REQ para empujar 
-        el envio en el downlink del SCHC ACK enviado 
-        por el SCHC Gateway */
-        // if(_ctx._send_schc_ack_req_flag == true)
-        // {
-        //     SPDLOG_DEBUG("SCHC ACK REQ sent to trigger the Gateway's SCHC ACK downlink");
-        //     if((_ctx._currentWindow == _ctx._nWindows-1) && _ctx._bitmapArray[_ctx._currentWindow][_ctx._windowSize-1] == 0)
-        //     {
-        //         /* Sending a SCHC All-1 fragment */
-        //         /* Crea un mensaje SCHC en formato hexadecimal */
-        //         std::vector<uint8_t> schc_all_1_message = encoder.create_all_1_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._rcs, _ctx._lastTile);
-
-        //         /* Imprime los mensajes para visualizacion ordenada */
-        //         encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
-
-        //         /* Envía el mensaje a la capa 2*/
-        //         _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);             
-        //     }
-
-        //     SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in false");
-        //     _ctx._send_schc_ack_req_flag  = false;
-        //     //_ctx._retrans_ack_req_flag   = true;
-
-        //     SCHCNodeMessage encoder_2;
-
-        //     /* Crea un mensaje SCHC en formato hexadecimal */
-        //     std::vector<uint8_t>   schc_message = encoder_2.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow);
-
-        //     /* Imprime los mensajes para visualizacion ordenada */
-        //     encoder_2.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
-
-        //     /* Envía el mensaje a la capa 2*/
-        //     _ctx._stack->send_frame(_ctx._ruleID, schc_message);
-
-        //     SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
-        //     _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-        //     _ctx.executeTimer();
-
-        //     return;         
-        // }
-
         /* Determina cual es el ultimo tile de la ventana */
         if(_ctx._currentWindow == (_ctx._nWindows-1))
         {
@@ -223,7 +190,6 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
         } 
 
         /* Cuenta el numero de tiles perdidos contiguos */
-        SPDLOG_DEBUG("Counting the number of contiguous missing tiles");
         for (int i = 0; i < last_ptr; ++i) 
         {
             if (_ctx._bitmapArray[_ctx._last_confirmed_window][i] == 0) 
@@ -239,6 +205,8 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
                 break;                  // Salir del bucle después de contar los ceros contiguos
             }
         }
+        SPDLOG_DEBUG("Number of contiguous missing tiles: {}", adjacent_tiles);
+
 
 
         /* Numero de tiles que se pueden enviar un un payload */
@@ -263,10 +231,10 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
             int currentFcn      = get_current_fcn(bitmap_ptr);
 
             /* buffer que almacena todos los tiles que se van a enviar */           
-            std::vector<uint8_t>   schc_payload = extractTiles(_ctx._currentTile_ptr, n_tiles_to_send);
+            std::vector<uint8_t>   schc_payload = extractTiles(currentTile_ptr, n_tiles_to_send);
 
             /* Crea un mensaje SCHC en formato hexadecimal */
-            std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._currentFcn, schc_payload);
+            std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
 
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
@@ -289,15 +257,22 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
             if(_ctx._bitmapArray[_ctx._last_confirmed_window][i] == 0)
             {
                 c = 0;
-                break;
+                SPDLOG_DEBUG("There are more tiles to send.");
+                _ctx.executeAgain();
+                return;
             }
         }
 
         if(c == 1)
         {
             /* NO  hay tiles perdidos. Se marca flag en true y se vuelve a llamar este mismo metodo con para enviar un SCHC ACK REQ*/
-            SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in true");
-            _ctx._send_schc_ack_req_flag = true;
+            //SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in true");
+            //_ctx._send_schc_ack_req_flag = true;
+            SPDLOG_DEBUG("There are no more tiles to send.");
+            SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
+            _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
+            _ctx.executeTimer();
+            return;
         }
     }
     else if(_ctx._ackMechanism == SCHCAckMechanism::ACK_COMPOUND)
@@ -305,50 +280,10 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
 
         /* Extrae la ventana a la que se deben enviar los tails*/
         if(!_ctx._win_with_errors.empty())
-            _ctx._last_confirmed_window = _ctx._win_with_errors.front();
-
-        /* Se envía un SCHC ACK REQ para empujar el envio en 
-        el downlink del SCHC ACK enviado por el SCHC Gateway */
-        if(_ctx._send_schc_ack_req_flag == true)
         {
-
-            if((_ctx._last_confirmed_window == _ctx._nWindows-1) && _ctx._bitmapArray[_ctx._currentWindow][_ctx._windowSize-1] == 0)
-            {
-                /* Sending a SCHC All-1 fragment */
-                SCHCNodeMessage    encoder_all_1;
-
-                /* Crea un mensaje SCHC en formato hexadecimal */
-                std::vector<uint8_t> schc_all_1_message = encoder_all_1.create_all_1_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._rcs, _ctx._lastTile);
-
-                /* Imprime los mensajes para visualizacion ordenada */
-                encoder_all_1.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
-
-                /* Envía el mensaje a la capa 2*/
-                _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);                
-            }
-         
-
-            SCHCNodeMessage encoder_2;
-
-            /* Crea un mensaje SCHC en formato hexadecimal */
-            std::vector<uint8_t>   schc_message = encoder_2.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow);
-
-            /* Imprime los mensajes para visualizacion ordenada */
-            encoder_2.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
-
-            /* Envía el mensaje a la capa 2*/
-            _ctx._stack->send_frame(_ctx._ruleID, schc_message);
-
-            SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
-            _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-            _ctx.executeTimer();
-
-            //_ctx._retrans_ack_req_flag       = true;
-            SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in false");
-            _ctx._send_schc_ack_req_flag     = false;
-
-            return;            
+            _ctx._last_confirmed_window = _ctx._win_with_errors.front();
         }
+
 
         /* Determina cual es el ultimo tile de la ventana */
         if(_ctx._last_confirmed_window == (_ctx._nWindows-1))
@@ -398,10 +333,10 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
             int currentFcn      = get_current_fcn(bitmap_ptr);
 
             /* buffer que almacena todos los tiles que se van a enviar */           
-            std::vector<uint8_t>   schc_payload = extractTiles(_ctx._currentTile_ptr, n_tiles_to_send);
+            std::vector<uint8_t>   schc_payload = extractTiles(currentTile_ptr, n_tiles_to_send);
 
             /* Crea un mensaje SCHC en formato hexadecimal */
-            std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, _ctx._currentFcn, schc_payload);
+            std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
 
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
@@ -423,25 +358,37 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
             if(_ctx._bitmapArray[_ctx._last_confirmed_window][i] == 0)
             {
                 c = 0;
-                break;
+                SPDLOG_DEBUG("There are more missing tiles in the window: {}. Calling to ExecuteAgain()", _ctx._last_confirmed_window);
+                _ctx.executeAgain();
+                return;
             }
         }
 
-        if(c == 1)
+        /* No hay mas tiles perdidos en la ventana actual.
+        Se elimina la ventana corregida del vector _win_with_errors. 
+        Se vuelve a llamar a este mismo metodo */
+        if(c == 1 && !_ctx._win_with_errors.empty())
         {
-            /* No hay mas tiles perdidos en la ventana actual.
-            Se elimina la ventana corregida del vector _win_with_errors. 
-            Se vuelve a llamar a este mismo metodo */
-            if(!_ctx._win_with_errors.empty())
-                _ctx._win_with_errors.erase(_ctx._win_with_errors.begin());
+            _ctx._win_with_errors.erase(_ctx._win_with_errors.begin());
 
             if(_ctx._win_with_errors.empty())
             {
-                SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in true");
-                _ctx._send_schc_ack_req_flag = true;
+                SPDLOG_DEBUG("There are no more windows with missing tiles.");
+                SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
+                _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
+                _ctx.executeTimer();
+                return;
             }
-
+            else
+            {
+                SPDLOG_DEBUG("There are more windows with missing tiles. Calling executeAgain()");
+                _ctx.executeAgain();
+                return;
+            }
         }
+
+
+
     }
 
 }

@@ -81,7 +81,9 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Recovering a SCHCCore message from the eventQueue, calling the execute(msg) of the stateMachine");
+            SPDLOG_DEBUG("Removing a SCHCCore message from the eventQueue");
+            SPDLOG_DEBUG("Calling the execute(msg) of the stateMachine");
+            
 
             _stateMachine->execute(eventMsg->payload);
 
@@ -90,21 +92,24 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a Stack message from the eventQueue, calling the execute(msg) of the stateMachine");
+            SPDLOG_DEBUG("Removing a Stack message from the eventQueue");
+            SPDLOG_DEBUG("Calling the execute(msg) of the stateMachine");
             _stateMachine->execute(eventMsg->payload);
         }
         else if (eventMsg->evType == EventType::TimerExpired)
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a TimerExpired message from the eventQueue, calling the timerExpired() of the stateMachine");         
+            SPDLOG_DEBUG("Removing a TimerExpired message from the eventQueue");  
+            SPDLOG_DEBUG("Calling the timerExpired() of the stateMachine");        
             _stateMachine->timerExpired();
         }
         else if (eventMsg->evType == EventType::ExecuteAgain)
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a ExecuteAgain message from the eventQueue, calling the execute() of the stateMachine");
+            SPDLOG_DEBUG("Removing a ExecuteAgain message from the eventQueue");
+            SPDLOG_DEBUG("Calling the execute() of the stateMachine");
             _stateMachine->execute();
         }
 

@@ -49,7 +49,7 @@ void SCHCAckOnErrorSender::execute(const std::vector<uint8_t>& msg)
 {
     if (msg.empty()) 
     {
-        SPDLOG_DEBUG("Calling the execute() method of the state machine");
+        SPDLOG_DEBUG("Calling the execute() method of the current state");
         _currentState->execute();
     } 
     else 
@@ -166,6 +166,7 @@ void SCHCAckOnErrorSender::executeAgain()
 
 void SCHCAckOnErrorSender::executeTimer()
 {
+    SPDLOG_DEBUG("Setting Retransmission timer to activate in {} seconds", _retransTimer);
     _timer.start(std::chrono::seconds(_retransTimer), [&]() { enqueueTimer(); });
 
 }

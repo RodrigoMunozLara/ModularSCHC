@@ -27,16 +27,14 @@ SCHCAckOnErrorReceiver::SCHCAckOnErrorReceiver(SCHCFragDir dir, AppConfig &appCo
         _lastTileSize           = 0;             
         _rtxAttemptsCounter     = 0;
         _all_tiles_sent         = false;
-        _last_confirmed_window  = -1;
+        _last_confirmed_window  = 0;
         _current_L2_MTU         = _schcCore._stack->getMtu();
         SPDLOG_DEBUG("Using MTU: {}", _current_L2_MTU);
 
         SPDLOG_DEBUG("Changing STATE to STATE_RCV_WINDOW");
         _currentState = std::make_unique<SCHCAckOnErrorReceiver_RCV_WINDOW>(*this);
 
-        /* Flags */
-        _wait_pull_ack_req_flag     = false;
-        _first_ack_sent_flag        = false;
+        _enable_to_process_msg = false;
 
         _counter = 1;
 

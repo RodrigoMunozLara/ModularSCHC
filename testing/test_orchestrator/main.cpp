@@ -6,6 +6,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+
+
 #include "ConfigManager.hpp"
 #include "Orchestrator.hpp"
 #include "BackhaulCore.hpp"
@@ -33,6 +35,16 @@ int main()
     └─> start main loop or wait for threads
     */
 
+
+    //std::string temp = "OK+EVT:TX_DONE+EVT:RX_1:-53:13:UNICAST:20:1ff801ff801fffffdffff801e000000020+EVT:TX_DONE+EVT:RX_1:-52:14:UNICAST:20:1ff801ff801fffffdffff801e000000020";
+
+
+
+
+
+
+
+
     /* Reading and Loading configuration file */
     AppConfig appConfig;
     std::string configFile = "config_frag.json";
@@ -43,7 +55,7 @@ int main()
     }
 
     //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-20!s][%-30!!][%#] %v");
-    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-40!s][%#] %v");
+    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-40!s][%3#] %v");
     spdlog::set_level(parseLogLevel(appConfig.logging.log_level));
 
     SPDLOG_CRITICAL("Logging initialized with level: {}", appConfig.logging.log_level);
@@ -75,3 +87,4 @@ int main()
     orchestrator.stop();
 
 }
+

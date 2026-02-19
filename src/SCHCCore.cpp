@@ -412,7 +412,6 @@ void SCHCCore::enqueueFromOrchestator(std::unique_ptr<RoutedMessage> msg)
 
 void SCHCCore::enqueueFromStack(std::unique_ptr<StackMessage> msg)
 {
-    SPDLOG_DEBUG("Enqueue Message in protoQueue");
     {
         std::lock_guard<std::mutex> lock(protoMtx);
         protoQueue.push(std::move(msg));

@@ -53,20 +53,33 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
     std::vector<uint8_t>    payload;
     int                     payload_len;    // in bits
 
-
+    SPDLOG_DEBUG("Decoding Message...");
     msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+
+    if(msg_type == SCHCMsgType::SCHC_ACK_REQ_MSG && !_ctx._enable_to_process_msg)
+    {
+        SPDLOG_DEBUG("Receiving a message that does not belong to the session. Discarting Message...");
+        SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+        _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
+        _ctx.executeAgain();
+        return;
+
+    }
+
 
     if(_ctx._ackMechanism == SCHCAckMechanism::ACK_END_WIN)
     {
         if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
         {
+            _ctx._enable_to_process_msg = true;
+
             /* Codigo para poder eliminar mensajes de entrada */
             // random_device rd;
             // mt19937 gen(rd());
             // uniform_int_distribution<int> dist(0, 100);
             // int random_number = dist(gen);
             // //if(random_number < _error_prob)
-            if(_ctx._counter == 2 || _ctx._counter == 10)
+            if(_ctx._counter == 2 || _ctx._counter == 4 ||  _ctx._counter == 12)
             {
                     //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
                     SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
@@ -74,8 +87,6 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                     return;
             }
             _ctx._counter++;
-
-            _ctx._first_ack_sent_flag = false;   // se establece nuevamente que no se ha enviado un primer ACK para la actual ventana en este estado
             
 
             SPDLOG_DEBUG("Receiving a SCHC Regular fragment");
@@ -131,11 +142,14 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
                 SCHCGWMessage    encoder;
-                uint8_t c                           = this->get_c_from_bitmap(w);    // obtiene el valor de c en base al _bitmap_array
-                std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
+                uint8_t c                           = get_c_from_bitmap(w);    // Bien usado
+                std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._last_ack_sent_buffer = buffer;
+                _ctx._last_ack_sent_c = c;
+                _ctx._last_ack_sent_w = w;
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", w, c, get_bitmap_array_str(w));
@@ -145,13 +159,8 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 {
                     SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
                     _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
+                    return;
                 }
-                else
-                {
-                    _ctx._first_ack_sent_flag = true;
-                }
-                
-                _ctx._wait_pull_ack_req_flag = true;
             }
             
         }
@@ -191,12 +200,13 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);  
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._last_ack_sent_buffer = buffer;
+                _ctx._last_ack_sent_c = c;
+                _ctx._last_ack_sent_w = w;
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", w, c, get_bitmap_array_str(w));
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                _ctx._wait_pull_ack_req_flag = true;
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
@@ -220,12 +230,13 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);  
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._last_ack_sent_buffer = buffer;
+                _ctx._last_ack_sent_c = c;
+                _ctx._last_ack_sent_w = w;
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", w, c, get_bitmap_array_str(w));
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                _ctx._wait_pull_ack_req_flag = true;
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
@@ -234,86 +245,32 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         
         }
         else if(msg_type == SCHCMsgType::SCHC_ACK_REQ_MSG)
-        {
-            if(_ctx._wait_pull_ack_req_flag == true)
-            {
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                w               = decoder.get_w();
+        {    
+            /* Una forma de saber que la ventana de transmisión 
+            ya ha finalizado es recibiendo un ACK REQ. En ese caso 
+            se debe enviar un ACK. Si el SCHC GW recibe un ACK Req 
+            (que no es para un push ACK) puede ser por dos motivos. 
+            Motivo 1: Se envió el ACK pero se perdió.
+            Motivo 2: Nunca se envió un ACK porque no detectó el fin de la ventana. */
 
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| pull ACK REQ discarded", w);
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-                _ctx._wait_pull_ack_req_flag = false;
-            }
-            else
-            {
-                
-                /* Una forma de saber que la ventana de transmisión 
-                ya ha finalizado es recibiendo un ACK REQ. En ese caso 
-                se debe enviar un ACK. Si el SCHC GW recibe un ACK Req 
-                (que no es para un push ACK) puede ser por dos motivos. 
-                Motivo 1: Se envió el ACK pero se perdió.
-                Motivo 2: Nunca se envió un ACK porque no detectó el fin de la ventana. */
+            SPDLOG_DEBUG("Receiving SCHC ACK REQ");
+            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            w = decoder.get_w();
 
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                w = decoder.get_w();
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w);
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w);
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+            SPDLOG_DEBUG("Sending SCHC ACK");
+            SCHCGWMessage    encoder;
+            uint8_t c                           = _ctx._last_ack_sent_c;
+            std::vector<uint8_t> buffer         = _ctx._last_ack_sent_buffer;  
 
-                if(_ctx._first_ack_sent_flag == true)
-                {
-                    /* Motivo 1: Se envió el ACK pero se perdió. 
-                    Si la maquina de estados sigue en RCV_WINDOW, 
-                    es porque se envió un ACK con un c = 1. Si 
-                    hubiese sido un c = 0, se hubiese cambiado de estado a 
-                    RX_WAIT_x_MISSING_FRAGS */
+            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
-                    
-                    SPDLOG_DEBUG("Sending SCHC ACK");
-                    SCHCGWMessage    encoder;
-                    uint8_t c                           = 1;
-                    std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
-                    std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);  
-
-                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
-
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                    SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", w, c, get_bitmap_array_str(w));
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                    _ctx._wait_pull_ack_req_flag = true;
-
-                }
-                else
-                {
-                    /* Motivo 2: Nunca se envió un ACK porque no se detectó 
-                    el fin de la ventana debido a la pérdida de algun mensaje.
-                    Por lo tanto c = 0 */
-
-                    SPDLOG_DEBUG("Sending SCHC ACK");
-                    SCHCGWMessage    encoder;
-                    uint8_t c                           = 0;
-                    std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
-                    std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector); 
-
-                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
-
-
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                    SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", w, c, get_bitmap_array_str(w));
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                    SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
-                    _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-                    _ctx._wait_pull_ack_req_flag = true;
-
-                }
-               
-            }
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} ----| Bitmap:{}", _ctx._last_ack_sent_w, c, get_bitmap_array_str(_ctx._last_ack_sent_w));
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
             
         }
         else
@@ -325,6 +282,8 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
     {
         if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
         {
+            _ctx._enable_to_process_msg = true;
+
             SPDLOG_DEBUG("Receiving a SCHC Regular fragment");
 
             /* Codigo para poder eliminar mensajes de entrada */
@@ -334,13 +293,14 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             // int random_number = dist(gen);
             
             //if(random_number < _error_prob)
-            // if(_counter == 4)
-            // {
-            //         SPDLOG_DEBUG("\033[31mMessage discarded due to error probability\033[0m");   
-            //         _counter++;
-            //         return 0;
-            // }
-            // _counter++;
+            if(_ctx._counter == 2 || _ctx._counter == 4 ||  _ctx._counter == 9)
+            {
+                    //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
+                    SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
+                    _ctx._counter++;
+                    return;
+            }
+            _ctx._counter++;
 
             /* Decoding el SCHC fragment */
             decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
@@ -405,7 +365,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
-            w                   = decoder.get_w();
+            _ctx._last_window   = decoder.get_w();
             _ctx._rcs           = decoder.get_rcs();
             fcn                 = decoder.get_fcn();
             _ctx._lastTile      = decoder.get_schc_payload();           // obtiene el SCHC payload
@@ -416,7 +376,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             if(rcs_result)    // * Integrity check: success
             {
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize);
+                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", _ctx._last_window, fcn, _ctx._lastTileSize);
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
@@ -425,7 +385,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 SCHCGWMessage encoder;
                 uint8_t c                           = 1;                     // obtiene el valor de c en base al _bitmap_array
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
-                std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);  
+                std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);  
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
@@ -448,17 +408,18 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
-                /* Revisa cual ventana tiene errores y envia un ACK para esa ventana */
+                /* Revisa cual ventana tiene errores (a excepcion de la ultima 
+                ventana que no la revisa en este for) y envia un ACK para esa ventana */
                 for(int i = _ctx._last_confirmed_window; i<_ctx._last_window; i++)
                 {
-                    uint8_t c                   = get_c_from_bitmap(i);
+                    uint8_t c                   = get_c_from_bitmap(i); // Bien usado
                     if(c == 0)
                     {
                         SPDLOG_DEBUG("Sending SCHC ACK");
                         SCHCGWMessage encoder;
                         _ctx._last_confirmed_window         = i;
                         std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char  
-                        std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_confirmed_window, c, bitmap_vector);  
+                        std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);  
 
                         _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
@@ -468,8 +429,6 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 
                         SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
                         _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-
-                        _ctx._wait_pull_ack_req_flag = true;
 
                         return;                     
                     }
@@ -498,93 +457,75 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
 
-                _ctx._wait_pull_ack_req_flag = true;
-
            }
         }
         else if(msg_type == SCHCMsgType::SCHC_ACK_REQ_MSG)
         {
-            if(_ctx._wait_pull_ack_req_flag == true)
+
+            SPDLOG_DEBUG("Receiving SCHC ACK REQ");
+            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            uint8_t w_received          = decoder.get_w();
+
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w_received);
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+            if(w_received > _ctx._last_window)
+                _ctx._last_window    = w_received;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
+
+
+
+            /* Revisa cual ventana tiene errores y envia un ACK para esa ventana */
+            for(int i = _ctx._last_confirmed_window; i<_ctx._last_window; i++)
             {
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                w               = decoder.get_w();
-
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| pull ACK REQ discarded", w);
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                _ctx._wait_pull_ack_req_flag = false;
-            }
-            else
-            {
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                uint8_t w_received          = decoder.get_w();
-
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w_received);
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                if(w_received > _ctx._last_window)
-                    _ctx._last_window    = w_received;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
-
-
-
-                /* Revisa cual ventana tiene errores y envia un ACK para esa ventana */
-                for(int i = _ctx._last_confirmed_window; i<_ctx._last_window; i++)
+                uint8_t c                   = get_c_from_bitmap(i); // Bien usado
+                if(c == 0)
                 {
-                    uint8_t c                   = get_c_from_bitmap(i);
-                    if(c == 0)
-                    {
-                        SPDLOG_DEBUG("Sending SCHC ACK");
+                    SPDLOG_DEBUG("Sending SCHC ACK");
 
-                        SCHCGWMessage    encoder;
-                        _ctx._last_confirmed_window         = i;
-                        std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char  
-                        std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);  
+                    SCHCGWMessage    encoder;
+                    _ctx._last_confirmed_window         = i;
+                    std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char  
+                    std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);  
 
-                        _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
 
-                        //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                        SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", i, c, get_bitmap_array_str(i));
-                        //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                    SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", i, c, get_bitmap_array_str(i));
+                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-                        SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
-                        _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-                        _ctx._wait_pull_ack_req_flag = true;
+                    SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
+                    _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
 
-                        return;                     
-                    }
-                    else
-                    {
-                        SPDLOG_DEBUG("SCHC Window {} has received all tiles. No ACK sent", i);
-                    }
+                    return;                     
                 }
-
-                /* Si llegó a esta parte del codigo es porque ninguna ventana tiene errores. 
-                Por lo tanto la ventana con errores es la última.*/
-                SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
-                uint8_t c                           = 0;
-                std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char  
-                std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector); 
-
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
-
-
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", _ctx._last_window, c, get_bitmap_array_str(_ctx._last_window));
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-                _ctx._last_confirmed_window = _ctx._last_window; 
-
-                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
-                _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-                _ctx._wait_pull_ack_req_flag = true;
-                
+                else
+                {
+                    SPDLOG_DEBUG("SCHC Window {} has received all tiles. No ACK sent", i);
+                }
             }
- 
+
+            /* Si llegó a esta parte del codigo es porque ninguna ventana tiene errores. 
+            Por lo tanto la ventana con errores es la última.*/
+            SPDLOG_DEBUG("Sending SCHC ACK");
+            SCHCGWMessage    encoder;
+            uint8_t c                           = 0;
+            std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char  
+            std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector); 
+
+            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", _ctx._last_window, c, get_bitmap_array_str(_ctx._last_window));
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+            _ctx._last_confirmed_window = _ctx._last_window; 
+
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
+            _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
+                
+
         }
         else
         {
@@ -595,6 +536,8 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
     {
         if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
         {
+            _ctx._enable_to_process_msg = true;
+
             SPDLOG_DEBUG("Receiving a SCHC Regular fragment");
 
             /* Codigo para poder eliminar mensajes de entrada */
@@ -603,13 +546,14 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             // uniform_int_distribution<int> dist(0, 100);
             // int random_number = dist(gen);
             //if(random_number < _error_prob)
-            // if(_counter == 3 || _counter == 5)
-            // {
-            //         SPDLOG_DEBUG("\033[31mMessage discarded due to error probability\033[0m");   
-            //         _counter++;
-            //         return;
-            // }
-            // _counter++;
+            if(_ctx._counter == 2 || _ctx._counter == 4 ||  _ctx._counter == 9)
+            {
+                    //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
+                    SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
+                    _ctx._counter++;
+                    return;
+            }
+            _ctx._counter++;
 
             /* Decoding el SCHC fragment */
             decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
@@ -672,8 +616,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
-            w                   = decoder.get_w();
-            _ctx._last_window   = w;
+            _ctx._last_window   = decoder.get_w();
             _ctx._rcs           = decoder.get_rcs();
             fcn                 = decoder.get_fcn();
             _ctx._lastTile      = decoder.get_schc_payload();           // obtiene el SCHC payload
@@ -685,7 +628,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             if(rcs_result)    // * Integrity check: success
             {
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize);
+                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", _ctx._last_window, fcn, _ctx._lastTileSize);
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");    
 
                 SPDLOG_DEBUG("Sending SCHC Compound ACK");            
@@ -709,7 +652,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             else              // * Integrity check: failure
             {
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: failure", w, fcn, _ctx._lastTileSize);
+                SPDLOG_INFO("|- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: failure", _ctx._last_window, fcn, _ctx._lastTileSize);
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
@@ -719,11 +662,11 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 std::vector<uint8_t> windows_with_error;
                 for(int i=0; i < _ctx._last_window; i++)
                 {
-                    int c = this->get_c_from_bitmap(i);
+                    int c = this->get_c_from_bitmap(i); // Bien usado
                     if(c == 0)
                         windows_with_error.push_back(i);
                 }
-                windows_with_error.push_back(_ctx._last_window);
+                windows_with_error.push_back(_ctx._last_window); // Dado que no hay como validar si la ultima ventana tiene error, se envia la ultima de todas formas
 
                 SCHCGWMessage encoder; 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
@@ -738,89 +681,76 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-                _ctx._wait_pull_ack_req_flag = true;
 
             }
  
         }
         else if(msg_type == SCHCMsgType::SCHC_ACK_REQ_MSG)
         {
-            if(_ctx._wait_pull_ack_req_flag == true)
+
+
+            SPDLOG_DEBUG("Receiving SCHC ACK REQ");
+            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            uint8_t w_received          = decoder.get_w();
+
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w_received);
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+            if(w_received > _ctx._last_window)
+                _ctx._last_window    = w_received;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
+
+
+            bool rcs_result = this->check_rcs(_ctx._rcs);
+            if(rcs_result)    // * Integrity check: success
             {
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                w          = decoder.get_w();
+                SPDLOG_DEBUG("Sending SCHC Compound ACK");
+                SCHCGWMessage encoder;
+                std::vector<uint8_t> windows_with_error;   // vector vacío  
+                std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
+
+                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| pull ACK REQ discarded", w);
+                SPDLOG_INFO("|<-- ACK, C=1 -------| {}", encoder.get_compound_bitmap_str());
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-                _ctx._wait_pull_ack_req_flag = false;
+
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
+                _ctx.executeAgain();
+
             }
-            else
+            else                        // * Integrity check: failure
             {
-                SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-                decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
-                uint8_t w_received          = decoder.get_w();
+                SPDLOG_DEBUG("Sending SCHC Compound ACK");
+                /* Revisa si alguna ventana tiene tiles perdidos */
+                std::vector<uint8_t> windows_with_error;
+                for(int i=0; i < _ctx._last_window; i++)
+                {
+                    int c = this->get_c_from_bitmap(i); // Bien usado
+                    if(c == 0)
+                        windows_with_error.push_back(i);
+                }
+                windows_with_error.push_back(_ctx._last_window);                       
+
+                SCHCGWMessage encoder; 
+                std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
+
+                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- ACK REQ, W={:<1} -->| ", w_received);
+                SPDLOG_INFO("|<-- ACK, C=0 -------| {}", encoder.get_compound_bitmap_str());
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-                if(w_received > _ctx._last_window)
-                    _ctx._last_window    = w_received;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
 
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
+                _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
 
-                bool rcs_result = this->check_rcs(_ctx._rcs);
-                if(rcs_result)    // * Integrity check: success
-                {
-                    SPDLOG_DEBUG("Sending SCHC Compound ACK");
-                    SCHCGWMessage encoder;
-                    std::vector<uint8_t> windows_with_error;   // vector vacío  
-                    std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
-
-                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
-
-
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                    SPDLOG_INFO("|<-- ACK, C=1 -------| {}", encoder.get_compound_bitmap_str());
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-                    SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
-                    _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
-                    _ctx.executeAgain();
-
-                }
-                else                        // * Integrity check: failure
-                {
-                    SPDLOG_DEBUG("Sending SCHC Compound ACK");
-                    /* Revisa si alguna ventana tiene tiles perdidos */
-                    std::vector<uint8_t> windows_with_error;
-                    for(int i=0; i < _ctx._last_window; i++)
-                    {
-                        int c = this->get_c_from_bitmap(i);
-                        if(c == 0)
-                            windows_with_error.push_back(i);
-                    }
-                    windows_with_error.push_back(_ctx._last_window);                       
-
-                    SCHCGWMessage encoder; 
-                    std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
-
-                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
-
-
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                    SPDLOG_INFO("|<-- ACK, C=0 -------| {}", encoder.get_compound_bitmap_str());
-                    //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
-
-
-                    SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
-                    _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
-                    _ctx._wait_pull_ack_req_flag = true;
-
-                }
+            }
  
-            }
+
         }
     }
 

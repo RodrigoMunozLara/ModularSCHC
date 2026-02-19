@@ -1,27 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
 project(ModularSCHC LANGUAGES C CXX)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/binaries)
-
-# ------------------------------------------------------------------------------
-# Global configuration
-# ------------------------------------------------------------------------------
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 1. Definimos las rutas de destino claramente
+set(BIN_OUT_DIR "${PROJECT_SOURCE_DIR}/binaries")
+set(NODE_DIR "${BIN_OUT_DIR}/schc_node")
+set(GATEWAY_DIR "${BIN_OUT_DIR}/schc_gateway")
 
-# Find required packages
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_OUT_DIR})
+
+# 2. Configuración de paquetes y dependencias
 find_package(PkgConfig REQUIRED)
 find_package(fmt 9.1.0 REQUIRED)
 find_package(spdlog 1.12.0 REQUIRED)
-
-# Find Mosquitto using pkg-config
 pkg_check_modules(MOSQUITTO REQUIRED libmosquitto)
 
-# Debug information
-message(STATUS "Mosquitto include dirs: ${MOSQUITTO_INCLUDE_DIRS}")
-message(STATUS "Mosquitto libraries: ${MOSQUITTO_LIBRARIES}")
-
+# 3. Lista de archivos fuente
 set(CPP_FILES
     "src/BackhaulCore.cpp"
     "src/ConfigManager.cpp"
@@ -49,36 +45,20 @@ set(CPP_FILES
     "src/SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG.cpp"
 )
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
-
 add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-# Ahora (STATIC library)
+# 4. CREAR EL TARGET (Primero se crea, luego se configura)
 add_library(module_schc STATIC ${CPP_FILES})
 
-# Include headers so other targets can use them
 target_include_directories(module_schc PUBLIC include)
-
-# Link dependencies (fmt, spdlog, mosquitto)
 target_link_libraries(module_schc PRIVATE fmt::fmt spdlog::spdlog ${MOSQUITTO_LIBRARIES})
 
-# Debug: list source files
-message(STATUS "ModuleSCHC sources: ${CPP_FILES}")
-
-
-
-#######################################################################
-##### Comment this lines if you don't need AddressSanitizer o ASan Tool
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
-set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# 5. ASAN (AddressSanitizer) - Mejorado para ser más limpio
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address)
 endif()
-#######################################################################
+
 
 add_subdirectory(testing)
 

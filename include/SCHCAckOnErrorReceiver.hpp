@@ -76,25 +76,18 @@ class SCHCAckOnErrorReceiver: public ISCHCStateMachine
         SCHCAckMechanism                    _ackMechanism;
         uint8_t                             _rtxAttemptsCounter;
         uint32_t                            _current_L2_MTU;
+        std::vector<uint8_t>                _last_ack_sent_buffer;
+        int                                 _last_ack_sent_c;
+        int                                 _last_ack_sent_w;
+
 
         
         std::string                         _dev_id;
         int                                 _last_window;   // stores the number of the last window
         uint8_t                             _error_prob;
 
-        /* Este flag permite indicarle al gateway que descarte un SCHC ACK REQ. 
-        El SCHC ACK REQ recibido fue usado para empujar un SCHC ACK que estaba 
-        en el Network Server. */
-        bool                                _wait_pull_ack_req_flag;
+        bool                                _enable_to_process_msg; // Este flag se usa para descartar cualquier mensajes remanente de otras sesiones que intente arrancar la sesion
 
-
-        /* This flag is used by the gateway to determine how the SCHC ACK should be sent. 
-        If the flag is true, it means that the gateway sent the ACK but it was lost and did not reach the sender. 
-        In this case, the gateway responds with a SCHC ACK (with c=1).
-        If the flag is false, it means that the gateway never realized that the window had just been received 
-        (probably because the tile with FCN=0 did not reach the gateway). In this case, the gateway responds 
-        with an SCHC ACK (with c=0).*/
-        bool                                _first_ack_sent_flag;
 
         int                                 _counter;
 

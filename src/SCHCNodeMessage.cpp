@@ -151,53 +151,53 @@ uint8_t SCHCNodeMessage::decodeMsg(ProtocolType protocol, int rule_id, const std
                 (*bitmap_array)[_w][i] = 1;
             }
         }
-        else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0 && len>9)
-        {
-            // * Se ha recibido un SCHC Compound ACK (con errores)
-            SPDLOG_DEBUG("Receiving a SCHC Compound ACK with errors");
-            int n_total_bits    = len*8;                    // en bits
-            int n_win           = ceil((n_total_bits - 1)/65);     // window_size + M = 65. Se resta un bit a len debido al bit C.
-            //int n_padding_bits  = n_total_bits - 1 - n_win*65;
-            bool first_win      = true;
+        // else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0 && len>9)
+        // {
+        //     // * Se ha recibido un SCHC Compound ACK (con errores)
+        //     SPDLOG_DEBUG("Receiving a SCHC Compound ACK with errors");
+        //     int n_total_bits    = len*8;                    // en bits
+        //     int n_win           = ceil((n_total_bits - 1)/65);     // window_size + M = 65. Se resta un bit a len debido al bit C.
+        //     //int n_padding_bits  = n_total_bits - 1 - n_win*65;
+        //     bool first_win      = true;
 
-            std::vector<uint8_t> bitVector;
+        //     std::vector<uint8_t> bitVector;
             
-            for (int i = 0; i < len; ++i)
-            {
-                for (int j = 7; j >= 0; --j)
-                {
-                    bitVector.push_back((msg[i] >> j) & 1);
-                }
-            }
+        //     for (int i = 0; i < len; ++i)
+        //     {
+        //         for (int j = 7; j >= 0; --j)
+        //         {
+        //             bitVector.push_back((msg[i] >> j) & 1);
+        //         }
+        //     }
 
-            for(int i=0; i<n_win; i++)
-            {
-                if(first_win)
-                {
-                    _windows_with_error.push_back(_w);      // almacena en el vector el numero de la primera ventana con error en el SCHC Compound ACK
+        //     for(int i=0; i<n_win; i++)
+        //     {
+        //         if(first_win)
+        //         {
+        //             _windows_with_error.push_back(_w);      // almacena en el vector el numero de la primera ventana con error en el SCHC Compound ACK
                     
-                    bitVector.erase(bitVector.begin(), bitVector.begin()+3); // Se elimina del vector la ventana (2 bits) y c (1 bit)
-                    std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[_w].begin());
-                    bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-                    first_win = false;
-                }
-                else
-                {
-                    uint8_t win = (bitVector[0] << 1) | bitVector[1];
-                    _windows_with_error.push_back(win);
-                    bitVector.erase(bitVector.begin(), bitVector.begin()+2);
-                    std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[win].begin());
-                    bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-                }
-            }
+        //             bitVector.erase(bitVector.begin(), bitVector.begin()+3); // Se elimina del vector la ventana (2 bits) y c (1 bit)
+        //             std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[_w].begin());
+        //             bitVector.erase(bitVector.begin(), bitVector.begin()+63);
+        //             first_win = false;
+        //         }
+        //         else
+        //         {
+        //             uint8_t win = (bitVector[0] << 1) | bitVector[1];
+        //             _windows_with_error.push_back(win);
+        //             bitVector.erase(bitVector.begin(), bitVector.begin()+2);
+        //             std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[win].begin());
+        //             bitVector.erase(bitVector.begin(), bitVector.begin()+63);
+        //         }
+        //     }
 
-        }
+        // }
         else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0)
         {
             if(ack_type == SCHCAckMechanism::ACK_END_WIN || ack_type == SCHCAckMechanism::ACK_END_SES)
             {    
                 // * Se ha recibido un SCHC ACK (con errores)
-                //SPDLOG_DEBUG("SCHCNodeMessage::decodeMsg - Receiving a SCHC ACK with errors");
+                SPDLOG_DEBUG("Receiving a SCHC ACK with errors");
                 int compress_bitmap_len = (len-1)*8 + 5;    // en bits
                 char compress_bitmap[compress_bitmap_len];
 
@@ -383,26 +383,37 @@ void SCHCNodeMessage::print_msg(SCHCMsgType msgType, const std::vector<uint8_t>&
         uint8_t c_mask      = 0x20;
         uint8_t c           = (c_mask & schc_header) >> 5;
 
-        int bufferSize = 128;
-        char buffer[bufferSize];
-        snprintf(buffer, sizeof(buffer), "|<--- ACK, C=%02u --------|", c);
-     
-        
-        size_t offset = 0;
+        std::string report = fmt::format("|<--- ACK, C={:02} --------|", c);
+
 
         for (uint8_t w = 0; w < _windows_with_error.size(); ++w)
         {
             uint8_t win = _windows_with_error[w];
 
-            offset += snprintf(buffer + offset, bufferSize - offset, ", W=%u - Bitmap:", win);
+            // VALIDACIÓN DE SEGURIDAD: Evita el Segfault que vimos con ASan
+            if (win >= bitmap_array.size()) {
+                SPDLOG_ERROR("Acceso ilegal: Ventana {} no existe en bitmap_array", win);
+                continue; 
+            }
+
+            // 2. Concatenamos la información de la ventana
+            report += fmt::format(", W={} - Bitmap:", win);
+
+            // 3. Concatenamos el bitmap bit a bit
+            // Usamos reserve para evitar reasignaciones constantes en el string
+            report.reserve(report.size() + 63); 
 
             for (int i = 0; i < 63; ++i)
             {
-                offset += snprintf(buffer + offset, bufferSize - offset, "%u", bitmap_array[win][i]);
+                // Añadimos el dígito directamente
+                report += std::to_string(bitmap_array[win][i]);
             }
         }
 
-        SPDLOG_INFO("{}", spdlog::string_view_t(buffer, bufferSize));
+        // 4. Imprimimos el string final
+        SPDLOG_INFO("{}", report);
+
+
 
     }
     else if(msgType==SCHCMsgType::SCHC_ACK_RESIDUAL_MSG)

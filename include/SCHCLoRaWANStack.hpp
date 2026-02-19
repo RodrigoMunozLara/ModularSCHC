@@ -34,6 +34,9 @@ class SCHCLoRaWANStack: public ISCHCStack
         std::string             send_command(const std::string& command, int timeoutMs=5000);
         std::string             toHexString(const std::vector<uint8_t>& data);
         std::vector<uint8_t>    parseATresponse(const std::string& input);
+        std::vector<std::vector<uint8_t>>   processModemString(const std::string& rawInput);
+        std::vector<std::string>            parseUnicastEvents(const std::string& input);
+        std::vector<uint8_t>                convertUnicastToBytes(const std::string& input);
 
 
         AppConfig   _appConfig;

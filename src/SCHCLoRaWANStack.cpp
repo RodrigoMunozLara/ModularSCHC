@@ -180,7 +180,12 @@ std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff,
                     * */
                     if(!_isFirstMsg) 
                     {
-                        receive_handler(parseATresponse(accumulator));
+                        std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
+                        for (size_t i = 0; i < responses_vector.size(); ++i)
+                        {
+                            receive_handler(responses_vector[i]);
+                        }
+            
                     }
                     else
                     {
@@ -380,6 +385,88 @@ std::vector<uint8_t> SCHCLoRaWANStack::parseATresponse(const std::string& input)
     for (size_t i = 0; i < secondPart.length(); i += 2) 
     {
         // We take chunks of 2 characters (e.g. ‘aa’, then ‘c3’...)
+        std::string byteString = secondPart.substr(i, 2);
+        bytes.push_back(static_cast<uint8_t>(std::stoul(byteString, nullptr, 16)));
+    }
+
+    return bytes;
+
+
+}
+
+// Función principal que procesa el string completo del módem
+std::vector<std::vector<uint8_t>> SCHCLoRaWANStack::processModemString(const std::string& rawInput) {
+    // Reutilizamos el parser que busca los bloques "UNICAST:"
+    // (Asumiendo la función parseUnicastEvents que definimos antes)
+    std::vector<std::string> unicastBlocks = parseUnicastEvents(rawInput);
+    
+    std::vector<std::vector<uint8_t>> allPackets;
+    allPackets.reserve(unicastBlocks.size());
+
+    for (const auto& block : unicastBlocks) {
+        allPackets.push_back(convertUnicastToBytes(block));
+    }
+
+    return allPackets;
+}
+
+std::vector<std::string> SCHCLoRaWANStack::parseUnicastEvents(const std::string& input) {
+    std::vector<std::string> results;
+    std::string_view str(input);
+    
+    // Configuramos los nuevos "marcadores"
+    const std::string_view start_tag = "UNICAST:";
+    const std::string_view end_tag = "+EVT:TX";
+
+    size_t pos = str.find(start_tag);
+
+    while (pos != std::string_view::npos) {
+        // Buscamos si hay un cierre de evento TX más adelante
+        size_t next_tx = str.find(end_tag, pos + start_tag.length());
+        
+        std::string_view fragment;
+        if (next_tx != std::string_view::npos) {
+            // Cortamos desde UNICAST: hasta justo antes del +EVT:TX
+            fragment = str.substr(pos, next_tx - pos);
+        } else {
+            // Si no hay más TX, tomamos todo hasta el final
+            fragment = str.substr(pos);
+        }
+
+        results.emplace_back(fragment);
+
+        // Buscamos el siguiente bloque UNICAST:
+        pos = str.find(start_tag, pos + fragment.length());
+    }
+
+    return results;
+}
+
+
+// Función auxiliar basada en tu lógica para convertir UNICAST:... a bytes
+std::vector<uint8_t> SCHCLoRaWANStack::convertUnicastToBytes(const std::string& input) {
+    std::string target = "UNICAST:";
+    size_t pos = input.find(target);
+    if (pos == std::string::npos) return {};
+
+    std::string result = input.substr(pos + target.length());
+    std::vector<uint8_t> bytes;
+    
+    // 1. Buscamos el separador ':'
+    size_t colonPos = result.find(':');
+    if (colonPos == std::string::npos) return bytes;
+
+    // 2. Procesamos el RuleID (antes del ':') - Base 10
+    std::string firstPart = result.substr(0, colonPos);
+    if (!firstPart.empty()) {
+        bytes.push_back(static_cast<uint8_t>(std::stoi(firstPart)));
+    }
+
+    // 3. Procesamos el Payload (después del ':') - Base 16
+    std::string secondPart = result.substr(colonPos + 1);
+    bytes.reserve(1 + (secondPart.length() / 2));
+
+    for (size_t i = 0; i < secondPart.length(); i += 2) {
         std::string byteString = secondPart.substr(i, 2);
         bytes.push_back(static_cast<uint8_t>(std::stoul(byteString, nullptr, 16)));
     }

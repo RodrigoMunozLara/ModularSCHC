@@ -13,6 +13,7 @@ SCHCAckOnErrorSender_WAIT_X_ACK::~SCHCAckOnErrorSender_WAIT_X_ACK()
 void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
 {
     SCHCNodeMessage decoder;
+    SPDLOG_DEBUG("Decoding Message...");
     SCHCMsgType msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
     if(msg_type == SCHCMsgType::SCHC_ACK_MSG)
@@ -78,7 +79,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
                 decoder.print_msg(SCHCMsgType::SCHC_ACK_MSG, msg, _ctx._bitmapArray);
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_END;
-                _ctx.executeTimer();
+                _ctx.executeAgain();
                 
             }
             else
@@ -86,6 +87,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
                 decoder.print_msg(SCHCMsgType::SCHC_ACK_MSG, msg, _ctx._bitmapArray);
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_RESEND_MISSING_FRAG");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG;
+                _ctx.executeAgain();
                 
             }
         }
@@ -102,13 +104,14 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
                 decoder.print_msg(SCHCMsgType::SCHC_ACK_MSG, msg, _ctx._bitmapArray);
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_END;
-                _ctx.executeTimer();
+                _ctx.executeAgain();
             }
             else
             {
                 decoder.print_msg(SCHCMsgType::SCHC_ACK_MSG, msg, _ctx._bitmapArray);
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_RESEND_MISSING_FRAG");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG;
+                _ctx.executeAgain();
             }
         }
 
@@ -119,11 +122,12 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
 
         SPDLOG_DEBUG("Receiving a SCHC Compound ACK msg");
 
-        //_retrans_ack_req_flag = false;
+        SPDLOG_DEBUG("Stoping the Retransmission timer...");
+        _ctx._timer.stop();
 
         decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ACK_COMPOUND, &(_ctx._bitmapArray));
-        uint8_t c           = decoder.get_c();
-        _ctx._win_with_errors    = decoder.get_w_vector();
+        uint8_t c               = decoder.get_c();
+        _ctx._win_with_errors   = decoder.get_w_vector();
 
         if(c == 1)
         {
@@ -132,12 +136,14 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
             decoder.print_msg(SCHCMsgType::SCHC_COMPOUND_ACK, msg, _ctx._bitmapArray);
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_END");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_END;
+            _ctx.executeAgain();
         }
         else
         {
             decoder.print_msg(SCHCMsgType::SCHC_COMPOUND_ACK, msg, _ctx._bitmapArray);
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_RESEND_MISSING_FRAG");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_RESEND_MISSING_FRAG;
+            _ctx.executeAgain();
         }
 
     }
