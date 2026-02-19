@@ -17,7 +17,7 @@ set(SOURCES
 add_executable(CompressionSCHC_Test ${SOURCES})
 
 target_include_directories(CompressionSCHC_Test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 find_package(PkgConfig REQUIRED)

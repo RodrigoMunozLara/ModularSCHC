@@ -1,0 +1,157 @@
+IPv6.version        = 6
+IPv6.trafficClass  = 0x00
+IPv6.flowLabel     = 0x00000
+IPv6.payloadLength = ignore / compute-length
+IPv6.nextHeader    = 17
+IPv6.hopLimit      = 255
+
+IPv6.devPrefix     = 0x200106f8102d0000
+IPv6.devIID        = 0x10330c4c7e57b19e
+IPv6.appPrefix     = 0xff02000000000000
+IPv6.appIID        = 0x00000000000000fb
+
+UDP.devPort        = 5353
+UDP.appPort        = 5353
+UDP.length         = ignore / compute-length
+UDP.checksum       = ignore / compute-checksum
+
+    {   
+    field-id: ipv6-version
+    field-length: 4
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x06
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-trafficclass
+    field-length: 8
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x00
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-flowlabel
+    field-length: 20
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x00
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-payload-length
+    field-length: 16
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x9d
+    matching-operator: ignore
+    comp-decomp-action: compute
+    }
+    {
+    field-id: ipv6-nextheader
+    field-length: 8
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x11
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-hoplimit
+    field-length: 8
+    field-position: 1
+    direction-indicator: up
+    tv-fields: 1
+    target-value: 0xff
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-devprefix
+    field-length: 64
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x200106f8102d0000
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-deviid
+    field-length: 64
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x10330c4c7e57b19e
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-appprefix
+    field-length: 64
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0xff02000000000000
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: ipv6-appiid
+    field-length: 64
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x00000000000000fb
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: udp-dev-port
+    field-length: 16
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x14e9
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: udp-app-port
+    field-length: 16
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x14e9
+    matching-operator: equal
+    comp-decomp-action: not-sent
+    }
+    {
+    field-id: udp-length
+    field-length: 16
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x00
+    matching-operator: ignore
+    comp-decomp-action: compute
+    }
+    {
+    field-id: udp-checksum
+    field-length: 16
+    field-position: 1
+    direction-indicator: bi
+    tv-fields: 1
+    target-value: 0x00
+    matching-operator: ignore
+    comp-decomp-action: compute
+    }

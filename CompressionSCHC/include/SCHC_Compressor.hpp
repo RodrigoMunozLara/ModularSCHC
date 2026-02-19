@@ -13,7 +13,13 @@
 #include "PacketParser.hpp"
 #include "SCHC_Packet.hpp"
 
+
+
 // Rule comparator state machine for SCHC Rules
+enum class RULE_TYPE : uint8_t{
+    NO_DEFAULT_RULE = 0,
+    DEFAULT_RULE = 1
+};
 
 enum class COMP_STATE : uint8_t{
     COMP_STATE_IDLE,
@@ -33,23 +39,21 @@ enum class STATE_RESULT:uint8_t{
     ERROR
 };
 
-
-
-
 struct FSM_Ctx{ //Context for de FSM
 
-    const RuleContext *rule_ctx = nullptr; //Pointer to Rules
-
+    const RuleContext *rulesCtx = nullptr; //Pointer to Rules
     bool arrived=0;
     const std::vector<uint8_t> *raw_pkt = nullptr; //pointer to original packet
     direction_indicator_t direction = direction_indicator_t::BI; //direction of the original packet
     
-
+    const uint32_t default_ID = NULL;
     const SCHC_Rule *selected_rule = nullptr; //pointer to selected rule
+    size_t search_position = 0; //To go to the last rule found if that rule doesn't pass MO
 
 
     std::vector<FieldValue> parsedPacket; //parsed original packet
     std::unordered_map<std::string, std::size_t> idx; // hash table to link FID of the packet (for compression) with position
+    
     const FieldValue* getField(const std::string& fid) const { //helper to get the FID of the packet
         auto it = idx.find(fid);
         if (it == idx.end()) return nullptr;
@@ -57,6 +61,7 @@ struct FSM_Ctx{ //Context for de FSM
     }
 
     //---------- Output -----------
+    std::vector<uint8_t> index_MM; //vector of index for Match-Mapping if more than one field has that MO
     BitWriter residueBits;
     BitWriter totalPacket;
     uint8_t padding_bits=0;
@@ -86,5 +91,7 @@ class CompressorFSM{
         std::array<StateFn , N> handlers_{};
 
 };
+
+
 
 #endif

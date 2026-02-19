@@ -53,7 +53,7 @@ enum class cd_action_t : uint8_t {
 //struct container of TV index and value:
 struct TV_item
 {
-    uint16_t index; //number of items of the TV list
+    uint16_t size; //number of items of the TV list
     std::vector<std::vector<uint8_t>> value_matrix; //matrix of vectors of bytes, to represent each of tv values
     //used instead of void* to avoid memory management issues and better type safety
 };

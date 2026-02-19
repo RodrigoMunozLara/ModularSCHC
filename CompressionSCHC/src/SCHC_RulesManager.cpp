@@ -174,7 +174,7 @@ void write_rule_to_json(const std::string& base_filename,
         //Target Value List
         je["target-value"] = json::array();
 
-        const size_t n = std::min<size_t>(e.TV.index, e.TV.value_matrix.size());
+        const size_t n = std::min<size_t>(e.TV.size, e.TV.value_matrix.size());
 
         for (uint16_t idx = 0; idx < static_cast<uint16_t>(n); idx++)
         {
@@ -422,9 +422,9 @@ RuleContext load_rules_from_json(const std::string &filename ){
                 for (auto& p:   tv_items) {
                     entry.TV.value_matrix.push_back(std::move(p.second));
                 }
-                entry.TV.index = static_cast<uint16_t>(entry.TV.value_matrix.size());
+                entry.TV.size = static_cast<uint16_t>(entry.TV.value_matrix.size());
             } else {
-                entry.TV.index = 0;
+                entry.TV.size = 0;
             }
 
             
@@ -544,11 +544,11 @@ void create_rule(SCHC_Rule &newrule) {
             entry.FP = static_cast<uint8_t>(std::stoul(input_line("|-- Ingrese Field Position:  ")));
             entry.DI = di_from_string(input_line("|-- Ingrese Direction Indicator:  "));
             
-            entry.TV.index = static_cast<uint16_t>(std::stoul(input_line("|-- Indique cuantos items tiene la lista de Target Value:  ")));
+            entry.TV.size = static_cast<uint16_t>(std::stoul(input_line("|-- Indique cuantos items tiene la lista de Target Value:  ")));
             entry.TV.value_matrix.clear();
-            entry.TV.value_matrix.reserve(entry.TV.index);
+            entry.TV.value_matrix.reserve(entry.TV.size);
 
-            for (uint16_t k = 0; k < entry.TV.index; ++k) {
+            for (uint16_t k = 0; k < entry.TV.size; ++k) {
                 std::string line = input_line(
                     "|-- Ingrese el item TV #" + std::to_string(k) +
                     " como bytes hex (ej: [0xaa, 0x4e] o aa4e):  ");
@@ -560,7 +560,7 @@ void create_rule(SCHC_Rule &newrule) {
             }
 
             // por seguridad, sincronizamos index con el tamaño real
-            entry.TV.index = static_cast<uint16_t>(entry.TV.value_matrix.size());
+            entry.TV.size = static_cast<uint16_t>(entry.TV.value_matrix.size());
 
 
             entry.MO = mo_from_string(input_line("|-- Ingrese Matching Operator:  "));
