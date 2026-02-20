@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ICore.hpp"
+#include "interfaces/ICore.hpp"
 #include "Types.hpp"
 
 #include <unordered_map>

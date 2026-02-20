@@ -2,10 +2,10 @@
 
 
 #include "Types.hpp"
-#include "ISCHCStateMachine.hpp"
+#include "interfaces/ISCHCStateMachine.hpp"
 #include "ConfigStructs.hpp"
-#include "SCHCAckOnErrorSender.hpp"
-#include "SCHCAckOnErrorReceiver.hpp"
+#include "schcAckOnError/SCHCAckOnErrorSender.hpp"
+#include "schcAckOnError/SCHCAckOnErrorReceiver.hpp"
 
 #include <memory>
 #include <atomic>

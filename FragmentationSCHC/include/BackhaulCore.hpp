@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ICore.hpp"
+#include "interfaces/ICore.hpp"
 #include "Orchestrator.hpp"
 #include "Types.hpp"
 #include "ConfigStructs.hpp"

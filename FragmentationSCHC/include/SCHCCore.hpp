@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ICore.hpp"
+#include "interfaces/ICore.hpp"
 #include "Orchestrator.hpp"
 #include "Types.hpp"
 #include "ConfigStructs.hpp"
-#include "SCHCLoRaWANStack.hpp"
-#include "SCHCLoRaWAN_NS_MQTT_Stack.hpp"
+#include "stacks/SCHCLoRaWANStack.hpp"
+#include "stacks/SCHCLoRaWAN_NS_MQTT_Stack.hpp"
 
 #include <thread>
 #include <atomic>
