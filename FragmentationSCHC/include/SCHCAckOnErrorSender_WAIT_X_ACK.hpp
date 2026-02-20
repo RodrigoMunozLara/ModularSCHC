@@ -1,0 +1,25 @@
+#pragma once
+
+#include "SCHCAckOnErrorSender.hpp"
+#include <SCHCNodeMessage.hpp>
+
+#include "ISCHCState.hpp"
+#include "ISCHCStack.hpp"
+#include <memory>
+
+class SCHCAckOnErrorSender;   // ← forward declaration
+
+class SCHCAckOnErrorSender_WAIT_X_ACK: public ISCHCState
+{
+    private:
+        /* data */
+    public:
+        SCHCAckOnErrorSender_WAIT_X_ACK(SCHCAckOnErrorSender& ctx);
+        ~SCHCAckOnErrorSender_WAIT_X_ACK();
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
+        void release() override;
+    
+    private:
+        SCHCAckOnErrorSender& _ctx;
+};

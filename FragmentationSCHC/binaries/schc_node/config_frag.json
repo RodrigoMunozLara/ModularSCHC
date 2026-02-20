@@ -1,0 +1,39 @@
+{
+  "general": {
+    "cores": ["schc_core","backhaul_core"]
+  },
+  "logging": {
+    "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
+    "log_level": "INFO"
+  },
+  "backhaul_core": {
+    "_comment": "IPv6 socket configuration",
+    "interface": "lo"
+  },
+  "schc_core": {
+    "_comment_1": ["schc_type: schc_node, schc_gateway"],
+    "_comment_2": ["schc_l2_protocol: lorawan, lorawan_ns_mqtt, lorawan_ns_http"],
+    "_comment_3": ["schc_ack_mode: ack_end_win, ack_end_session, compound_ack"],
+    "schc_type": "schc_node",
+    "schc_l2_protocol": "lorawan",
+    "schc_ack_mechanism": "compound_ack",
+    "schc_reliability" : "false",
+    "error_prob": "0"
+    
+
+  },
+  "mqtt": {
+    "host": "nam1.cloud.thethings.network",
+    "port": "1883",
+    "username": "rmunoz-schc@ttn",
+    "password": "NNSXS.3D4H7AG7HBU7ADODLF6LEKINF43XPNX3E7GFPYQ.HAQYDGYFWG3A4QONTPKUG2TPQK2CVUCPS6442RFCUISBMGVHWLLA",
+    "devices":["AC1F09FFFE0CEFD0"]
+  },
+  "lorawan_node": {
+    "serial_port":"/dev/ttyACM0",
+    "deveui": "AC1F09FFFE0CEFD0",
+    "appeui" : "0000000000000001",
+    "appkey" : "B1B097925017FBA74FBA536900C76CAC",
+    "data_rate": "DR4"
+  }
+}
