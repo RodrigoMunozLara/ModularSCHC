@@ -153,7 +153,7 @@ std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
     return out;
 }
 
-static std::string read_file_to_string(const std::string& path) {
+std::string read_file_to_string(const std::string& path) {
     std::ifstream f(path);
     if (!f) throw std::runtime_error("No pude abrir el archivo: " + path);
     std::ostringstream ss;
@@ -163,7 +163,7 @@ static std::string read_file_to_string(const std::string& path) {
 
 // Convierte una cadena hex (con separadores) a bytes.
 // Acepta: espacios, \n, \t, ':', '-', ',', y prefijo 0x.
-static std::vector<uint8_t> hex_to_bytes(std::string s) {
+std::vector<uint8_t> hex_to_bytes(std::string s) {
     // 1) Quitar "0x" o "0X"
     for (size_t pos = 0; (pos = s.find("0x")) != std::string::npos; ) s.erase(pos, 2);
     for (size_t pos = 0; (pos = s.find("0X")) != std::string::npos; ) s.erase(pos, 2);

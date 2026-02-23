@@ -3,6 +3,7 @@
 #include <array>
 #include <algorithm>
 #include <unordered_map>
+#include "spdlog/spdlog.h"
 #include "SCHC_Compressor.hpp"
 #include "SCHC_Rule.hpp"
 #include "SCHC_RulesManager.hpp"
@@ -17,6 +18,7 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx);
 static STATE_RESULT st_cda(FSM_Ctx& ctx);
 static STATE_RESULT st_gen(FSM_Ctx& ctx);
 static STATE_RESULT st_decomp(FSM_Ctx& ctx);
+static STATE_RESULT st_nocompress(FSM_Ctx& ctx);
 
 // ---- ctor: asigna handlers ----
 CompressorFSM::CompressorFSM() {
@@ -27,6 +29,7 @@ CompressorFSM::CompressorFSM() {
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_CDA)]       = st_cda;
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_GEN)]       = st_gen;
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_DECOMP)]    = st_decomp;
+    handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_NOCOMPRESS)]  = st_nocompress;
 }
 
 //------------ Auxiliar
@@ -59,7 +62,7 @@ bool msb_comparator(const std::vector<uint8_t> &vectorA,const std::vector<uint8_
     return true;
 }
 
-uint16_t lsb_extractor(const std::vector<uint8_t> value, uint16_t bits){    
+uint16_t lsb_extractor(const std::vector<uint8_t> &value, uint16_t bits){    
     //Working only for fixed FL
     if (bits == 0) return 0; //error in extracting
 
@@ -89,30 +92,39 @@ STATE_RESULT CompressorFSM::stepFSM(FSM_Ctx& ctx) {
     StateFn fn = handlers_[i];
     if (!fn) {
         ctx.error_code = 1;
-        return STATE_RESULT::ERROR;
+        return STATE_RESULT::ERROR_;
     }
 
     ctx.next_state = state_;          // default: quedarse
     STATE_RESULT r = fn(ctx);         // ejecutar 1 vez
 
-    if (r == STATE_RESULT::PASS) {
+    if (r == STATE_RESULT::PASS_|| r == STATE_RESULT::FAIL_) {
         state_ = ctx.next_state;      // transicionar
     }
     return r;
 }
 
-STATE_RESULT CompressorFSM::runFSM(FSM_Ctx& ctx, uint32_t max_steps) {
-
+STATE_RESULT CompressorFSM::runFSM(FSM_Ctx& ctx) {
+    spdlog::info("Running FSM");
     state_ = COMP_STATE::COMP_STATE_IDLE;
-
-    for (uint32_t k = 0; k < max_steps; ++k) {
+    
+    while(ctx.OnFSM) {
         STATE_RESULT r = stepFSM(ctx);
-        if (r == STATE_RESULT::STOP || r == STATE_RESULT::ERROR || r == STATE_RESULT::FAIL) {
+        if (r == STATE_RESULT::STOP_ || r == STATE_RESULT::ERROR_) {
             return r;
+        }else if (r == STATE_RESULT::PASS_) {
+            continue;
+        } else if (r == STATE_RESULT::STAY_) {
+            continue;
+        } else if (r == STATE_RESULT::FAIL_) {
+            continue;
+        } else {
+            ctx.error_code = 0xFF; // unknown result
+            return STATE_RESULT::ERROR_;
         }
     }
     ctx.error_code = 0xFE; // loop guard
-    return STATE_RESULT::ERROR;
+    return STATE_RESULT::ERROR_;
 }
 
 
@@ -122,45 +134,55 @@ STATE_RESULT CompressorFSM::runFSM(FSM_Ctx& ctx, uint32_t max_steps) {
 //IDLE STATE: Waiting to change when a package arrives
 //FOR NOW IT ASUMES IT IS A NON SCHC PACKET, JUSTP IPV6-UDP
 static STATE_RESULT st_idle(FSM_Ctx& ctx) {
+    spdlog::info("State: IDLE. Waiting for packet...");
     if(ctx.arrived){
         ctx.next_state = COMP_STATE::COMP_STATE_PARSE;
-        return STATE_RESULT::PASS;
+        return STATE_RESULT::PASS_;
     }
     else{
-        return STATE_RESULT::STAY;
+        
+        return STATE_RESULT::STAY_;
     }
 }
 
 static STATE_RESULT st_parse(FSM_Ctx& ctx) {
-    if (!ctx.raw_pkt) { ctx.error_code = 2; return STATE_RESULT::ERROR; }
+    spdlog::info("State: PARSE. Parsing packet...");
+    if (!ctx.raw_pkt) { ctx.error_code = 2; return STATE_RESULT::ERROR_; }
 
     bool link = (ctx.direction == direction_indicator_t::DOWN);
 
     if(link){//If "DOWN" direction (to the device), parse for compression
             
         // parse IPv6+UDP -> vector<FieldValue>
-        ctx.parsedPacket = parse_ipv6_udp_fields(*ctx.raw_pkt, link);
-
+        ctx.parsedPacketHeaders = parse_ipv6_udp_fields(*ctx.raw_pkt, link);
+        spdlog::debug("Parsed packet fields:");
         // build idx
         ctx.idx.clear();
-        ctx.idx.reserve(ctx.parsedPacket.size());
-        for (size_t i = 0; i < ctx.parsedPacket.size(); ++i) {
-            ctx.idx.emplace(ctx.parsedPacket[i].fid, i);
+        ctx.idx.reserve(ctx.parsedPacketHeaders.size());
+        for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) {
+            ctx.idx.emplace(ctx.parsedPacketHeaders[i].fid, i);
         }
 
+        spdlog::debug("Next State: FIND_RULE");
         ctx.next_state = COMP_STATE::COMP_STATE_FIND_RULE;
     }/*else{ //if "UP" direction, parse for decompression. Not implemented yet.
         ctx.next_state = COMP_STATE::COMP_STATE_DECOMP;
     }*/
 
-    if (ctx.parsedPacket.empty()) return STATE_RESULT::FAIL;
+    if (ctx.parsedPacketHeaders.empty()) return STATE_RESULT::FAIL_;
 
     
-    return STATE_RESULT::PASS;
+    return STATE_RESULT::PASS_;
 }
 
 static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
-    if (!ctx.rulesCtx) { ctx.error_code = 3; return STATE_RESULT::ERROR; }
+    spdlog::info("State: FIND_RULE. Searching for matching rule...");
+    if (!ctx.rulesCtx) { 
+        ctx.error_code = 3;
+        spdlog::error("No rules context available in FSM_Ctx. ERROR {}", ctx.error_code);
+        return STATE_RESULT::ERROR_; 
+    
+    }
     const SCHC_Rule * defRule = nullptr;
     ctx.selected_rule = nullptr;
     const auto& rules = *ctx.rulesCtx;
@@ -173,18 +195,19 @@ static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
             &&rule.getNatureType() == nature_type_t::NO_COMPRESSION)
             &&(rule.getRuleID() == ctx.default_ID)){
             defRule = &rule;
+            spdlog::info("Default rule found with ID={}", defRule->getRuleID());
         }
-        if (rule.getNatureType() != nature_type_t::COMPRESSION) continue;
+        if (rule.getNatureType() != nature_type_t::COMPRESSION) continue;//Only compression rules are valid for this state
 
-        std::vector<bool> used(ctx.parsedPacket.size(), false);//Vector flags to verify if the field have already match
+        std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);//Vector flags to verify if the field have already match
         bool rule_ok = true;
 
         for (const auto& entry : rule.getFields()) { //iterating entrys in the current rule
             bool found = false;
 
-            for (size_t i = 0; i < ctx.parsedPacket.size(); ++i) { //iterating entrys (fields) in the parsed packet
+            for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) { //iterating entrys (fields) in the parsed packet
                 if (used[i]) continue;
-                const auto& field = ctx.parsedPacket[i];
+                const auto& field = ctx.parsedPacketHeaders[i];
 
                 if (entry.FID != field.fid) continue;
                 if (!((entry.DI == direction_indicator_t::BI) || (entry.DI == ctx.direction))) continue;
@@ -202,65 +225,114 @@ static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
     if (rule_ok) { 
         ctx.search_position = rule_candidate + 1;
         ctx.selected_rule = &rule; 
+        spdlog::info("Matching rule found with ID={}", ctx.selected_rule->getRuleID());
         break; }
     }
     if (!ctx.selected_rule) {
         ctx.selected_rule = defRule;
+        ctx.next_state = COMP_STATE::COMP_STATE_NOCOMPRESS;
+        spdlog::warn("No matching compression rule found. Using default rule with ID={}", ctx.selected_rule->getRuleID());
+        return STATE_RESULT::PASS_;
     }
 
     ctx.next_state = COMP_STATE::COMP_STATE_MO;
-    return STATE_RESULT::PASS;
+    spdlog::info("Next State: MO");
+    return STATE_RESULT::PASS_;
+}
+
+static STATE_RESULT st_nocompress(FSM_Ctx& ctx){
+    spdlog::info("State: NO_COMPRESS. Generating uncompressed packet...");
+    ctx.residueBits.clear();
+    //write the whole packet as residue, because it is not compressible
+    ctx.residueBits.write_msb(*ctx.raw_pkt,
+                             static_cast<uint32_t>(ctx.raw_pkt->size() * 8u));
+    spdlog::debug("writed the original raw packet of {} bytes", ctx.raw_pkt->size());
+    //Save RuleID and Residue in the output packet instance
+    ctx.out_SCHC.setPacketData(ctx.selected_rule->getRuleID(), ctx.residueBits);
+    
+    //write the RuleID in the compressed packet
+    ctx.totalPacket.clear();
+    ctx.totalPacket.write_uint<uint32_t>(
+        ctx.selected_rule->getRuleID(),
+        static_cast<uint32_t>(ctx.selected_rule->getRuleIDLength())
+    );
+
+    //write the whole packet as residue
+    ctx.totalPacket.write_writer(ctx.residueBits);
+
+    // Padding a byte
+    if ((ctx.totalPacket.bitLength() & 7u) != 0u) {
+        uint32_t pad = 8u - (ctx.totalPacket.bitLength() & 7u);
+        ctx.padding_bits = static_cast<uint8_t>(pad);
+        ctx.totalPacket.write_u64(0u, pad); // escribe pad bits en 0
+    } else {
+        ctx.padding_bits = 0;
+    }
+    spdlog::debug("Packet length after padding: {} bits ({} bytes)", ctx.totalPacket.bitLength(), ctx.totalPacket.bitLength() / 8u );
+
+    ctx.out_SCHC.setPacketRaw(ctx.totalPacket);
+
+    ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
+    spdlog::info("Packet generated without compression. Next State: IDLE");
+    return STATE_RESULT::PASS_;
 }
 
 static STATE_RESULT st_mo(FSM_Ctx& ctx) {
-    std::vector<bool> used(ctx.parsedPacket.size(), false);//Vector flags to verify if the field have already been checked
+    spdlog::info("State: MO. Evaluating Matching Operators...");
+    std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);//Vector flags to verify if the field have already been checked
     bool rule_ok = true;
     ctx.index_MM.clear();
 
-
     for (const auto& entry : ctx.selected_rule->getFields()) { 
-        bool found = false;
+        spdlog::debug("Evaluating entry with FID={} and MO={}", entry.FID, static_cast<int>(entry.MO));
+        bool found = false;//For each entry in the rule, check if there is a match in the packet with the corresponding MO.
+        // If not, the rule is not valid for that packet and we have to try with the next one. 
+        //If there is a match, we save the index of the packet field that matches with that entry to use it later in the CDA state.
         if(entry.MO == matching_operator_t::IGNORE_){
             found=true;
             continue;
         }
-        for (size_t i = 0; i < ctx.parsedPacket.size(); ++i) { //iterating entrys (fields) in the parsed packet
+        for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) { //iterating entrys (fields) in the parsed packet
             
             if (used[i]) continue;
-            const auto& field = ctx.parsedPacket[i];
+            const auto& field = ctx.parsedPacketHeaders[i];
             if (entry.FID != field.fid) continue;
             switch (entry.MO)
             {
-            case matching_operator_t::EQUAL_ :
-                if(entry.TV.value_matrix[0] == field.value){//if not equal value    
+            case matching_operator_t::EQUAL_ :{
+                if(entry.TV.value_matrix[0] == field.value){ 
                     found = true;
                     used[i] = true;
                 }
                 break;
-                
-            case matching_operator_t::MATCH_MAPPING_ :
-                uint8_t pushed = 0;
+            }
+            case matching_operator_t::MATCH_MAPPING_ :{
+                int8_t pushed = -1;
                 for(size_t j = 0; j< entry.TV.size ; j++){
                     if(entry.TV.value_matrix[j] == field.value){
                         pushed = static_cast<uint8_t>(j);
-                        
+                        spdlog::debug("Match-Mapping found for FID={} at TV index={}", entry.FID, pushed);
                         break;
                     }
                         
                 }
-                if(pushed){
+                if(pushed>=0){
                     found = true;
                     used[i] = true;
                     ctx.index_MM.push_back(pushed); //push the index of the TV index that matches the packet value
+                }else{
+                    found = false;
+                    used[i] = true;
                 }
                 
                 break;
-                
-            case matching_operator_t::MSB_ ://Asuming all are FIXED cuz i didn't understand the var type
+            }    
+            case matching_operator_t::MSB_ :{//Asuming all are FIXED cuz i didn't understand the var type
                 if(entry.FL.type == "FIXED"){
                     if(msb_comparator(entry.TV.value_matrix[0], field.value, entry.MsbLength)){
                         found = true;
                         used[i] = true;
+                        spdlog::debug("MSB match found for FID={} with MSB length={}", entry.FID, entry.MsbLength);
                     }
                 //}else if((entry.FL.type != "FIXED")&&!(entry.MsbLength % 8)){ //If FL is variable,  MUST multiple of 
 
@@ -269,86 +341,144 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx) {
                 }
                 
                 break;
+            }
             default:
                     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
-                    return STATE_RESULT::ERROR;
+                    found = false;
+                    spdlog::error("Unknown MO, returning to IDLE. MO value: {}", static_cast<int>(entry.MO));
+                    return STATE_RESULT::ERROR_;
                 break;
             }
 
+            if(found) break;
+            
+
         }
-        if(found) break;
+        if(!found){
+            rule_ok = false;
+            spdlog::debug("No match found for entry with FID={} and MO={}. Rule rejected.", entry.FID, static_cast<int>(entry.MO));
+            break;
+        }
+
     }
     if(!rule_ok){
-        ctx.search_position = ctx.search_position + 1;
         ctx.selected_rule = nullptr;
-
+        spdlog::info("Rule rejected. Next State: FIND_RULE");
         ctx.next_state = COMP_STATE::COMP_STATE_FIND_RULE;
-        return STATE_RESULT::FAIL;
+        return STATE_RESULT::FAIL_; 
     }
-
+    spdlog::info("All entries matched. Rule accepted. Next State: CDA");
     ctx.next_state = COMP_STATE::COMP_STATE_CDA;
-    return STATE_RESULT::PASS;
+    return STATE_RESULT::PASS_;
 }
 
 static STATE_RESULT st_cda(FSM_Ctx& ctx) {
-    
-    std::vector<bool> used(ctx.parsedPacket.size(), false);//Vector flags to verify if the field have already been checked
-    bool rule_ok = true;
-    uint8_t mapp_index_count=0;
-    
-    for (const auto& entry : ctx.selected_rule->getFields()) { 
+    spdlog::info("State: CDA. Evaluating Compression/Decompression Actions...");
+    std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);
+    uint32_t mapp_index_count = 0;
+
+    ctx.residueBits.clear();
+
+    for (const auto& entry : ctx.selected_rule->getFields()) {
         bool found = false;
 
-        for (size_t i = 0; i < ctx.parsedPacket.size(); ++i) { //iterating entrys (fields) in the parsed packet
+        for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) {
             if (used[i]) continue;
-            const auto& field = ctx.parsedPacket[i];
-            
 
-            switch (entry.CDA)
-            {
-            case cd_action_t::VALUE_SENT: //write the value of the packet
-                ctx.residueBits.write_bits( field.value,field.bit_length);
+            const auto& field = ctx.parsedPacketHeaders[i];
+            if (entry.FID != field.fid) continue;
+
+            switch (entry.CDA) {//The only three CDAs that generate residue are VALUE_SENT, MAPPING_SENT and LSB. 
+                //The rest of CDAs just indicate that the field is not sent but doesn't generate residue.
+
+            case cd_action_t::VALUE_SENT:
+                ctx.residueBits.write_msb(field.value,
+                                         static_cast<uint32_t>(field.bit_length));
+                spdlog::debug("VALUE_SENT for FID={} with bit length={}", entry.FID, field.bit_length);
+                found = true;
+                used[i] = true;
                 break;
-            
-            case cd_action_t::MAPPING_SENT:
+
+            case cd_action_t::MAPPING_SENT: {
+                uint32_t aux = static_cast<uint32_t>(entry.TV.value_matrix.size());//number of possible values in the TV
+                uint32_t idx_bits = static_cast<uint32_t>(value_size_in_bits(aux - 1u));//number of bits needed to represent the index of the TV value
                 
-                ctx.residueBits.write_bits(ctx.index_MM[mapp_index_count], 
-                    value_size_in_bits(ctx.index_MM[mapp_index_count])); //to write the number in the least amount of bits
-                mapp_index_count++;
-                break;
-            
-            case cd_action_t::LSB:
-                uint16_t lsb_value = lsb_extractor(field.value, (field.bit_length - entry.MsbLength));
-                ctx.residueBits.write_bits(lsb_value, static_cast<uint8_t>(value_size_in_bits(lsb_value)));
-                break;
-            default:
-                    found = true;
-                    used[i] = true;
+                ctx.residueBits.write_uint<uint32_t>(
+                    static_cast<uint32_t>(ctx.index_MM[mapp_index_count]),
+                    idx_bits
+                );
+                spdlog::debug("MAPPING_SENT for FID={} with TV size={} and index bits={}", entry.FID, aux, idx_bits);
+                ++mapp_index_count;//to save different index for each field with Match-Mapping MO
+                found = true;
+                used[i] = true;
                 break;
             }
 
+            case cd_action_t::LSB: {
+                uint32_t lsb_bits = static_cast<uint32_t>(field.bit_length - entry.MsbLength);
+                uint64_t lsb_value = static_cast<uint64_t>(
+                    lsb_extractor(field.value, static_cast<uint16_t>(lsb_bits))
+                );
+
+                ctx.residueBits.write_u64(lsb_value, lsb_bits);
+                spdlog::debug("LSB for FID={} with LSB bits={}", entry.FID, lsb_bits);
+                found = true;
+                used[i] = true;
+                break;
+            }
+
+            default: //for other CDAs
+                spdlog::debug("CDA {} for FID={} does not generate residue bits", static_cast<int>(entry.CDA), entry.FID);
+                found = true;
+                used[i] = true;
+                break;
+            }
+
+            if (found) break;
         }
     }
+    spdlog::info("CDA evaluation completed. Next State: GEN");
     ctx.next_state = COMP_STATE::COMP_STATE_GEN;
-    return STATE_RESULT::PASS;
-
+    return STATE_RESULT::PASS_;
 }
 
 static STATE_RESULT st_gen(FSM_Ctx& ctx) {
+    spdlog::info("State: GEN. Generating compressed packet...");
+    ctx.totalPacket.clear();
 
-    ctx.out_SCHC.setPacketData(ctx.selected_rule->getRuleID(),
-        ctx.residueBits);
-    
-    
-    
+    //Save and write the RuleID found in the output packet instance and in the raw packet
+    spdlog::debug("Writing RuleID={} with length={} bits in the compressed packet", ctx.selected_rule->getRuleID(), ctx.selected_rule->getRuleIDLength());
+    ctx.out_SCHC.setPacketData(ctx.selected_rule->getRuleID(), ctx.residueBits);
+    ctx.totalPacket.write_uint<uint32_t>(
+        static_cast<uint32_t>(ctx.selected_rule->getRuleID()),
+        static_cast<uint32_t>(ctx.selected_rule->getRuleIDLength())
+    );
+
+    //Write the residue bits in the raw packet
+    ctx.totalPacket.write_writer(ctx.residueBits);
+    spdlog::debug("Written residue bits of length {} bits", ctx.residueBits.bitLength());
+    // Padding byte
+    if ((ctx.totalPacket.bitLength() & 7u) != 0u) {
+        uint32_t pad = 8u - (ctx.totalPacket.bitLength() & 7u);
+        ctx.padding_bits = static_cast<uint8_t>(pad);
+        ctx.totalPacket.write_u64(0u, pad);
+    } else {
+        ctx.padding_bits = 0;
+    }
+
+    //Save the raw packet in the output packet instance
+    ctx.out_SCHC.setPacketRaw(ctx.totalPacket);
+    ctx.arrived = false; //reset arrived flag for the next packet
+    spdlog::info("Compressed packet generated. Next State: IDLE. Waiting for next packet...");
     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
-    return STATE_RESULT::PASS;
+    return STATE_RESULT::PASS_;
 }
+
 
 static STATE_RESULT st_decomp(FSM_Ctx& ctx) {
     
     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
-    return STATE_RESULT::PASS;
+    return STATE_RESULT::PASS_;
 }
 
 

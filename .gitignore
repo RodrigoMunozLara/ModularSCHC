@@ -1,9 +1,11 @@
-FragmentationSCHC/build/
+FragmentationSCHC/
 CompressionSCHC/rulestest.txt
 CompressionSCHC/Test/build/
 libyang/
 CompressionSCHC/Test/CMakeFiles/
 *.o
 .vscode/
+build/
 C++_Version.code-workspace
 readme_comands.txt
+.gitignore

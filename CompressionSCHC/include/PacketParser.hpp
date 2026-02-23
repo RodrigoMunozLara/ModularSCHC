@@ -37,4 +37,8 @@ static void push_field(std::vector<FieldValue>& out,
 std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
                                               bool direction_uplink);
 
+
+std::string read_file_to_string(const std::string& path);
+std::vector<uint8_t> hex_to_bytes(std::string s);
+
 #endif

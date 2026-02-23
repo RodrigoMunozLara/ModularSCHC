@@ -2,68 +2,122 @@
 #include <vector>
 #include <stdexcept>
 #include "spdlog/spdlog.h"
+#include "spdlog/fmt/bin_to_hex.h" 
 #include "SCHC_Packet.hpp"
 
-// write value in the size in bits given in nbits in a buffer in the struct
-void BitWriter::write_bits(uint16_t value, uint8_t nbits) {
-    if (!nbits) return;
 
-    if (nbits > 16) {
-        spdlog::error("write_bits: nbits > 16 no soportado");
-        throw std::invalid_argument("write_bits: nbits > 16 no soportado");
-    }
+void BitWriter::ensure_capacity_bits(uint32_t more_bits) {
+    uint32_t total_bits = bitlen + more_bits;
+    size_t need_bytes = (static_cast<size_t>(total_bits) + 7u) / 8u;
+    if (buffer.size() < need_bytes) buffer.resize(need_bytes, 0);
+}
 
-    for (uint8_t i = 0; i < nbits; i++) { // big-endian bit order
-        uint8_t bit = (value >> (nbits - 1 - i)) & 0x01;
+inline void BitWriter::write_one_bit(uint8_t bit) {
+    // destino
+    size_t bi = byte_index();
+    uint32_t off = bit_offset_in_byte(); // 0..7
 
-        uint16_t byte_index = bitlen >> 3;
-        uint8_t bit_in_byte = bitlen & 0x07;
+    // off=0 -> bit 7 (MSB); off=7 -> bit 0 (LSB)
+    uint8_t mask = static_cast<uint8_t>(0x80u >> off);
+    if (bit & 1u) buffer[bi] |= mask;
 
-        if (byte_index >= buffer.size()) {
-            buffer.push_back(0);
-        }
+    ++bitlen;
+}
 
-        uint8_t mask = static_cast<uint8_t>(0x80u >> bit_in_byte);
-        if (bit) {
-            buffer[byte_index] |= mask;
-        }
+void BitWriter::pad_to_byte() {
+    uint32_t rem = bitlen & 7u;
+    if (rem == 0u) return;
+    uint32_t to_add = 8u - rem;
+    ensure_capacity_bits(to_add);
+    for (uint32_t i = 0; i < to_add; ++i) write_one_bit(0);
+}
 
-        bitlen++;
+void BitWriter::write_u64(uint64_t value, uint32_t nbits) {
+    if (nbits == 0u) return;
+    if (nbits > 64u) throw std::invalid_argument("write_u64: nbits > 64");
+
+    ensure_capacity_bits(nbits);
+
+    // MSB-first de esos nbits
+    for (uint32_t i = 0; i < nbits; ++i) {
+        uint32_t shift = (nbits - 1u - i);
+        uint8_t bit = static_cast<uint8_t>((value >> shift) & 1ull);
+        write_one_bit(bit);
     }
 }
 
-// --- Nuevo overload: recibe bytes y nbits ---
-void BitWriter::write_bits(const std::vector<uint8_t>& bytes, uint8_t nbits) {
-    if (!nbits) return;
+void BitWriter::write_from_msb_buffer(const uint8_t* data, size_t data_len, uint32_t nbits) {
+    if (nbits == 0u) return;
+    if (!data) throw std::invalid_argument("write_from_msb_buffer: data null");
 
-    if (nbits > 32) {
-        spdlog::error("write_bits(bytes): nbits > 32 no soportado");
-        throw std::invalid_argument("write_bits(bytes): nbits > 32 no soportado");
+    size_t need_src_bytes = (static_cast<size_t>(nbits) + 7u) / 8u;
+    if (data_len < need_src_bytes) {
+        throw std::invalid_argument("write_from_msb_buffer: bytes insuficientes para nbits");
     }
 
-    const size_t needed_bytes = (nbits + 7u) / 8u;
-    if (bytes.size() < needed_bytes) {
-        spdlog::error("write_bits(bytes): bytes.size()={} insuficiente para nbits={}",
-                      bytes.size(), nbits);
-        throw std::invalid_argument("write_bits(bytes): bytes insuficientes para nbits");
+    ensure_capacity_bits(nbits);
+
+    // FAST PATH: writer alineado + nbits múltiplo de 8 => copia directa
+    if (((bitlen & 7u) == 0u) && ((nbits & 7u) == 0u)) {
+        size_t dst = byte_index();
+        size_t nbytes = static_cast<size_t>(nbits / 8u);
+        for (size_t i = 0; i < nbytes; ++i) buffer[dst + i] = data[i];
+        bitlen += nbits;
+        return;
     }
 
-    // Empaqueta en big-endian usando los primeros needed_bytes
-    uint32_t value = 0;
-    for (size_t i = 0; i < needed_bytes; ++i) {
-        value = (value << 8) | static_cast<uint32_t>(bytes[i]);
+    // General: bit-a-bit (correcto para cualquier alineación y nbits grandes)
+    for (uint32_t i = 0; i < nbits; ++i) {
+        uint32_t src_bit = i;
+        uint8_t src_byte = data[src_bit / 8u];
+        uint8_t src_shift = static_cast<uint8_t>(7u - (src_bit % 8u));
+        uint8_t bit = static_cast<uint8_t>((src_byte >> src_shift) & 1u);
+        write_one_bit(bit);
     }
-
-    // Si nbits no es múltiplo de 8, asumimos que el campo está MSB-alineado
-    // (ej: IPv6 version está en los 4 bits altos de 0x60 -> queda 0x06)
-    const uint8_t extra = static_cast<uint8_t>(needed_bytes * 8u - nbits);
-    if (extra) {
-        value >>= extra;
-    }
-
-    // Reusa el core
-    write_bits(value, nbits);
 }
 
-const std::vector<uint8_t>& BitWriter::bytes() const { return buffer; }
-uint32_t BitWriter::bitLength() const { return bitlen; }
+void BitWriter::write_msb(const std::vector<uint8_t>& data, uint32_t nbits) {
+    write_from_msb_buffer(data.data(), data.size(), nbits);
+}
+
+void BitWriter::write_msb(const uint8_t* data, size_t data_len, uint32_t nbits) {
+    write_from_msb_buffer(data, data_len, nbits);
+}
+
+void BitWriter::write_bytes_aligned(const std::vector<uint8_t>& data) {
+    write_bytes_aligned(data.data(), data.size());
+}
+
+void BitWriter::write_bytes_aligned(const uint8_t* data, size_t len) {
+    if (!data && len != 0) throw std::invalid_argument("write_bytes_aligned: data null");
+    if (len == 0) return;
+
+    if ((bitlen & 7u) != 0u) {
+        // Esta función es explícitamente “fast path”.
+        // Si quieres permitirlo igual, llama a write_msb(data, len, len*8).
+        throw std::invalid_argument("write_bytes_aligned: BitWriter no está alineado a byte");
+    }
+
+    ensure_capacity_bits(static_cast<uint32_t>(len * 8u));
+
+    size_t dst = byte_index();
+    for (size_t i = 0; i < len; ++i) buffer[dst + i] = data[i];
+    bitlen += static_cast<uint32_t>(len * 8u);
+}
+
+void SCHC_Compressed_Packet::setPacketData(uint8_t rule, BitWriter& residue) {
+    compressionRuleID = rule;
+    compressionResidue = residue;
+}   
+
+void SCHC_Compressed_Packet::setPacketRaw(BitWriter& raw) {
+    packetRaw = raw;
+}  
+BitWriter SCHC_Compressed_Packet::getPacketRaw() const {
+    return packetRaw;
+}   
+void SCHC_Compressed_Packet::printPacket() const {
+    spdlog::info("SCHC Packet - RuleID: {}, Residue ({} bits): {} ",
+                 compressionRuleID, compressionResidue.bitLength(), spdlog::to_hex(compressionResidue.bytes()));
+}
+

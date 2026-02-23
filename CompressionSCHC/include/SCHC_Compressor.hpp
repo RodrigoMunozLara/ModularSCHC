@@ -28,36 +28,38 @@ enum class COMP_STATE : uint8_t{
     COMP_STATE_MO,
     COMP_STATE_CDA, 
     COMP_STATE_GEN, 
-    COMP_STATE_DECOMP
+    COMP_STATE_DECOMP,
+    COMP_STATE_NOCOMPRESS
 };
 
 enum class STATE_RESULT:uint8_t{
-    PASS,
-    STAY, 
-    FAIL,
-    STOP,
-    ERROR
+    PASS_,
+    STAY_, 
+    FAIL_,
+    STOP_,
+    ERROR_
 };
 
 struct FSM_Ctx{ //Context for de FSM
 
-    const RuleContext *rulesCtx = nullptr; //Pointer to Rules
-    bool arrived=0;
+    RuleContext *rulesCtx = nullptr; //Pointer to Rules
+    //std::unordered_map<uint8_t rule_index , const SCHC_Rule* ptr_rule> decompress_map;
+    bool arrived=false;
     const std::vector<uint8_t> *raw_pkt = nullptr; //pointer to original packet
     direction_indicator_t direction = direction_indicator_t::BI; //direction of the original packet
     
-    const uint32_t default_ID = NULL;
+    uint32_t default_ID = 0;
     const SCHC_Rule *selected_rule = nullptr; //pointer to selected rule
     size_t search_position = 0; //To go to the last rule found if that rule doesn't pass MO
 
 
-    std::vector<FieldValue> parsedPacket; //parsed original packet
+    std::vector<FieldValue> parsedPacketHeaders; //parsed original packet
     std::unordered_map<std::string, std::size_t> idx; // hash table to link FID of the packet (for compression) with position
     
     const FieldValue* getField(const std::string& fid) const { //helper to get the FID of the packet
         auto it = idx.find(fid);
         if (it == idx.end()) return nullptr;
-        return &parsedPacket[it->second];
+        return &parsedPacketHeaders[it->second];
     }
 
     //---------- Output -----------
@@ -69,6 +71,7 @@ struct FSM_Ctx{ //Context for de FSM
 
     //--------- FSM Control --------
     COMP_STATE next_state = COMP_STATE::COMP_STATE_IDLE;
+    bool OnFSM = true; //flag to control the FSM loop
     uint8_t error_code =0 ;
 
 };
@@ -82,10 +85,10 @@ class CompressorFSM{
     public:
         CompressorFSM();
         STATE_RESULT stepFSM(FSM_Ctx &ctx);
-        STATE_RESULT runFSM(FSM_Ctx &ctx, uint32_t max_steps);
+        STATE_RESULT runFSM(FSM_Ctx &ctx);
 
     private:
-        static constexpr std::size_t N = static_cast<std::size_t>(COMP_STATE::COMP_STATE_DECOMP) + 1;
+        static constexpr std::size_t N = static_cast<std::size_t>(COMP_STATE::COMP_STATE_NOCOMPRESS) + 1;
         COMP_STATE state_ = COMP_STATE::COMP_STATE_IDLE;
         
         std::array<StateFn , N> handlers_{};

@@ -85,7 +85,7 @@ struct SCHC_Entry {
 class SCHC_Rule{
 
     private:
-        uint32_t rule_id; //Rule ID
+        uint8_t rule_id; //Rule ID
         uint8_t rule_id_length; //Rule ID Length in bits
         nature_type_t nature_type; //Nature Type (Compression, No Compression, Fragmentation)
        

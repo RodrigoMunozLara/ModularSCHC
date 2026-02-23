@@ -11,6 +11,7 @@
 #include "SCHC_Rule.hpp"
 #include "SCHC_RulesManager.hpp"
 #include "PacketParser.hpp"
+#include "SCHC_Compressor.hpp"
 #include "SCHC_Yang.hpp"
 
 // Lee una opción de menú de forma segura (evita cin en fail-state)
@@ -35,7 +36,13 @@ static int read_menu_choice() {
 
 int main() {
     // ---- Logging a archivo ----
+    FSM_Ctx ctx;
+    CompressorFSM fsm;
     
+    ctx.default_ID = 0;
+    ctx.arrived = false;
+    ctx.OnFSM = false;
+
     try {
         auto logger = spdlog::basic_logger_mt("basic_logger", "logs.txt");
         spdlog::set_default_logger(logger);
@@ -69,14 +76,15 @@ int main() {
         return 1;
     }
 
+    ctx.rulesCtx = &rules;
+    ctx.OnFSM = true;
     
-
     // ---- Menú ----
     for (;;) {
         std::cout << "\nMenu:\n";
         std::cout << "1. Imprimir reglas cargadas\n";
         std::cout << "2. Crear nueva regla\n";
-        std::cout << "3. Cargar/parsear paquete IPv6-UDP desde archivo\n";
+        std::cout << "3. Empezar Compresión\n";
         std::cout << "4. Cerrar el programa\n";
 
         int choice = read_menu_choice();
@@ -133,26 +141,30 @@ int main() {
 
             spdlog::debug("terminó opción 2 del menú");
 
-        }
-        else if (choice == 3) {
-            std::cout << "Ingrese ruta del archivo (Enter = packets/demo.txt): ";
-            std::string path;
-            std::getline(std::cin, path);
-            if (path.empty()) path = "packets/demo.txt";
+        }else if(choice == 3){
+            while(!ctx.arrived) {
+                std::string pkt_path = "packets/demo" + input_line("Ingrese el numero del paquete a comprimir (1-3): ") + ".txt";
+                if(pkt_path.empty()) {
+                    spdlog::warn("No se ingresó ruta de paquete. Intente de nuevo.");
+                    std::cout << "Ruta vacía. Intente de nuevo.\n";
+                    continue;
+                }
+                try {
+                    spdlog::info("Cargando paquete desde '{}'", pkt_path);
+                    std::vector<uint8_t> raw_pkt = hex_to_bytes(read_file_to_string(pkt_path));
+                    ctx.raw_pkt = &raw_pkt;
+                    ctx.direction = direction_indicator_t::DOWN; // Asumimos downlink para este demo
+                    ctx.arrived = true;
+
+                } catch (const std::exception& e) {
+                    spdlog::error("Error cargando paquete: {}", e.what());
+                    std::cout << "Error cargando paquete: " << e.what() << "\n";
+                }
+                fsm.runFSM(ctx);
             
-            std::string text = read_file_to_string(path);
-            //* se debe cambiar el tipo de dato de entrada a la esperada por el dispositivo
-            std::vector<uint8_t> pkt = hex_to_bytes(text);
-
-            bool uplink = true; // o false según tu test
-            auto fields = parse_ipv6_udp_fields(pkt, uplink);
-
-                // imprimir campos (demo)
-            for (const auto& f : fields) {
-                std::cout << f.fid << " (" << f.bit_length << " bits) = ";
-                for (uint8_t b : f.value) std::cout << std::hex << (int)b << " ";
-                std::cout << std::dec << "\n";
             }
+            
+            
 
         }
         else if (choice == 4) {
