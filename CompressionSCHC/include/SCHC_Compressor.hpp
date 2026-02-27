@@ -46,14 +46,16 @@ struct FSM_Ctx{ //Context for de FSM
     //std::unordered_map<uint8_t rule_index , const SCHC_Rule* ptr_rule> decompress_map;
     bool arrived=false;
     const std::vector<uint8_t> *raw_pkt = nullptr; //pointer to original packet
+    const SCHC_Rule * defRule = nullptr;
     direction_indicator_t direction = direction_indicator_t::BI; //direction of the original packet
     
-    uint32_t default_ID = 0;
+    uint8_t default_ID = 0;
     const SCHC_Rule *selected_rule = nullptr; //pointer to selected rule
     size_t search_position = 0; //To go to the last rule found if that rule doesn't pass MO
 
 
     std::vector<FieldValue> parsedPacketHeaders; //parsed original packet
+    std::vector<uint8_t> payload;
     std::unordered_map<std::string, std::size_t> idx; // hash table to link FID of the packet (for compression) with position
     
     const FieldValue* getField(const std::string& fid) const { //helper to get the FID of the packet

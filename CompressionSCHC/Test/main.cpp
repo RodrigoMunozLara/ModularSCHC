@@ -12,7 +12,6 @@
 #include "SCHC_RulesManager.hpp"
 #include "PacketParser.hpp"
 #include "SCHC_Compressor.hpp"
-#include "SCHC_Yang.hpp"
 
 // Lee una opción de menú de forma segura (evita cin en fail-state)
 static int read_menu_choice() {
@@ -42,6 +41,7 @@ int main() {
     ctx.default_ID = 0;
     ctx.arrived = false;
     ctx.OnFSM = false;
+    std::vector<uint8_t> raw_pkt;
 
     try {
         auto logger = spdlog::basic_logger_mt("basic_logger", "logs.txt");
@@ -141,7 +141,7 @@ int main() {
 
             spdlog::debug("terminó opción 2 del menú");
 
-        }else if(choice == 3){
+       }else if(choice == 3){
             while(!ctx.arrived) {
                 std::string pkt_path = "packets/demo" + input_line("Ingrese el numero del paquete a comprimir (1-3): ") + ".txt";
                 if(pkt_path.empty()) {
@@ -151,21 +151,36 @@ int main() {
                 }
                 try {
                     spdlog::info("Cargando paquete desde '{}'", pkt_path);
-                    std::vector<uint8_t> raw_pkt = hex_to_bytes(read_file_to_string(pkt_path));
+                    raw_pkt = hex_to_bytes(read_file_to_string(pkt_path));
                     ctx.raw_pkt = &raw_pkt;
-                    ctx.direction = direction_indicator_t::DOWN; // Asumimos downlink para este demo
+                    ctx.direction = direction_indicator_t::UP; // downlink for this demo
                     ctx.arrived = true;
 
                 } catch (const std::exception& e) {
                     spdlog::error("Error cargando paquete: {}", e.what());
                     std::cout << "Error cargando paquete: " << e.what() << "\n";
                 }
-                fsm.runFSM(ctx);
-            
             }
-            
-            
+            //FSM demo loop
+            ctx.OnFSM = true;
+            //This replace fsm.runFSM(ctx) to be able to control the loop from the main and add some logs after each step.
+            while (ctx.OnFSM) {
 
+                STATE_RESULT r = fsm.stepFSM(ctx);
+                if (r == STATE_RESULT::STOP_ || r == STATE_RESULT::ERROR_) {
+                    ctx.OnFSM = false;
+                    break;
+                }
+                if (r == STATE_RESULT::STAY_ && !ctx.arrived) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                }
+                if (!ctx.arrived) {
+                    ctx.OnFSM = false;
+                    break;
+                }
+            }
+
+            ctx.OnFSM = false;
         }
         else if (choice == 4) {
             spdlog::info("Cerrando el programa...");

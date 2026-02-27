@@ -13,7 +13,6 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Compressor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Packet.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Rule.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/SCHC_Yang.cpp
 )
 
 add_executable(CompressionSCHC_Test ${SOURCES})

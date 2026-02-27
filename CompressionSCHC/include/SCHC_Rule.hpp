@@ -94,21 +94,21 @@ class SCHC_Rule{
     public:
         SCHC_Rule(); //Default Constructor
 
-        SCHC_Rule(uint32_t rid, uint16_t rid_length, nature_type_t ntype)
+        SCHC_Rule(uint8_t rid, uint8_t rid_length, nature_type_t ntype)
             : rule_id(rid), rule_id_length(rid_length), nature_type(ntype) {}
         
-        SCHC_Rule(uint32_t rid, uint8_t rid_length, nature_type_t nature, std::vector<SCHC_Entry> flds);
+        SCHC_Rule(uint8_t rid, uint8_t rid_length, nature_type_t nature, std::vector<SCHC_Entry> flds);
 
         ~SCHC_Rule(); //Destructor
 
-        uint32_t getRuleID() const ;//Getter for Rule ID
+        uint8_t getRuleID() const ;//Getter for Rule ID
         uint8_t getRuleIDLength() const ;//Getter for Rule ID Length in bits
         nature_type_t getNatureType() const ;//Getter for Nature Type
 
         const std::vector<SCHC_Entry>& getFields() const; //Getter for Fields vector
         void addField(const SCHC_Entry& field); //Method to add a Field Description to the Fields vector
         
-        void setRule(uint32_t ruleNumber, uint8_t ruleid_length, nature_type_t nature, const std::vector<SCHC_Entry> &flds);
+        void setRule(uint8_t ruleNumber, uint8_t ruleid_length, nature_type_t nature, const std::vector<SCHC_Entry> &flds);
         void printRuleOut() const; //Method to print the Rule details
 
 

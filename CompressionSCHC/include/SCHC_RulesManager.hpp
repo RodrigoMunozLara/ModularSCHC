@@ -5,7 +5,8 @@
 #include <cstddef>
 #include <vector>
 #include <unordered_map>
-
+#include <libyang/libyang.h>
+#include <stdexcept>
 #include <nlohmann/json.hpp>    
 //String to enum class types helpers
 direction_indicator_t di_from_string(const std::string& s);
@@ -25,6 +26,8 @@ std::vector<uint8_t> base64_to_hex(const std::string &in);
 //Encoder Base64
 std::string bytes_to_base64(const std::vector<uint8_t>& data);
 
+void validate_json_schc(const std::string& yang_dir,
+                               const std::string& json_path) ;
 
 using json = nlohmann::json;
 using RuleContext = std::vector<SCHC_Rule>;

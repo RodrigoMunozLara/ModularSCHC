@@ -72,6 +72,7 @@ class SCHC_Compressed_Packet {
         uint8_t compressionRuleID; //Compression Rule ID. 1 byte
         BitWriter compressionResidue; //Compression Residue. 4 bytes for item. Dinamic size
         BitWriter packetRaw; //Raw packet with RuleID + CompressionResidue
+        std::vector<uint8_t> payload; //Payload of the packet
 
     public:
         SCHC_Compressed_Packet() = default; //Default Constructor
@@ -84,7 +85,16 @@ class SCHC_Compressed_Packet {
         void setPacketRaw(BitWriter& raw); //Setter for raw packet data
         BitWriter getPacketRaw() const; //Getter for raw packet data
 
+        void printResidue() const; //Print Packet Details
         void printPacket() const; //Print Packet Details
+        
+        void setPayload(const std::vector<uint8_t>& data) {
+            payload = data;
+        }
+
+        const std::vector<uint8_t>& getPayload() const {
+            return payload;
+        }
 };
 
 #endif

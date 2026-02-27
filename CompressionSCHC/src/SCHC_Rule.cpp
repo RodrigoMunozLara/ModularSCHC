@@ -14,14 +14,14 @@ SCHC_Rule::SCHC_Rule()
       fields() {}
 
 // Constructor
-SCHC_Rule::SCHC_Rule(uint32_t rid, uint8_t rid_length, nature_type_t nature, std::vector<SCHC_Entry> flds) 
+SCHC_Rule::SCHC_Rule(uint8_t rid, uint8_t rid_length, nature_type_t nature, std::vector<SCHC_Entry> flds) 
     : rule_id(rid), rule_id_length(rid_length), nature_type(nature),  fields(std::move(flds)) {}
 
 // Destructor
 SCHC_Rule::~SCHC_Rule() = default;
 
 // Getter for Rule ID
-uint32_t SCHC_Rule::getRuleID() const {
+uint8_t SCHC_Rule::getRuleID() const {
     return rule_id;
 }
 // Getter for Rule length
@@ -44,7 +44,7 @@ void SCHC_Rule::addField(const SCHC_Entry &entry){
 
 
 // Setter for RuleID
-void SCHC_Rule::setRule(uint32_t ruleNumber, uint8_t ruleid_length, nature_type_t nature, const std::vector<SCHC_Entry> &flds) {
+void SCHC_Rule::setRule(uint8_t ruleNumber, uint8_t ruleid_length, nature_type_t nature, const std::vector<SCHC_Entry> &flds) {
     this->rule_id = ruleNumber;
     this->rule_id_length = ruleid_length;
     this->nature_type = nature;
@@ -155,6 +155,7 @@ std::ostream& operator<<(std::ostream& os, const TV_item& tv) {
 
 static void printEntry(const SCHC_Entry& e) {
     std::cout << "  [ " << e.FID
+              << " | DI = " << static_cast<int>(e.DI)
               << " | FL size = " << static_cast<int>(e.FL.bit_length)
               << " ; FL type = " << e.FL.type
               << " | FP = "<< static_cast<int>(e.FP)
@@ -172,7 +173,7 @@ static void printFields(const std::vector<SCHC_Entry>& fields) {
 }
 // Print Rule Details
 void SCHC_Rule::printRuleOut() const {
-    std::cout << "Rule ID: " << rule_id << '\n';
+    std::cout << "Rule ID: " << std::to_string(rule_id) << '\n';
     std::cout << "Rule ID Length: " << static_cast<unsigned>(rule_id_length) << '\n';
     std::cout << "Fields count: " << fields.size() << '\n';
     printFields(fields);

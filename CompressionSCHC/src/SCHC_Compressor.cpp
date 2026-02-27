@@ -151,10 +151,10 @@ static STATE_RESULT st_parse(FSM_Ctx& ctx) {
 
     bool link = (ctx.direction == direction_indicator_t::DOWN);
 
-    if(link){//If "DOWN" direction (to the device), parse for compression
+    //if(link){//If "DOWN" direction (to the device), parse for compression
             
         // parse IPv6+UDP -> vector<FieldValue>
-        ctx.parsedPacketHeaders = parse_ipv6_udp_fields(*ctx.raw_pkt, link);
+        ctx.parsedPacketHeaders = parse_ipv6_udp_fields(*ctx.raw_pkt, link, ctx.out_SCHC);
         spdlog::debug("Parsed packet fields:");
         // build idx
         ctx.idx.clear();
@@ -162,10 +162,12 @@ static STATE_RESULT st_parse(FSM_Ctx& ctx) {
         for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) {
             ctx.idx.emplace(ctx.parsedPacketHeaders[i].fid, i);
         }
-
+        log_field_values(ctx.parsedPacketHeaders);
+        log_field_values(ctx.parsedPacketHeaders, spdlog::level::debug);
         spdlog::debug("Next State: FIND_RULE");
         ctx.next_state = COMP_STATE::COMP_STATE_FIND_RULE;
-    }/*else{ //if "UP" direction, parse for decompression. Not implemented yet.
+    //}
+    /*else{ //if "UP" direction, parse for decompression. Not implemented yet.
         ctx.next_state = COMP_STATE::COMP_STATE_DECOMP;
     }*/
 
@@ -183,31 +185,36 @@ static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
         return STATE_RESULT::ERROR_; 
     
     }
-    const SCHC_Rule * defRule = nullptr;
+    
     ctx.selected_rule = nullptr;
     const auto& rules = *ctx.rulesCtx;
 
     //iterating rules from the rule_candidate position (starts in 0 but changes if MO fails)
     for (size_t rule_candidate = ctx.search_position; rule_candidate< rules.size(); rule_candidate++) { 
         const auto & rule = rules[rule_candidate];
+        spdlog::debug("Evaluating rule with ID={} and nature type={}", rule.getRuleID(), static_cast<int>(rule.getNatureType()));
 
-        if((!defRule //Searching for the default rule
+        if((!ctx.defRule //Searching for the default rule
             &&rule.getNatureType() == nature_type_t::NO_COMPRESSION)
             &&(rule.getRuleID() == ctx.default_ID)){
-            defRule = &rule;
-            spdlog::info("Default rule found with ID={}", defRule->getRuleID());
+            ctx.defRule = &rule;
+            spdlog::info("Default rule found with ID={}", ctx.defRule->getRuleID());
         }
-        if (rule.getNatureType() != nature_type_t::COMPRESSION) continue;//Only compression rules are valid for this state
-
+        if (rule.getNatureType() != nature_type_t::COMPRESSION) {
+            spdlog::debug("Skipping rule with ID={}", rule.getRuleID());
+            continue;//Only compression rules are valid for this state
+        }
         std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);//Vector flags to verify if the field have already match
         bool rule_ok = true;
-
+        spdlog::debug("\nEntrys in the rule:");
         for (const auto& entry : rule.getFields()) { //iterating entrys in the current rule
             bool found = false;
-
+            
             for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) { //iterating entrys (fields) in the parsed packet
                 if (used[i]) continue;
                 const auto& field = ctx.parsedPacketHeaders[i];
+                spdlog::debug("Comparing rule entry FID={} and DI={} with packet field FID={} and DI={}",
+                         entry.FID, static_cast<int>(entry.DI), field.fid, static_cast<int>(ctx.direction));
 
                 if (entry.FID != field.fid) continue;
                 if (!((entry.DI == direction_indicator_t::BI) || (entry.DI == ctx.direction))) continue;
@@ -229,9 +236,14 @@ static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
         break; }
     }
     if (!ctx.selected_rule) {
-        ctx.selected_rule = defRule;
+        if(!ctx.defRule){
+            ctx.error_code = 4;
+            spdlog::error("No matching compression rule found and no default rule available. ERROR {}", ctx.error_code);
+            return STATE_RESULT::ERROR_;
+        }
+        ctx.selected_rule = ctx.defRule;
         ctx.next_state = COMP_STATE::COMP_STATE_NOCOMPRESS;
-        spdlog::warn("No matching compression rule found. Using default rule with ID={}", ctx.selected_rule->getRuleID());
+        spdlog::warn("No matching compression rule found. Using default rule with ID={}", ctx.defRule->getRuleID());
         return STATE_RESULT::PASS_;
     }
 
@@ -274,6 +286,7 @@ static STATE_RESULT st_nocompress(FSM_Ctx& ctx){
 
     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
     spdlog::info("Packet generated without compression. Next State: IDLE");
+    ctx.arrived = false; //reset arrived flag for the next packet
     return STATE_RESULT::PASS_;
 }
 
@@ -293,14 +306,16 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx) {
             continue;
         }
         for (size_t i = 0; i < ctx.parsedPacketHeaders.size(); ++i) { //iterating entrys (fields) in the parsed packet
-            
             if (used[i]) continue;
             const auto& field = ctx.parsedPacketHeaders[i];
+            spdlog::debug("Comparing rule entry FID={}, MO={} and TV with \n packet field FID={} ", entry.FID, static_cast<int>(entry.MO) ,field.fid);
             if (entry.FID != field.fid) continue;
             switch (entry.MO)
             {
             case matching_operator_t::EQUAL_ :{
+                spdlog::debug("Comparing Values. Rule value: {}, Packet value: {}", bytes_to_hex(entry.TV.value_matrix[0]), bytes_to_hex(field.value));
                 if(entry.TV.value_matrix[0] == field.value){ 
+                    
                     found = true;
                     used[i] = true;
                 }
@@ -310,6 +325,7 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx) {
                 int8_t pushed = -1;
                 for(size_t j = 0; j< entry.TV.size ; j++){
                     if(entry.TV.value_matrix[j] == field.value){
+                        spdlog::debug("Comparing Values. Rule value: {}, Packet value: {}", bytes_to_hex(entry.TV.value_matrix[j]), bytes_to_hex(field.value));
                         pushed = static_cast<uint8_t>(j);
                         spdlog::debug("Match-Mapping found for FID={} at TV index={}", entry.FID, pushed);
                         break;
@@ -329,6 +345,7 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx) {
             }    
             case matching_operator_t::MSB_ :{//Asuming all are FIXED cuz i didn't understand the var type
                 if(entry.FL.type == "FIXED"){
+                    spdlog::debug("Comparing Values. Rule value: {}, Packet value: {}", bytes_to_hex(entry.TV.value_matrix[0]), bytes_to_hex(field.value));
                     if(msb_comparator(entry.TV.value_matrix[0], field.value, entry.MsbLength)){
                         found = true;
                         used[i] = true;
@@ -457,6 +474,7 @@ static STATE_RESULT st_gen(FSM_Ctx& ctx) {
     //Write the residue bits in the raw packet
     ctx.totalPacket.write_writer(ctx.residueBits);
     spdlog::debug("Written residue bits of length {} bits", ctx.residueBits.bitLength());
+    ctx.totalPacket.write_bytes_aligned(ctx.out_SCHC.getPayload());
     // Padding byte
     if ((ctx.totalPacket.bitLength() & 7u) != 0u) {
         uint32_t pad = 8u - (ctx.totalPacket.bitLength() & 7u);
@@ -470,6 +488,8 @@ static STATE_RESULT st_gen(FSM_Ctx& ctx) {
     ctx.out_SCHC.setPacketRaw(ctx.totalPacket);
     ctx.arrived = false; //reset arrived flag for the next packet
     spdlog::info("Compressed packet generated. Next State: IDLE. Waiting for next packet...");
+    ctx.out_SCHC.printResidue(); //Print residue details after generation
+    ctx.out_SCHC.printPacket(); //Print packet details after generation
     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;
     return STATE_RESULT::PASS_;
 }

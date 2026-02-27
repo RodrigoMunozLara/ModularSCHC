@@ -1,10 +1,15 @@
 #include <cstdint>
+#include <iomanip>
+#include <sstream>
+#include <cctype>
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include <cstring>
 #include <algorithm>
 #include <fstream>
+#include "SCHC_Compressor.hpp" 
+#include "SCHC_Packet.hpp"
 #include "SCHC_Rule.hpp"
 #include "PacketParser.hpp"
 
@@ -59,11 +64,38 @@ static void push_field(std::vector<FieldValue>& out,
     out.push_back(std::move(f));
 }
 
+// Shift-right a big-endian byte vector by 'shift' bits (0..7).
+// Keeps the same number of bytes, moving bits across byte boundaries.
+static std::vector<uint8_t> shift_right_bits_be(std::vector<uint8_t> v, uint8_t shift)
+{
+    if (shift == 0 || v.empty()) return v;
+    if (shift >= 8) throw std::invalid_argument("shift_right_bits_be: shift must be 0..7");
+
+    uint8_t carry = 0;
+    for (size_t i = 0; i < v.size(); ++i) {
+        uint8_t new_carry = static_cast<uint8_t>(v[i] << (8 - shift));
+        v[i] = static_cast<uint8_t>((v[i] >> shift) | carry);
+        carry = new_carry;
+    }
+    return v;
+}
+
+// Convert MSB-aligned bit extraction to a "value-aligned" (LSB-aligned) representation
+// inside the returned bytes. Keeps byte length = ceil(bitlen/8).
+static std::vector<uint8_t> normalize_extracted_value(std::vector<uint8_t> val, uint16_t bitlen)
+{
+    uint16_t rem = bitlen % 8;
+    if (rem == 0 || val.empty()) return val;
+
+    uint8_t pad = static_cast<uint8_t>(8 - rem); // bits that were padding on the right in MSB-aligned form
+    return shift_right_bits_be(std::move(val), pad);
+}
+
 // -------------------- main parser: IPv6 + UDP --------------------
 // direction_uplink = true means packet is device->app (uplink).
 // That decides how you populate fid-ipv6-devprefix vs fid-ipv6-appprefix, etc.
 std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
-                                              bool direction_uplink)
+                                              bool direction_uplink, SCHC_Compressed_Packet& outPacket)
 {
     std::vector<FieldValue> out; 
     // Minimal IPv6 header = 40 bytes
@@ -76,10 +108,14 @@ std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
     // version: bits 0..3
     // traffic class: bits 4..11
     // flow label: bits 12..31
+
     auto v  = extract_bits_be(ip, 4, 0, 4);
     auto tc = extract_bits_be(ip, 4, 4, 8);
     auto fl = extract_bits_be(ip, 4, 12, 20);
 
+    v  = normalize_extracted_value(std::move(v), 4);   
+    fl = normalize_extracted_value(std::move(fl), 20); 
+    
     push_field(out, "ietf-schc:fid-ipv6-version",       v,  4);
     push_field(out, "ietf-schc:fid-ipv6-trafficclass",  tc, 8);
     push_field(out, "ietf-schc:fid-ipv6-flowlabel",     fl, 20);
@@ -149,7 +185,7 @@ std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
         push_field(out, "ietf-schc:fid-udp-checksum",
                    { static_cast<uint8_t>(udp_csum >> 8), static_cast<uint8_t>(udp_csum & 0xFF) }, 16);
     }
-
+    outPacket.setPayload(std::vector<uint8_t>(pkt.begin() + 48, pkt.end()));
     return out;
 }
 
@@ -194,4 +230,29 @@ std::vector<uint8_t> hex_to_bytes(std::string s) {
         out.push_back((uint8_t)((hi << 4) | lo));
     }
     return out;
+}
+
+std::string bytes_to_hex(const std::vector<uint8_t>& data)
+{
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (uint8_t b : data) oss << std::setw(2) << (int)b;
+    return oss.str();
+}
+
+void log_field_values(const std::vector<FieldValue>& fields,
+                      spdlog::level::level_enum lvl)
+{
+    if (fields.empty()) {
+        spdlog::log(lvl, "FieldValue vector is empty");
+        return;
+    }
+
+    spdlog::log(lvl, "---- Parsed FieldValues ({} fields) ----", fields.size());
+    for (size_t i = 0; i < fields.size(); ++i) {
+        const auto& f = fields[i];
+        spdlog::log(lvl, "[{}] fid={} bit_length={} value(hex)={}",
+                    i, f.fid, f.bit_length, bytes_to_hex(f.value));
+    }
+    spdlog::log(lvl, "---- End FieldValues ----");
 }

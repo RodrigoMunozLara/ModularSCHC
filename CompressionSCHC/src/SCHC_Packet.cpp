@@ -116,8 +116,10 @@ void SCHC_Compressed_Packet::setPacketRaw(BitWriter& raw) {
 BitWriter SCHC_Compressed_Packet::getPacketRaw() const {
     return packetRaw;
 }   
-void SCHC_Compressed_Packet::printPacket() const {
-    spdlog::info("SCHC Packet - RuleID: {}, Residue ({} bits): {} ",
+void SCHC_Compressed_Packet::printResidue() const {
+    spdlog::info("SCHC Residue for Packet - RuleID: {}, Residue ({} bits): {} ",
                  compressionRuleID, compressionResidue.bitLength(), spdlog::to_hex(compressionResidue.bytes()));
 }
-
+void SCHC_Compressed_Packet::printPacket() const {
+    spdlog::info("SCHC Packet Total Packet ({} bits): {} ", packetRaw.bitLength(), spdlog::to_hex(packetRaw.bytes()));
+}

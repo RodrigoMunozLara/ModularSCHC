@@ -1,14 +1,14 @@
 #ifndef PACKETPARSER_HPP
 #define PACKETPARSER_HPP
 
-
+#include <spdlog/spdlog.h>
 #include <cstdint>
 #include <vector>
 #include <string>
 #include <stdexcept>
 #include <cstring>
 #include <algorithm>
-
+#include "SCHC_Packet.hpp"
 struct FieldValue {
     std::string fid;              // e.g., "ietf-schc:fid-ipv6-version"
     std::vector<uint8_t> value;   // big-endian bytes (packed)
@@ -35,10 +35,17 @@ static void push_field(std::vector<FieldValue>& out,
 // direction_uplink = true means packet is device->app (uplink).
 // That decides how you populate fid-ipv6-devprefix vs fid-ipv6-appprefix, etc.
 std::vector<FieldValue> parse_ipv6_udp_fields(const std::vector<uint8_t>& pkt,
-                                              bool direction_uplink);
+                                              bool direction_uplink, SCHC_Compressed_Packet& schc_pkt);
 
 
 std::string read_file_to_string(const std::string& path);
 std::vector<uint8_t> hex_to_bytes(std::string s);
+
+//bytes
+std::string bytes_to_hex(const std::vector<uint8_t>& data);
+
+// Log of vector<FieldValue> for debbuggin
+void log_field_values(const std::vector<FieldValue>& fields,
+                      spdlog::level::level_enum lvl = spdlog::level::info);
 
 #endif
