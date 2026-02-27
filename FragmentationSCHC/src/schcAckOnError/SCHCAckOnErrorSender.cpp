@@ -164,10 +164,10 @@ void SCHCAckOnErrorSender::executeAgain()
     _schcSession.enqueueEvent(std::move(evMsg));
 }
 
-void SCHCAckOnErrorSender::executeTimer()
+void SCHCAckOnErrorSender::executeTimer(int delay)
 {
-    SPDLOG_DEBUG("Setting Retransmission timer to activate in {} seconds", _retransTimer);
-    _timer.start(std::chrono::seconds(_retransTimer), [&]() { enqueueTimer(); });
+    SPDLOG_DEBUG("Setting Timer to activate in {} seconds", delay);
+    _timer.start(std::chrono::seconds(delay), [&]() { enqueueTimer(); });
 
 }
 

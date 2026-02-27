@@ -4,7 +4,7 @@
   },
   "logging": {
     "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
-    "log_level": "INFO"
+    "log_level": "DEBUG"
   },
   "backhaul_core": {
     "_comment": "IPv6 socket configuration",
@@ -13,11 +13,11 @@
   "schc_core": {
     "_comment_1": ["schc_type: schc_node, schc_gateway"],
     "_comment_2": ["schc_l2_protocol: lorawan, lorawan_ns_mqtt, lorawan_ns_http"],
-    "_comment_3": ["schc_ack_mode: ack_end_win, ack_end_session, compound_ack"],
+    "_comment_3": ["schc_ack_mode: ack_end_win, ack_end_session, compound_ack, arq_fec"],
     "schc_type": "schc_node",
     "schc_l2_protocol": "lorawan",
-    "schc_ack_mechanism": "compound_ack",
-    "schc_reliability" : "false",
+    "schc_ack_mechanism": "arq_fec",
+    "schc_reliability" : "true",
     "error_prob": "0"
     
 

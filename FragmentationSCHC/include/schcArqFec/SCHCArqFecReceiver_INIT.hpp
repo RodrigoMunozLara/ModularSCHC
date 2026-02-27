@@ -1,0 +1,30 @@
+#pragma once
+
+#include "interfaces/ISCHCState.hpp"
+#include "interfaces/ISCHCStack.hpp"
+#include "schcArqFec/SCHCArqFecReceiver.hpp"
+#include <spdlog/spdlog.h>
+#include <memory>
+
+class SCHCArqFecReceiver;   // ← forward declaration
+
+class SCHCArqFecReceiver_INIT: public ISCHCState
+{
+    private:
+        /* data */
+    public:
+        SCHCArqFecReceiver_INIT(SCHCArqFecReceiver& ctx);
+        ~SCHCArqFecReceiver_INIT();
+        void execute(const std::vector<uint8_t>& msg = {}) override;
+        void timerExpired() override;
+        void release() override;
+    
+    private:
+        int     get_tile_ptr(uint8_t window, uint8_t fcn);
+        int     get_bitmap_ptr(uint8_t fcn);
+        void    initializeMatrices(size_t S, size_t k, size_t n);
+        void    storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn);
+        void    printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
+
+        SCHCArqFecReceiver& _ctx;
+};

@@ -28,7 +28,7 @@ class SCHCAckOnErrorSender: public ISCHCStateMachine
         void        timerExpired() override;
         void        release() override;
         void        executeAgain() override;
-        void        executeTimer() override;
+        void        executeTimer(int delay) override;
         void        enqueueTimer() override;
 
         SCHCFragDir     _dir;
@@ -56,7 +56,6 @@ class SCHCAckOnErrorSender: public ISCHCStateMachine
         uint8_t             _t;                     // bits of the DTag field
         uint8_t             _maxAckReq;             // max number of ACK Request msg
         int                 _retransTimer;          // Retransmission timer in seconds
-        int                 _inactivityTimer;       // Inactivity timer in seconds
 
         /* Dynamic SCHC parameters */
         uint8_t                             _currentWindow;

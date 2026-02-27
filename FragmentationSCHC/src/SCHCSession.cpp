@@ -31,6 +31,20 @@ void SCHCSession::init()
     {
         _stateMachine = std::make_unique<SCHCAckOnErrorReceiver>(_dir, _appConfig, _schcCore, *this);
     }
+    else if((_dir == SCHCFragDir::UPLINK_DIR) 
+        && (_appConfig.schc.schc_type.compare("schc_node") == 0) 
+        && (_appConfig.schc.schc_reliability.compare("true") == 0) 
+        && (_appConfig.schc.schc_l2_protocol.compare("lorawan") == 0))
+    {
+        _stateMachine = std::make_unique<SCHCArqFecSender>(_dir, _appConfig, _schcCore, *this);
+    }
+    else if((_dir == SCHCFragDir::UPLINK_DIR) 
+        && (_appConfig.schc.schc_type.compare("schc_gateway") == 0) 
+        && (_appConfig.schc.schc_reliability.compare("true") == 0) 
+        && (_appConfig.schc.schc_l2_protocol.compare("lorawan_ns_mqtt") == 0))
+    {
+        _stateMachine = std::make_unique<SCHCArqFecReceiver>(_dir, _appConfig, _schcCore, *this);
+    }
 
     running.store(true);
 

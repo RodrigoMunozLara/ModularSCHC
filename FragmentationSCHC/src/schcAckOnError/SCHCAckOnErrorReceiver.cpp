@@ -164,9 +164,9 @@ void SCHCAckOnErrorReceiver::executeAgain()
     _schcSession.enqueueEvent(std::move(evMsg));
 }
 
-void SCHCAckOnErrorReceiver::executeTimer()
+void SCHCAckOnErrorReceiver::executeTimer(int delay)
 {
-    _timer.start(std::chrono::seconds(_inactivityTimer), [&]() { enqueueTimer(); });
+    _timer.start(std::chrono::seconds(delay), [&]() { enqueueTimer(); });
 }
 
 void SCHCAckOnErrorReceiver::enqueueTimer()

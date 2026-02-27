@@ -176,7 +176,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::timerExpired()
 
         _ctx._rtxAttemptsCounter++;
 
-        _ctx.executeTimer();
+        _ctx.executeTimer(_ctx._retransTimer);
 
          return;
     }

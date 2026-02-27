@@ -12,7 +12,7 @@ class ISCHCStateMachine
         virtual void timerExpired() = 0;
         virtual void release() = 0;
         virtual void executeAgain() = 0;
-        virtual void executeTimer() = 0;
+        virtual void executeTimer(int delay) = 0;
         virtual void enqueueTimer() = 0;
     private:
         ISCHCState* estado = nullptr;

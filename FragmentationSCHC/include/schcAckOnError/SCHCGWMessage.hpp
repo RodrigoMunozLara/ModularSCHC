@@ -14,7 +14,7 @@ class SCHCGWMessage
 {
     public:
         SCHCGWMessage();
-        std::vector<uint8_t>    create_schc_ack(uint8_t rule_id, uint8_t dtag, uint8_t w, uint8_t c, const std::vector<uint8_t> bitmap_vector, bool must_compress = true);
+        std::vector<uint8_t>    create_schc_ack(uint8_t rule_id, uint8_t dtag, uint8_t w, uint8_t c, const std::vector<uint8_t> bitmap_vector = {}, bool must_compress = true);
         std::vector<uint8_t>    create_schc_ack_compound(uint8_t rule_id, uint8_t dtag, int last_win, const std::vector<uint8_t> c_vector, const std::vector<std::vector<uint8_t>> bitmap_array, uint8_t win_size);
         SCHCMsgType             get_msg_type(ProtocolType protocol, uint8_t rule_id, std::vector<uint8_t> msg);
         uint8_t                 decode_message(ProtocolType protocol, uint8_t rule_id, std::vector<uint8_t> msg);

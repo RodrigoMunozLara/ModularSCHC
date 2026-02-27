@@ -27,7 +27,7 @@ class SCHCAckOnErrorReceiver: public ISCHCStateMachine
         void        timerExpired() override;
         void        release() override;
         void        executeAgain() override;
-        void        executeTimer() override;
+        void        executeTimer(int delay) override;
         void        enqueueTimer() override;
 
         SCHCFragDir     _dir;

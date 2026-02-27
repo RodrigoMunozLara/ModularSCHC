@@ -174,23 +174,12 @@ std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff,
                     SPDLOG_DEBUG("AT response: {}",accumulator);
 
                     /* We extract only the fport:payload from the response. */
-                    /* The _isFirstMsg flag is used for previous unwanted messages from a previous session.
-                    * _isFirstMsg: true --> read the message from stack but it is not send to SCHC Core 
-                    * _isFirstMsg: false --> read the message from stack and it is sent to SCHC Core
-                    * */
-                    if(!_isFirstMsg) 
+                    std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
+                    for (size_t i = 0; i < responses_vector.size(); ++i)
                     {
-                        std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
-                        for (size_t i = 0; i < responses_vector.size(); ++i)
-                        {
-                            receive_handler(responses_vector[i]);
-                        }
+                        receive_handler(responses_vector[i]);
+                    }
             
-                    }
-                    else
-                    {
-                        _isFirstMsg = false;
-                    }
 
 
                     return accumulator;

@@ -131,26 +131,119 @@ uint8_t SCHCNodeMessage::decodeMsg(ProtocolType protocol, int rule_id, const std
         int len = msg.size();
 
         SCHCLoRaWANFragRule         _rule_id;
-        if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-        else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-
-        uint8_t schc_header = msg[0];
-        _c = (schc_header >> 5) & 0x01;
-        _w = (schc_header >> 6) & 0x03;
-
-        if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==1 && len==2 && msg[1] == 0xFF)
+        if(rule_id == 20)
         {
-            // TODO: Se ha recibido un SCHC Receiver-Abort. No hacer nada.
-        }
-        else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==1)
-        {
-            // * Se ha recibido un SCHC ACK (sin errores)
-            SPDLOG_DEBUG("Receiving a SCHC ACK without errors");
-            for(int i=0; i<63; i++)
+            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
+            uint8_t schc_header = msg[0];
+            _c = (schc_header >> 5) & 0x01;
+            _w = (schc_header >> 6) & 0x03;
+
+            if(_c==1 && len==2 && msg[1] == 0xFF)
             {
-                (*bitmap_array)[_w][i] = 1;
+                // TODO: Se ha recibido un SCHC Receiver-Abort.
             }
+            else if (_c==1)
+            {
+                SPDLOG_DEBUG("Decoding a SCHC ACK (without errors)");
+                if(ack_type == SCHCAckMechanism::ACK_END_WIN || ack_type == SCHCAckMechanism::ACK_END_SES || ack_type == SCHCAckMechanism::ACK_COMPOUND)
+                {
+                    for(int i=0; i<63; i++)
+                    {
+                        (*bitmap_array)[_w][i] = 1;
+                    }
+                }
+                else if(ack_type == SCHCAckMechanism::ARQ_FEC)
+                {
+                    SPDLOG_DEBUG("In an ARQ-FEC mode, a successful SCHC ACK does not use the bitmap concept");                   
+                }
+
+            }
+            else if (_c==0)
+            {
+                if(ack_type == SCHCAckMechanism::ACK_END_WIN || ack_type == SCHCAckMechanism::ACK_END_SES)
+                {    
+                    SPDLOG_DEBUG("Decoding a SCHC ACK (with errors)");
+                    int compress_bitmap_len = (len-1)*8 + 5;    // bitmap length
+                    char compress_bitmap[compress_bitmap_len];
+
+                    /* Storing the first five bits of the bitmap */
+                    for(int i=4; i>=0; i--)
+                    {
+                        (*bitmap_array)[_w].push_back((msg[0] >> i) & 0x01);
+                    }
+
+                    /* Storing the rest of the bitmaps */
+                    for(int i=1; i<len; i++)
+                    {
+                        for(int j=7; j>=0; j--)
+                        {
+                            (*bitmap_array)[_w].push_back((msg[i] >> j) & 0x01);
+                        }
+                    }
+                }
+                else if(ack_type == SCHCAckMechanism::ACK_COMPOUND)
+                {
+                    SPDLOG_DEBUG("Decoding a SCHC Compound ACK with errors");
+
+                    int n_total_bits    = len*8;                        // en bits
+                    int n_win           = ceil((n_total_bits - 1)/65);  // window_size + M = 65. Se resta un bit a len debido al bit C.
+                    //int n_padding_bits  = n_total_bits - 1 - n_win*65;
+                    bool first_win      = true;
+
+                    std::vector<uint8_t> bitVector;
+                    
+                    /* traspasa el mensaje de formato char a vector*/
+                    for (int i = 0; i < len; ++i)
+                    {
+                        for (int j = 7; j >= 0; --j)
+                        {
+                            bitVector.push_back((msg[i] >> j) & 1);
+                        }
+                    }
+
+                    for(int i=0; i<n_win; i++)
+                    {
+                        if(first_win)
+                        {
+                            _windows_with_error.push_back(_w);      // almacena en el vector el numero de la primera ventana con error en el SCHC Compound ACK
+                            
+                            bitVector.erase(bitVector.begin(), bitVector.begin()+3); // Se elimina del vector la ventana (2 bits) y c (1 bit)
+                            std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[_w].begin());
+                            bitVector.erase(bitVector.begin(), bitVector.begin()+63);
+                            first_win = false;
+                        }
+                        else
+                        {
+                            uint8_t win = (bitVector[0] << 1) | bitVector[1];
+                            _windows_with_error.push_back(win);
+                            bitVector.erase(bitVector.begin(), bitVector.begin()+2);
+                            std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[win].begin());
+                            bitVector.erase(bitVector.begin(), bitVector.begin()+63);
+                        }
+                    }
+                }
+            }
+            
+            
+
         }
+        else if (rule_id == 21)
+        {
+            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
+
+            /* ToDo */
+
+
+        }
+        else
+        {
+            SPDLOG_ERROR("RuleID not supported");
+        }
+
+
+
+
+
         // else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0 && len>9)
         // {
         //     // * Se ha recibido un SCHC Compound ACK (con errores)
@@ -192,96 +285,7 @@ uint8_t SCHCNodeMessage::decodeMsg(ProtocolType protocol, int rule_id, const std
         //     }
 
         // }
-        else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0)
-        {
-            if(ack_type == SCHCAckMechanism::ACK_END_WIN || ack_type == SCHCAckMechanism::ACK_END_SES)
-            {    
-                // * Se ha recibido un SCHC ACK (con errores)
-                SPDLOG_DEBUG("Receiving a SCHC ACK with errors");
-                int compress_bitmap_len = (len-1)*8 + 5;    // en bits
-                char compress_bitmap[compress_bitmap_len];
 
-                int k = 0;
-                for(int i=4; i>=0; i--)
-                {
-                    compress_bitmap[k] = (msg[0] >> i) & 0x01;
-                    k++;
-                }
-
-                for(int i=1; i<len; i++)
-                {
-                    for(int j=7; j>=0; j--)
-                    {
-                        compress_bitmap[k] = (msg[i] >> j) & 0x01;
-                        k++;
-                    }
-                }
-
-                if(compress_bitmap_len >= 63)
-                {
-                    for(int i=0; i<63; i++)
-                    {
-                        (*bitmap_array)[_w][i] = compress_bitmap[i];
-                    }
-                }
-                else
-                {
-                    for(int i=0; i<compress_bitmap_len; i++)
-                    {
-                        (*bitmap_array)[_w][i] = compress_bitmap[i];
-                    }
-
-                    for(int i=compress_bitmap_len; i<63; i++)
-                    {
-                        (*bitmap_array)[_w][i] = 1;
-                    }
-                }
-            }
-            else if(ack_type == SCHCAckMechanism::ACK_COMPOUND)
-            {
-                // * Se ha recibido un SCHC Compound ACK (con errores)
-                SPDLOG_DEBUG("Receiving a SCHC Compound ACK with errors");
-
-                int n_total_bits    = len*8;                        // en bits
-                int n_win           = ceil((n_total_bits - 1)/65);  // window_size + M = 65. Se resta un bit a len debido al bit C.
-                //int n_padding_bits  = n_total_bits - 1 - n_win*65;
-                bool first_win      = true;
-
-                std::vector<uint8_t> bitVector;
-                
-                /* traspasa el mensaje de formato char a vector*/
-                for (int i = 0; i < len; ++i)
-                {
-                    for (int j = 7; j >= 0; --j)
-                    {
-                        bitVector.push_back((msg[i] >> j) & 1);
-                    }
-                }
-
-                for(int i=0; i<n_win; i++)
-                {
-                    if(first_win)
-                    {
-                        _windows_with_error.push_back(_w);      // almacena en el vector el numero de la primera ventana con error en el SCHC Compound ACK
-                        
-                        bitVector.erase(bitVector.begin(), bitVector.begin()+3); // Se elimina del vector la ventana (2 bits) y c (1 bit)
-                        std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[_w].begin());
-                        bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-                        first_win = false;
-                    }
-                    else
-                    {
-                        uint8_t win = (bitVector[0] << 1) | bitVector[1];
-                        _windows_with_error.push_back(win);
-                        bitVector.erase(bitVector.begin(), bitVector.begin()+2);
-                        std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[win].begin());
-                        bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-                    }
-                }
-
-            }
-        }
-          
     }
 
     return 0;
@@ -415,19 +419,6 @@ void SCHCNodeMessage::print_msg(SCHCMsgType msgType, const std::vector<uint8_t>&
 
 
 
-    }
-    else if(msgType==SCHCMsgType::SCHC_ACK_RESIDUAL_MSG)
-    {
-        uint8_t schc_header = msg[0];
-        // Mask definition
-        uint8_t w_mask = 0xC0;
-        uint8_t c_mask = 0x20;
-        uint8_t c = (c_mask & schc_header) >> 5;
-        uint8_t w = (w_mask & schc_header) >> 6;
-
-        char buffer[128];
-        snprintf(buffer, sizeof(buffer), "|<----W=%02u, C=%02u --------| Residual ACK, dropped", w, c);
-        SPDLOG_INFO("{}",buffer);      
     }
 
 }

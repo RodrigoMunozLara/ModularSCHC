@@ -69,7 +69,8 @@ enum class SCHCFragMode {
 enum class SCHCAckMechanism{
     ACK_END_WIN,
     ACK_END_SES,
-    ACK_COMPOUND
+    ACK_COMPOUND,
+    ARQ_FEC
 };
 
 enum class SCHCAckOnErrorSenderStates{
@@ -90,6 +91,25 @@ enum class SCHCAckOnErrorReceiverStates{
     STATE_END,
 };
 
+enum class SCHCArqFecSenderStates{
+    STATE_INIT,
+    STATE_WAIT_X_S_ACK,
+    STATE_SEND,
+    STATE_WAIT_x_SESSION_ACK,
+    STATE_RESEND_MISSING_TILES,
+    STATE_ERROR,
+    STATE_END,
+};
+
+enum class SCHCArqFecReceiverStates{
+    STATE_INIT,
+    STATE_WAIT_X_S,
+    STATE_RCV_WINDOW,
+    STATE_WAIT_X_MISSING_FRAG,
+    STATE_WAIT_X_ALL1,
+    STATE_ERROR,
+    STATE_END,
+};
 enum class SCHCMsgType {
     SCHC_REGULAR_FRAGMENT_MSG,
     SCHC_ALL1_FRAGMENT_MSG,
@@ -98,7 +118,6 @@ enum class SCHCMsgType {
     SCHC_SENDER_ABORT_MSG,
     SCHC_RECEIVER_ABORT_MSG,
     SCHC_COMPOUND_ACK,
-    SCHC_ACK_RESIDUAL_MSG,
 };
 
 enum class SCHCLoRaWANFragRule : uint8_t{

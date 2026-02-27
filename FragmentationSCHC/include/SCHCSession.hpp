@@ -6,6 +6,8 @@
 #include "ConfigStructs.hpp"
 #include "schcAckOnError/SCHCAckOnErrorSender.hpp"
 #include "schcAckOnError/SCHCAckOnErrorReceiver.hpp"
+#include "schcArqFec/SCHCArqFecSender.hpp"
+#include "schcArqFec/SCHCArqFecReceiver.hpp"
 
 #include <memory>
 #include <atomic>

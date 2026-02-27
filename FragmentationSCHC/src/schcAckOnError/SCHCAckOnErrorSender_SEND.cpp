@@ -106,7 +106,7 @@ void SCHCAckOnErrorSender_SEND::execute(const std::vector<uint8_t>& msg)
 
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_WAIT_x_ACK");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-            _ctx.executeTimer();
+            _ctx.executeTimer(_ctx._retransTimer);
 
             return;
         }
@@ -138,7 +138,7 @@ void SCHCAckOnErrorSender_SEND::execute(const std::vector<uint8_t>& msg)
 
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_WAIT_x_ACK");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-            _ctx.executeTimer();
+            _ctx.executeTimer(_ctx._retransTimer);
 
             
             return;
@@ -225,7 +225,7 @@ void SCHCAckOnErrorSender_SEND::execute(const std::vector<uint8_t>& msg)
  
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_WAIT_x_ACK");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-            _ctx.executeTimer(); 
+            _ctx.executeTimer(_ctx._retransTimer); 
 
             SPDLOG_DEBUG("Setting _send_schc_ack_req_flag in true");
             _ctx._send_schc_ack_req_flag = true;

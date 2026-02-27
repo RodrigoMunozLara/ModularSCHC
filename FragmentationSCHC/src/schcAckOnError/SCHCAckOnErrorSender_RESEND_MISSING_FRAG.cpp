@@ -125,7 +125,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-                _ctx.executeTimer();
+                _ctx.executeTimer(_ctx._retransTimer);
                 return;
             }
         }
@@ -271,7 +271,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
             SPDLOG_DEBUG("There are no more tiles to send.");
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
             _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-            _ctx.executeTimer();
+            _ctx.executeTimer(_ctx._retransTimer);
             return;
         }
     }
@@ -376,7 +376,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
                 SPDLOG_DEBUG("There are no more windows with missing tiles.");
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_ACK");
                 _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_WAIT_x_ACK;
-                _ctx.executeTimer();
+                _ctx.executeTimer(_ctx._retransTimer);
                 return;
             }
             else

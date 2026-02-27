@@ -7,7 +7,7 @@ eth = Ether(src="00:11:22:33:44:55", dst="00:15:5d:02:64:2d")
 ipv6 = IPv6(src="2001:db8::1", dst="fc00:1::1")
 
 # Capa de transporte (ICMPv6 Echo Request)
-icmp = ICMPv6EchoRequest(data='A'*900)
+icmp = ICMPv6EchoRequest(data='A'*903)
 
 # Combinar todas las capas
 pkt = eth / ipv6 / icmp

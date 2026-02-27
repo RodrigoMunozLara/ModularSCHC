@@ -261,50 +261,55 @@ uint8_t SCHCGWMessage::decode_message(ProtocolType protocol, uint8_t rule_id, st
     if(protocol==ProtocolType::LORAWAN)
     {
         int len = msg.size();
-        // Mask definition
-        uint8_t w_mask = 0x03;
-        uint8_t fcn_mask = 0x3F;
-        //uint8_t c_mask = 0x20;
 
-        uint8_t schc_header = msg[0];
-        _w                  = (schc_header >> 6) & w_mask;
-        _fcn                = schc_header & fcn_mask;
-        _dtag               = 0;                            // In LoRaWAN, dtag is not used
-
-        SPDLOG_DEBUG("Rule_id: {},  w header: {}, fcn header: {}", rule_id, _w, _fcn);
-
-        if(rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len==1 && _fcn==0)
+        SCHCLoRaWANFragRule         _rule_id;
+        if(rule_id == 20)
         {
-            SPDLOG_DEBUG("Decoding SCHC ACK REQ message");
-            // TODO: implemtar la decodificacion de un SCHC ACK REQ
+            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
+
+            uint8_t schc_header = msg[0];          
+            _w                  = (schc_header >> 6) & 0x03;
+            _fcn                = schc_header & 0x3F;
+            _dtag               = 0;                            // In LoRaWAN, dtag is not used
+
+            if(len==1 && _fcn==0)
+            {
+                SPDLOG_DEBUG("Decoding SCHC ACK REQ message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
+            }
+            else if(len==1 && _fcn==63)
+            {   
+                SPDLOG_DEBUG("Decoding SCHC Sender-Abort message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);    
+            }
+            else if (len>1 && _fcn==63)
+            {
+                // Crear el uint32_t a partir de los bytes
+                _rcs = (static_cast<uint32_t>(msg[1] << 24)) & 0xFF000000 | (static_cast<uint32_t>(msg[2] << 16)) & 0x00FF0000 |
+                    (static_cast<uint32_t>(msg[3] << 8)) & 0x0000FF00  | (static_cast<uint32_t>(msg[4])) & 0x000000FF;
+
+                _schc_payload_len   = (len - 5)*8;            // in bits
+                _schc_payload.resize(_schc_payload_len/8);
+
+                std::copy(msg.begin() + 5, msg.end(), _schc_payload.begin());
+
+                SPDLOG_DEBUG("Decoding All-1 SCHC message. RuleID:{}, W:{}, FCN:{}, RCS:{}", rule_id, _w, _fcn, _rcs);      
+            }
+            else if (len>1)
+            {
+                _schc_payload_len   = (len - 1)*8;    // in bits
+                _schc_payload.resize(_schc_payload_len/8);
+                std::copy(msg.begin()+1, msg.end(), _schc_payload.begin());
+                SPDLOG_DEBUG("Decoding SCHC Regular message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
+            }   
+
+
         }
-        else if(rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len==1 && _fcn==63)
+        else if (rule_id == 21)
         {
-            SPDLOG_DEBUG("Decoding SCHC Sender-Abort message");
-            // TODO: implemtar la decodificacion de un SCHC Sender-Abort          
+            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
+
+            /* ToDo */
         }
-        else if (rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len>1 && _fcn==63)
-        {
-            SPDLOG_DEBUG("Decoding All-1 SCHC message");
 
-            // Crear el uint32_t a partir de los bytes
-            _rcs = (static_cast<uint32_t>(msg[1] << 24)) & 0xFF000000 | (static_cast<uint32_t>(msg[2] << 16)) & 0x00FF0000 |
-                   (static_cast<uint32_t>(msg[3] << 8)) & 0x0000FF00  | (static_cast<uint32_t>(msg[4])) & 0x000000FF;
-
-            _schc_payload_len   = (len - 5)*8;                          // in bits
-            _schc_payload.resize(_schc_payload_len/8);
-
-            std::copy(msg.begin() + 5, msg.end(), _schc_payload.begin());
-             
-        }
-        else if (rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len>1)
-        {
-            SPDLOG_DEBUG("Decoding SCHC Regular message");
-
-            _schc_payload_len   = (len - 1)*8;                      // in bits
-            _schc_payload.resize(_schc_payload_len/8);
-            std::copy(msg.begin()+1, msg.end(), _schc_payload.begin());
-        }   
     }
 
     return 0;
