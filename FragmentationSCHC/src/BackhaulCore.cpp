@@ -91,6 +91,58 @@ void BackhaulCore::start()
         SPDLOG_DEBUG("BackhaulCore::runRx thread STARTED");
         SPDLOG_DEBUG("BackhaulCore::runTx thread STARTED");
     }
+    else if(_appConfig.schc.schc_type.compare("schc_gateway") == 0)
+    {
+        stopfd = eventfd(0, EFD_NONBLOCK);
+
+        // name of the interface to which the socket will be associated
+        const char* iface = _appConfig.backhaul.interface_name.c_str();
+
+        // Create RAW socket for ICMPv6/IPv6 packets
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
+        if (sockfd < 0) {
+            SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
+            return;
+        }
+
+        // Obtain interface index
+        struct ifreq ifr;
+        int ifindex;
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
+            SPDLOG_ERROR("Failed to obtain interface index");
+            close(sockfd);
+            return;
+        }
+        else
+        {
+            ifindex = ifr.ifr_ifindex;
+            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
+        }
+
+
+        // Prepare sockaddr_ll for bind
+        struct sockaddr_ll addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sll_family = AF_PACKET;
+        addr.sll_protocol = htons(ETH_P_IPV6);
+        addr.sll_ifindex = ifindex;
+
+        // Associate socket with interface
+        if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+            SPDLOG_ERROR("Failed to associate socket with interface");
+            close(sockfd);
+            return;
+        }
+        SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
+
+        SPDLOG_DEBUG("Starting threads...");
+        rxThread = std::thread(&BackhaulCore::runRx, this);
+        txThread = std::thread(&BackhaulCore::runTx, this);
+        SPDLOG_DEBUG("BackhaulCore::runRx thread STARTED");
+        SPDLOG_DEBUG("BackhaulCore::runTx thread STARTED");
+    }
 
     SPDLOG_DEBUG("BackhaulCore STARTED");
 }
