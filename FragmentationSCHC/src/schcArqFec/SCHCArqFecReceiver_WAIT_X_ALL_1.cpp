@@ -392,69 +392,6 @@ bool SCHCArqFecReceiver_WAIT_X_ALL_1::checkEnoughSymbols()
     return true;
 }
 
-std::vector<std::vector<uint8_t>> SCHCArqFecReceiver_WAIT_X_ALL_1::getBitmapArrayFromEncodedMatrixMap()
-{
-    /* obtains the positions of the missing tiles from the encodedMatrixMap */
-    std::vector<std::pair<int, int>> missedTilesPos;
-
-    for(size_t i = 0; i < _ctx._encodedMatrixMap.size(); ++i)
-    {
-        const auto& currentRow = _ctx._encodedMatrixMap[i];
-
-        for (size_t col = 0; col < currentRow.size(); ++col) 
-        {
-            if (currentRow[col] == 0) 
-            {
-                missedTilesPos.push_back({i+1,col+1});
-            }
-        }
-    }
-
-    /* Convert position in missed tails (w, fcn)*/
-    std::set<std::pair<int, int>> missedTiles;
-    double ts          = _ctx._tileSize;
-    int S           = _ctx._rowCount;
-    double WINDOW_SIZE = _ctx._windowSize;
-
-    SPDLOG_DEBUG("ts:{}, S:{}, WS:{}", ts, S, WINDOW_SIZE);
-
-    for(const auto& [row, col] : missedTilesPos)
-    {
-        int ctn = ceil((row + S*(col - 1))/ts);
-        int fcn = WINDOW_SIZE * (floor(ctn/WINDOW_SIZE) + 1) - ctn;
-        int w   = floor(ctn/WINDOW_SIZE);
-
-        SPDLOG_DEBUG("row:{}, col:{} ---> ctn:{}, fcn:{}, w:{}", row, col, ctn, fcn, w);
-
-        std::pair<int, int> newPair = {w, fcn};
-        auto it = std::find(missedTiles.begin(), missedTiles.end(), newPair);
-
-        if (it == missedTiles.end()) 
-        {
-            missedTiles.insert(newPair);
-            
-        }
-
-    }
-
-
-    /* Convert missed tails (w, fcn) in bitmap_array*/
-
-
-
-
-
-
-
-    for(const auto& [fila, columna] : missedTiles)
-    {
-        SPDLOG_DEBUG("w:{}, fcn:{}", fila, columna);
-    }
-    printMatrixHex(_ctx._bitmapArray);
-
-    SPDLOG_DEBUG("ECO");
-}
-
 uint8_t SCHCArqFecReceiver_WAIT_X_ALL_1::get_c_from_bitmap(uint8_t window)
 {
     /* La funcion indica si faltan tiles para la ventana pasada como argumento.
