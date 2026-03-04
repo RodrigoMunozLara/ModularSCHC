@@ -20,13 +20,16 @@ class SCHCArqFecReceiver_WAIT_X_ALL_1: public ISCHCState
         void release() override;
     
     private:
-        int                     get_tile_ptr(uint8_t window, uint8_t fcn);
-        int                     get_bitmap_ptr(uint8_t fcn);
-        void                    printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
-        void                    decodeCmatrix();
-        void                    storeLastTileinCmatrix(std::vector<uint8_t> lastTile);
-        std::vector<uint8_t>    convertDmatrix_to_SCHCPacket();
-        uint32_t                calculate_crc32(const std::vector<uint8_t>& msg);
+        int                                 get_tile_ptr(uint8_t window, uint8_t fcn);
+        int                                 get_bitmap_ptr(uint8_t fcn);
+        void                                printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
+        void                                decodeCmatrix();
+        void                                storeLastTileinCmatrix(std::vector<uint8_t> lastTile);
+        std::vector<uint8_t>                convertDmatrix_to_SCHCPacket();
+        uint32_t                            calculate_crc32(const std::vector<uint8_t>& msg);
+        bool                                checkEnoughSymbols();
+        std::vector<std::vector<uint8_t>>   getBitmapArrayFromEncodedMatrixMap();
+        uint8_t                             get_c_from_bitmap(uint8_t window);
 
         SCHCArqFecReceiver& _ctx;
 };

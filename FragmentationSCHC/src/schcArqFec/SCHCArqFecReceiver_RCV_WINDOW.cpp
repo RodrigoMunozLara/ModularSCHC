@@ -1,5 +1,8 @@
 #include "schcArqFec/SCHCArqFecReceiver.hpp"
-
+#include <schifra/schifra_galois_field.hpp>
+#include <schifra/schifra_galois_field_polynomial.hpp>
+#include <schifra/schifra_sequential_root_generator_polynomial_creator.hpp>
+#include <schifra/schifra_reed_solomon_decoder.hpp>
 
 SCHCArqFecReceiver_RCV_WINDOW::SCHCArqFecReceiver_RCV_WINDOW(SCHCArqFecReceiver& ctx): _ctx(ctx)
 {
@@ -33,7 +36,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         // uniform_int_distribution<int> dist(0, 100);
         // int random_number = dist(gen);
         //if(random_number < _error_prob)
-        if(_ctx._counter == 2 || _ctx._counter == 4)
+        if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4 || _ctx._counter == 6 || _ctx._counter == 7 )
         {
                 //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
                 SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
@@ -129,6 +132,107 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             return;
         }
     }
+    else if (msg_type == SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG)
+    {
+        decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+
+        _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
+        _ctx._last_window   = decoder.get_w();
+        _ctx._rcs           = decoder.get_rcs();
+        fcn                 = decoder.get_fcn();
+        _ctx._lastTile      = decoder.get_schc_payload();           // obtiene el SCHC payload
+
+        _ctx._bitmapArray[_ctx._last_window][_ctx._windowSize-1]  = 1;
+
+        int residualFragmentationBits_size  = ((_ctx._encodedMatrix.size() * _ctx._encodedMatrix[0].size()) % _ctx._tileSize)*8;
+        int residualCodingBits_size         = _ctx._lastTileSize * 8 - ((_ctx._encodedMatrix.size() * _ctx._encodedMatrix[0].size()) % _ctx._tileSize)*8;
+        SPDLOG_DEBUG("Last Tile size                 : {} bits", _ctx._lastTileSize * 8);
+        SPDLOG_DEBUG("Residual fragmentation bits    : {} bits", residualFragmentationBits_size);
+        SPDLOG_DEBUG("Residual coding bits + padding : {} bits", residualCodingBits_size);
+        SPDLOG_DEBUG("Last Tile received             : {:X}", spdlog::to_hex(_ctx._lastTile));
+
+
+        /* Storing the Residual fragmentation bits in the C-Matrix */
+        int row = _ctx._rowCount - (residualFragmentationBits_size/8);
+        int col = _ctx._nsymbols;
+        for(int i=0; i < residualFragmentationBits_size/8; i++)
+        {
+            _ctx._encodedMatrix[row + i][col-1] = _ctx._lastTile[i];
+            _ctx._encodedMatrixMap[row + i][col-1] = 1;
+        }
+
+        if(checkEnoughSymbols())
+        {
+            /* Decode CMatrix */
+            decodeCmatrix();
+
+            /* Convert D-matrix in a SCHC packet*/
+            std::vector<uint8_t> schc_packet = convertDmatrix_to_SCHCPacket();
+            schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin() + residualFragmentationBits_size/8, _ctx._lastTile.end());
+
+            uint32_t calculated_rcs = calculate_crc32(schc_packet);
+            SPDLOG_DEBUG("Received RCS  : {}",_ctx._rcs);
+            SPDLOG_DEBUG("Calculated RCS: {}",calculated_rcs);
+
+
+            if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
+            {
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize*8);
+
+                            /* Enviando ACK para confirmar la sesion */
+                SPDLOG_DEBUG("Sending SCHC ACK");
+                SCHCGWMessage    encoder;
+                uint8_t c                   = 1;
+                uint8_t w                   = 3;
+                std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+
+                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
+                _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
+                _ctx.executeAgain();
+                return;
+            }
+        }
+        else
+        {
+            SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - There are not enough symbols", w, fcn, _ctx._lastTileSize*8);
+
+            SPDLOG_DEBUG("Sending SCHC Compound ACK");
+
+            /* Revisa si alguna ventana tiene tiles perdidos */
+            std::vector<uint8_t> windows_with_error;
+            for(int i=0; i < _ctx._last_window; i++)
+            {
+                int c = get_c_from_bitmap(i); // Bien usado
+                if(c == 0)
+                    windows_with_error.push_back(i);
+            }
+            windows_with_error.push_back(_ctx._last_window); // Dado que no hay como validar si la ultima ventana tiene error, se envia la ultima de todas formas
+
+            SCHCGWMessage encoder; 
+            std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
+
+            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|<-- ACK, C=0 -------| {}", encoder.get_compound_bitmap_str());
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_WAIT_X_MISSING_FRAG");
+            _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG;
+            return;
+        }
+
+    }
+    
     else
     {
         SPDLOG_WARN("Only regular SCHC fragments are permitted.");
@@ -233,4 +337,147 @@ bool SCHCArqFecReceiver_RCV_WINDOW::checkEnoughSymbols()
     }
 
     return true;
+}
+
+void SCHCArqFecReceiver_RCV_WINDOW::decodeCmatrix()
+{
+
+   /* Finite Field Parameters */
+   const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
+   const std::size_t generator_polynomial_index      = 120;
+   const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
+
+   /* Reed Solomon Code Parameters */
+   const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
+   const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
+   const std::size_t data_length = code_length - fec_length;
+
+   /* Instantiate Finite Field and Generator Polynomials */
+   const schifra::galois::field field(field_descriptor,
+                                      schifra::galois::primitive_polynomial_size06,
+                                      schifra::galois::primitive_polynomial06);
+
+   schifra::galois::field_polynomial generator_polynomial(field);
+
+   if (
+        !schifra::make_sequential_root_generator_polynomial(field,
+                                                            generator_polynomial_index,
+                                                            generator_polynomial_root_count,
+                                                            generator_polynomial)
+      )
+   {
+      std::cout << "Error - Failed to create sequential root generator!" << std::endl;
+      return;
+   }
+
+   /* Instantiate Encoder and Decoder (Codec) */
+   //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
+   typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
+
+   //const encoder_t encoder(field,generator_polynomial);
+   const decoder_t decoder(field,generator_polynomial_index);
+
+
+    for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
+    {
+        /* Instantiate RS Block For Codec */
+        schifra::reed_solomon::block<code_length,fec_length> block;
+
+        // Cargamos los datos usando el operador []
+        for (std::size_t j = 0; j < code_length; ++j) {
+            block[j] = _ctx._encodedMatrix[i][j];
+        }
+
+        schifra::reed_solomon::erasure_locations_t erasure_location_list;
+        erasure_location_list.clear();
+        for(int k=0; k < code_length; k++)
+        {
+            if(_ctx._encodedMatrixMap[i][k] == 0)
+            {
+                erasure_location_list.push_back(k);
+            }
+
+        }
+
+        // 5. Intento de decodificación con log de error
+        bool res = decoder.decode(block, erasure_location_list);
+        
+        if (!res) {
+            // Si entra aquí, imprimiremos los parámetros para debuguear
+            SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
+            SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
+            continue;
+        }
+
+        for (std::size_t j = 0; j < data_length; ++j) {
+            _ctx._dataMatrix[i][j] = block[j];
+        }
+    }   
+
+    SPDLOG_DEBUG("*** D matrix generated ***");
+
+    //printMatrixHex(_ctx._dataMatrix);
+
+
+}
+
+std::vector<uint8_t> SCHCArqFecReceiver_RCV_WINDOW::convertDmatrix_to_SCHCPacket()
+{
+    std::vector<uint8_t> flatVector;
+
+    // 1. Calcular el tamaño total
+    size_t totalSize = 0;
+    for (const auto& row : _ctx._dataMatrix) {
+        totalSize += row.size();
+    }
+
+    // 2. Reservar memoria (Crucial para el rendimiento)
+    flatVector.reserve(totalSize);
+
+    // 3. Copiar fila por fila
+    for (const auto& row : _ctx._dataMatrix) {
+        flatVector.insert(flatVector.end(), row.begin(), row.end());
+    }    
+
+    return flatVector;
+}
+
+uint32_t SCHCArqFecReceiver_RCV_WINDOW::calculate_crc32(const std::vector<uint8_t>& msg) 
+{
+    // CRC32 polynomial (mirrored)
+    const uint32_t polynomial = 0xEDB88320;
+    uint32_t crc = 0xFFFFFFFF;
+
+    // Process each byte in the buffer
+    for (size_t i = 0; i < msg.size(); i++) {
+        crc ^= msg[i]; // Ensure that the data is treated as uint8_t.
+
+        // Process the 8 bits of the byte
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1) 
+            {
+                crc = (crc >> 1) ^ polynomial;
+            } 
+            else 
+            {
+                crc >>= 1;
+            }
+        }
+    }
+
+    return crc ^ 0xFFFFFFFF;
+}
+
+uint8_t SCHCArqFecReceiver_RCV_WINDOW::get_c_from_bitmap(uint8_t window)
+{
+    /* La funcion indica si faltan tiles para la ventana pasada como argumento.
+    Retorna un 1 si no faltan tiles y 0 si faltan tiles */
+
+    for (int i=0; i<_ctx._windowSize; i++)
+    {
+        if(_ctx._bitmapArray[window][i] == 0)
+            return 0;
+    }
+
+    return 1;
 }

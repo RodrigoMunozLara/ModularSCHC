@@ -49,11 +49,14 @@ set(CPP_FILES
     "src/schcArqFec/SCHCArqFecSender_SEND.cpp"
     "src/schcArqFec/SCHCArqFecSender_WAIT_X_SESSION_ACK.cpp"
     "src/schcArqFec/SCHCArqFecSender_END.cpp"
+    "src/schcArqFec/SCHCArqFecSender_RESEND_MISSING_FRAGS.cpp"
     "src/schcArqFec/SCHCArqFecReceiver.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_INIT.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_RCV_WINDOW.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_WAIT_X_ALL_1.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_END.cpp"
+    "src/schcArqFec/SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS.cpp"
+
 )
 
 add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)

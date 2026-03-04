@@ -20,7 +20,10 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
         if(msg_type == SCHCMsgType::SCHC_ACK_MSG)
         {
-            SPDLOG_DEBUG("Receiving a SCHC ACK msg");
+            SPDLOG_DEBUG("Receiving a SCHC ACK");
+
+            SPDLOG_DEBUG("Stoping the Retransmission timer...");
+            _ctx._timer.stop();
 
             decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
@@ -35,6 +38,7 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
                 _ctx.executeAgain();
+                return;
                 
             }
             else
@@ -42,9 +46,27 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                 SPDLOG_ERROR("The SCHC ACK message must have the following parameters (C=1 and W=3)");     
             }
         }
+        else if (msg_type == SCHCMsgType::SCHC_COMPOUND_ACK)
+        {
+            SPDLOG_DEBUG("Receiving a SCHC Compound ACK");
+
+            SPDLOG_DEBUG("Stoping the Retransmission timer...");
+            _ctx._timer.stop();
+
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ACK_COMPOUND, &(_ctx._bitmapArray));
+            uint8_t c               = decoder.get_c();
+            _ctx._win_with_errors   = decoder.get_w_vector();
+
+            decoder.print_msg(SCHCMsgType::SCHC_COMPOUND_ACK, msg, _ctx._bitmapArray);
+            SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_RESEND_MISSING_FRAG");
+            _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES;
+            _ctx.executeAgain();
+            return;
+
+        }
         else
         {
-            SPDLOG_WARN("Only SCHC ACK are permitted.");
+            SPDLOG_WARN("Only SCHC ACK are permitted");
         }
 
     }
@@ -59,11 +81,14 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
 {
     SCHCNodeMessage encoder;        // encoder 
 
+    /* Crea un mensaje SCHC en formato hexadecimal */
+    std::vector<uint8_t> schc_all_1_message = encoder.create_all_1_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._rcs, _ctx._lastTile);
+
     /* Imprime los mensajes para visualizacion ordenada */
-    encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, _ctx._first_fragment_msg);
+    encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
 
     /* Envía el mensaje a la capa 2*/
-    _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
+    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
 
     SPDLOG_DEBUG("Setting S-timer: {} seconds", _ctx._sTimer);
     _ctx.executeTimer(_ctx._sTimer);

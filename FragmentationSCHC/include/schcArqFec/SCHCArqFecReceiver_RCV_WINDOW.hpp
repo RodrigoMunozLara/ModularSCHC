@@ -20,11 +20,15 @@ class SCHCArqFecReceiver_RCV_WINDOW: public ISCHCState
         void release() override;
     
     private:
-        int     get_tile_ptr(uint8_t window, uint8_t fcn);
-        int     get_bitmap_ptr(uint8_t fcn);
-        void    storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn);
-        void    printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
-        bool    checkEnoughSymbols();
+        int                     get_tile_ptr(uint8_t window, uint8_t fcn);
+        int                     get_bitmap_ptr(uint8_t fcn);
+        void                    storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn);
+        void                    printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
+        bool                    checkEnoughSymbols();
+        void                    decodeCmatrix();
+        std::vector<uint8_t>    convertDmatrix_to_SCHCPacket();
+        uint32_t                calculate_crc32(const std::vector<uint8_t>& msg);
+        uint8_t                 get_c_from_bitmap(uint8_t window);
 
         SCHCArqFecReceiver& _ctx;
 };

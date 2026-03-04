@@ -92,12 +92,12 @@ void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
             _currentState = std::make_unique<SCHCArqFecSender_END>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_END;
         }
-        // else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_ERROR)
-        // {
-        //     SPDLOG_DEBUG("Changing STATE to STATE_ERROR");
-        //     _currentState = std::make_unique<SCHCAckOnErrorSender_ERROR>(*this);
-        //     _currentStateStr = SCHCAckOnErrorSenderStates::STATE_ERROR;
-        // }
+        else if (_nextStateStr == SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_RESEND_MISSING_TILES");
+            _currentState = std::make_unique<SCHCArqFecSender_RESEND_MISSING_FRAGS>(*this);
+            _currentStateStr = SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES;
+        }
         
     }
 
@@ -139,12 +139,12 @@ void SCHCArqFecSender::timerExpired()
             _currentState = std::make_unique<SCHCArqFecSender_END>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_END;
         }
-        // else if (_nextStateStr == SCHCAckOnErrorSenderStates::STATE_ERROR)
-        // {
-        //     SPDLOG_DEBUG("Changing STATE to STATE_ERROR");
-        //     _currentState = std::make_unique<SCHCAckOnErrorSender_ERROR>(*this);
-        //     _currentStateStr = SCHCAckOnErrorSenderStates::STATE_ERROR;
-        // }
+        else if (_nextStateStr == SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_RESEND_MISSING_TILES");
+            _currentState = std::make_unique<SCHCArqFecSender_RESEND_MISSING_FRAGS>(*this);
+            _currentStateStr = SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES;
+        }
         
     }
 

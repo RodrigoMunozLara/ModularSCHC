@@ -11,6 +11,7 @@
 #include "schcArqFec/SCHCArqFecSender_SEND.hpp"
 #include "schcArqFec/SCHCArqFecSender_WAIT_X_SESSION_ACK.hpp"
 #include "schcArqFec/SCHCArqFecSender_END.hpp"
+#include "schcArqFec/SCHCArqFecSender_RESEND_MISSING_FRAGS.hpp"
 #include "schcAckOnError/SCHCNodeMessage.hpp"
 
 #include "SCHCTimer.hpp"

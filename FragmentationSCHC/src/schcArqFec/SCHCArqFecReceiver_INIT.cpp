@@ -48,8 +48,20 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
 
     msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
+
+    if(!(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG))
+    {
+        SPDLOG_DEBUG("Receiving a message that does not belong to the session. Discarting Message...");
+        SPDLOG_DEBUG("Changing STATE: From STATE_RX_INIT --> STATE_RX_END");
+        _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
+        _ctx.executeAgain();
+        return;
+
+    }
+
     if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
     {
+        _ctx._enable_to_process_msg = true;
 
         /* Codigo para poder eliminar mensajes de entrada */
         // random_device rd;

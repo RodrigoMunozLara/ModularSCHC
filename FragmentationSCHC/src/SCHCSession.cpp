@@ -71,6 +71,7 @@ void SCHCSession::processEventLoop()
     while (running.load())
     {
         std::unique_ptr<EventMessage> eventMsg;
+        int eventQueueSize = 0;
 
         {
             std::unique_lock<std::mutex> lock(eventMtx);
@@ -88,6 +89,7 @@ void SCHCSession::processEventLoop()
 
             eventMsg = std::move(eventQueue.front());
             eventQueue.pop();
+            eventQueueSize = eventQueue.size();
         }        
 
 
@@ -95,7 +97,7 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a SCHCCore message from the eventQueue");
+            SPDLOG_DEBUG("Removing a SCHCCore message from the eventQueue. {} messages remaining.", eventQueueSize);
             SPDLOG_DEBUG("Calling the execute(msg) of the stateMachine");
             
 
@@ -106,7 +108,7 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a Stack message from the eventQueue");
+            SPDLOG_DEBUG("Removing a Stack message from the eventQueue. {} messages remaining.", eventQueueSize);
             SPDLOG_DEBUG("Calling the execute(msg) of the stateMachine");
             _stateMachine->execute(eventMsg->payload);
         }
@@ -114,7 +116,7 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a TimerExpired message from the eventQueue");  
+            SPDLOG_DEBUG("Removing a TimerExpired message from the eventQueue. {} messages remaining.", eventQueueSize);
             SPDLOG_DEBUG("Calling the timerExpired() of the stateMachine");        
             _stateMachine->timerExpired();
         }
@@ -122,7 +124,7 @@ void SCHCSession::processEventLoop()
         {
             SPDLOG_DEBUG("");
             SPDLOG_DEBUG("****** Starting message processing in the session *********");
-            SPDLOG_DEBUG("Removing a ExecuteAgain message from the eventQueue");
+            SPDLOG_DEBUG("Removing a ExecuteAgain message from the eventQueue. {} messages remaining.", eventQueueSize);
             SPDLOG_DEBUG("Calling the execute() of the stateMachine");
             _stateMachine->execute();
         }

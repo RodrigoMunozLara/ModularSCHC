@@ -10,6 +10,7 @@
 #include "schcArqFec/SCHCArqFecReceiver_RCV_WINDOW.hpp"
 #include "schcArqFec/SCHCArqFecReceiver_WAIT_X_ALL_1.hpp"
 #include "schcArqFec/SCHCArqFecReceiver_END.hpp"
+#include "schcArqFec/SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS.hpp"
 #include "schcAckOnError/SCHCGWMessage.hpp"
 
 #include <cmath>

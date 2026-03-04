@@ -83,12 +83,12 @@ void SCHCArqFecReceiver::execute(const std::vector<uint8_t>& msg)
             _currentState = std::make_unique<SCHCArqFecReceiver_END>(*this);
             _currentStateStr = SCHCArqFecReceiverStates::STATE_END;
         }
-        // else if (_nextStateStr == SCHCAckOnErrorReceiverStates::STATE_END)
-        // {
-        //     SPDLOG_DEBUG("Changing STATE to STATE_END");
-        //     _currentState = std::make_unique<SCHCAckOnErrorReceiver_END>(*this);
-        //     _currentStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
-        // }
+        else if (_nextStateStr == SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_X_MISSING_FRAG");
+            _currentState = std::make_unique<SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS>(*this);
+            _currentStateStr = SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG;
+        }
         // else if (_nextStateStr == SCHCAckOnErrorReceiverStates::STATE_ERROR)
         // {
         //     SPDLOG_DEBUG("Changing STATE to STATE_ERROR");
@@ -129,12 +129,12 @@ void SCHCArqFecReceiver::timerExpired()
             _currentState = std::make_unique<SCHCArqFecReceiver_END>(*this);
             _currentStateStr = SCHCArqFecReceiverStates::STATE_END;
         }
-        // else if (_nextStateStr == SCHCAckOnErrorReceiverStates::STATE_END)
-        // {
-        //     SPDLOG_DEBUG("Changing STATE to STATE_END");
-        //     _currentState = std::make_unique<SCHCAckOnErrorReceiver_END>(*this);
-        //     _currentStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
-        // }
+        else if (_nextStateStr == SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG)
+        {
+            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_X_MISSING_FRAG");
+            _currentState = std::make_unique<SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS>(*this);
+            _currentStateStr = SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG;
+        }
         // else if (_nextStateStr == SCHCAckOnErrorReceiverStates::STATE_ERROR)
         // {
         //     SPDLOG_DEBUG("Changing STATE to STATE_ERROR");

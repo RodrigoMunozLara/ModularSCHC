@@ -3,6 +3,7 @@
 #include <schifra/schifra_galois_field_polynomial.hpp>
 #include <schifra/schifra_sequential_root_generator_polynomial_creator.hpp>
 #include <schifra/schifra_reed_solomon_decoder.hpp>
+#include <set>
 
 SCHCArqFecReceiver_WAIT_X_ALL_1::SCHCArqFecReceiver_WAIT_X_ALL_1(SCHCArqFecReceiver& ctx): _ctx(ctx)
 {
@@ -81,43 +82,83 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
             _ctx._encodedMatrixMap[row + i][col-1] = 1;
         }
 
-        /* Decode CMatrix */
-        decodeCmatrix();
+        //getBitmapArrayFromEncodedMatrixMap();
 
-        /* Convert D-matrix in a SCHC packet*/
-        std::vector<uint8_t> schc_packet = convertDmatrix_to_SCHCPacket();
-        schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin() + residualFragmentationBits_size/8, _ctx._lastTile.end());
-
-        uint32_t calculated_rcs = calculate_crc32(schc_packet);
-        SPDLOG_DEBUG("Received RCS  : {}",_ctx._rcs);
-        SPDLOG_DEBUG("Calculated RCS: {}",calculated_rcs);
-
-
-        /* ToDo: Call RCS */
-        if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
+        /* Checking if there are enough symbols to decode Cmatrix */
+        if(checkEnoughSymbols())
         {
-            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-            SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize*8);
+            /* Decode CMatrix */
+            decodeCmatrix();
 
-                        /* Enviando ACK para confirmar la sesion */
-            SPDLOG_DEBUG("Sending SCHC ACK");
-            SCHCGWMessage    encoder;
-            uint8_t c                   = 1;
-            uint8_t w                   = 3;
-            std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+            /* Convert D-matrix in a SCHC packet*/
+            std::vector<uint8_t> schc_packet = convertDmatrix_to_SCHCPacket();
+            schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin() + residualFragmentationBits_size/8, _ctx._lastTile.end());
+
+            uint32_t calculated_rcs = calculate_crc32(schc_packet);
+            SPDLOG_DEBUG("Received RCS  : {}",_ctx._rcs);
+            SPDLOG_DEBUG("Calculated RCS: {}",calculated_rcs);
+
+
+            if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
+            {
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize*8);
+
+                            /* Enviando ACK para confirmar la sesion */
+                SPDLOG_DEBUG("Sending SCHC ACK");
+                SCHCGWMessage    encoder;
+                uint8_t c                   = 1;
+                uint8_t w                   = 3;
+                std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+
+                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
+                _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
+                _ctx.executeAgain();
+                return;
+            }
+        }
+        else
+        {
+            SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - There are not enough symbols", w, fcn, _ctx._lastTileSize*8);
+
+            SPDLOG_DEBUG("Sending SCHC Compound ACK");
+
+            /* Revisa si alguna ventana tiene tiles perdidos */
+            std::vector<uint8_t> windows_with_error;
+            for(int i=0; i < _ctx._last_window; i++)
+            {
+                int c = this->get_c_from_bitmap(i); // Bien usado
+                if(c == 0)
+                    windows_with_error.push_back(i);
+            }
+            windows_with_error.push_back(_ctx._last_window); // Dado que no hay como validar si la ultima ventana tiene error, se envia la ultima de todas formas
+
+            SCHCGWMessage encoder; 
+            std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
             _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
+
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-            SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
+            SPDLOG_INFO("|<-- ACK, C=0 -------| {}", encoder.get_compound_bitmap_str());
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-
-            SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
-            _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
-            _ctx.executeAgain();
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_WAIT_X_MISSING_FRAG");
+            _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG;
             return;
+
         }
+
+
+
+
 
 
 
@@ -336,4 +377,94 @@ uint32_t SCHCArqFecReceiver_WAIT_X_ALL_1::calculate_crc32(const std::vector<uint
     }
 
     return crc ^ 0xFFFFFFFF;
+}
+
+bool SCHCArqFecReceiver_WAIT_X_ALL_1::checkEnoughSymbols()
+{
+    for(const auto& row : _ctx._encodedMatrixMap)
+    {
+        int sum = std::accumulate(row.begin(), row.end(), 0u);
+
+        if(sum < _ctx._ksymbols )
+            return false;
+    }
+
+    return true;
+}
+
+std::vector<std::vector<uint8_t>> SCHCArqFecReceiver_WAIT_X_ALL_1::getBitmapArrayFromEncodedMatrixMap()
+{
+    /* obtains the positions of the missing tiles from the encodedMatrixMap */
+    std::vector<std::pair<int, int>> missedTilesPos;
+
+    for(size_t i = 0; i < _ctx._encodedMatrixMap.size(); ++i)
+    {
+        const auto& currentRow = _ctx._encodedMatrixMap[i];
+
+        for (size_t col = 0; col < currentRow.size(); ++col) 
+        {
+            if (currentRow[col] == 0) 
+            {
+                missedTilesPos.push_back({i+1,col+1});
+            }
+        }
+    }
+
+    /* Convert position in missed tails (w, fcn)*/
+    std::set<std::pair<int, int>> missedTiles;
+    double ts          = _ctx._tileSize;
+    int S           = _ctx._rowCount;
+    double WINDOW_SIZE = _ctx._windowSize;
+
+    SPDLOG_DEBUG("ts:{}, S:{}, WS:{}", ts, S, WINDOW_SIZE);
+
+    for(const auto& [row, col] : missedTilesPos)
+    {
+        int ctn = ceil((row + S*(col - 1))/ts);
+        int fcn = WINDOW_SIZE * (floor(ctn/WINDOW_SIZE) + 1) - ctn;
+        int w   = floor(ctn/WINDOW_SIZE);
+
+        SPDLOG_DEBUG("row:{}, col:{} ---> ctn:{}, fcn:{}, w:{}", row, col, ctn, fcn, w);
+
+        std::pair<int, int> newPair = {w, fcn};
+        auto it = std::find(missedTiles.begin(), missedTiles.end(), newPair);
+
+        if (it == missedTiles.end()) 
+        {
+            missedTiles.insert(newPair);
+            
+        }
+
+    }
+
+
+    /* Convert missed tails (w, fcn) in bitmap_array*/
+
+
+
+
+
+
+
+    for(const auto& [fila, columna] : missedTiles)
+    {
+        SPDLOG_DEBUG("w:{}, fcn:{}", fila, columna);
+    }
+    printMatrixHex(_ctx._bitmapArray);
+
+    SPDLOG_DEBUG("ECO");
+}
+
+uint8_t SCHCArqFecReceiver_WAIT_X_ALL_1::get_c_from_bitmap(uint8_t window)
+{
+    /* La funcion indica si faltan tiles para la ventana pasada como argumento.
+    Retorna un 1 si no faltan tiles y 0 si faltan tiles */
+
+    for (int i=0; i<_ctx._windowSize; i++)
+    {
+        if(_ctx._bitmapArray[window][i] == 0)
+            return 0;
+    }
+
+    return 1;
 }
