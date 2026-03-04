@@ -152,8 +152,9 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         SPDLOG_DEBUG("Setting S-timer: {} seconds", _ctx._sTimer);
         _ctx.executeTimer(_ctx._sTimer);
 
-        SPDLOG_DEBUG("Changing STATE: From STATE_INIT --> STATE_WAIT_X_S_ACK");
-        _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_X_S_ACK;
+        SPDLOG_DEBUG("Changing STATE: From STATE_INIT --> STATE_SEND");
+        _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_SEND;
+        _ctx.executeAgain();
         return;
     }
 

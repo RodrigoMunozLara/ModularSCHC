@@ -15,7 +15,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _sTimer                 = 10;    /* seconds */
+        _sTimer                 = 30;    /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
 

@@ -22,9 +22,6 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
-            SPDLOG_DEBUG("Stoping the Retransmission timer...");
-            _ctx._timer.stop();
-
             decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
             uint8_t w = decoder.get_w();
@@ -43,7 +40,8 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
             }
             else
             {
-                SPDLOG_ERROR("The SCHC ACK message must have the following parameters (C=1 and W=3)");     
+                SPDLOG_ERROR("The SCHC ACK message must have the following parameters (C=1 and W=3)");    
+                return; 
             }
         }
         else if (msg_type == SCHCMsgType::SCHC_COMPOUND_ACK)

@@ -37,14 +37,14 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         // int random_number = dist(gen);
         //if(random_number < _error_prob)
         //if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4 || _ctx._counter == 6 || _ctx._counter == 7 )
-        if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 7 )
-        {
-                //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
-                SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
-                _ctx._counter++;
-                return;
-        }
-        _ctx._counter++;
+        // if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 7 )
+        // {
+        //         //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
+        //         SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
+        //         _ctx._counter++;
+        //         return;
+        // }
+        // _ctx._counter++;
 
         /* Decoding el SCHC fragment */
         decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
