@@ -9,6 +9,14 @@
 #include <cstring>
 #include <algorithm>
 #include "SCHC_Packet.hpp"
+
+/*
+Header Parser File.
+This file defines the functions to parse raw packets (e.g., IPv6 + UDP) into structured field values (FieldValue struct).
+It includes helper functions to read big-endian integers, extract bits, and convert between hex strings and byte vectors.
+*/
+//+----------------------------------------------------------------------------------+
+
 struct FieldValue {
     std::string fid;              // e.g., "ietf-schc:fid-ipv6-version"
     std::vector<uint8_t> value;   // big-endian bytes (packed)

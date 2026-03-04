@@ -20,7 +20,7 @@ static STATE_RESULT st_gen(FSM_Ctx& ctx);
 static STATE_RESULT st_decomp(FSM_Ctx& ctx);
 static STATE_RESULT st_nocompress(FSM_Ctx& ctx);
 
-// ---- ctor: asigna handlers ----
+// Asigns the function handlers to the states of the FSM
 CompressorFSM::CompressorFSM() {
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_IDLE)]      = st_idle;
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_PARSE)]     = st_parse;
@@ -32,7 +32,7 @@ CompressorFSM::CompressorFSM() {
     handlers_[static_cast<size_t>(COMP_STATE::COMP_STATE_NOCOMPRESS)]  = st_nocompress;
 }
 
-//------------ Auxiliar
+//Auxiliar funciton to calculate how necesary bits are needed to represent the number
 uint16_t value_size_in_bits(uint16_t n) { //To calculate how many bits needed to represent the number
     uint16_t bits = 0;
     while (n > 0) {
@@ -42,6 +42,7 @@ uint16_t value_size_in_bits(uint16_t n) { //To calculate how many bits needed to
     return bits == 0 ? 1 : bits;
 }
 
+//Comparartor for the MSB matching operator. Compares the exact amount of msb of two vectors of bytes 
 bool msb_comparator(const std::vector<uint8_t> &vectorA,const std::vector<uint8_t> &vectorB, size_t msb){
      const size_t nbytes = msb / 8;
     const size_t rembits = msb % 8;
@@ -62,6 +63,7 @@ bool msb_comparator(const std::vector<uint8_t> &vectorA,const std::vector<uint8_
     return true;
 }
 
+//Extractor of the Least Significant Bits of a vector, for the LSB CDA
 uint16_t lsb_extractor(const std::vector<uint8_t> &value, uint16_t bits){    
     //Working only for fixed FL
     if (bits == 0) return 0; //error in extracting
@@ -87,6 +89,7 @@ uint16_t lsb_extractor(const std::vector<uint8_t> &value, uint16_t bits){
 }
 
 // --------------------------------------------//
+//                   FSM core                  //
 STATE_RESULT CompressorFSM::stepFSM(FSM_Ctx& ctx) {
     auto i = static_cast<std::size_t>(state_);
     StateFn fn = handlers_[i];
@@ -127,7 +130,6 @@ STATE_RESULT CompressorFSM::runFSM(FSM_Ctx& ctx) {
     return STATE_RESULT::ERROR_;
 }
 
-
 //----------------  State Functions ---------------------
 
 
@@ -135,16 +137,23 @@ STATE_RESULT CompressorFSM::runFSM(FSM_Ctx& ctx) {
 //FOR NOW IT ASUMES IT IS A NON SCHC PACKET, JUSTP IPV6-UDP
 static STATE_RESULT st_idle(FSM_Ctx& ctx) {
     spdlog::info("State: IDLE. Waiting for packet...");
-    if(ctx.arrived){
+    if(ctx.arrived/*==1*/){
         ctx.next_state = COMP_STATE::COMP_STATE_PARSE;
         return STATE_RESULT::PASS_;
     }
+    /*else if(ctx.arrived==2){{
+        ctx.next_state = COMP_STATE::COMP_STATE_DECOMP;
+        return STATE_RESULT::PASS_;
+    }
+    */
     else{
         
         return STATE_RESULT::STAY_;
     }
 }
 
+//PARSE STATE: Recieves the raw packet IPV6-UDP and parses it to a vector of FieldValue to facilitate
+//the comparation process in the next states.
 static STATE_RESULT st_parse(FSM_Ctx& ctx) {
     spdlog::info("State: PARSE. Parsing packet...");
     if (!ctx.raw_pkt) { ctx.error_code = 2; return STATE_RESULT::ERROR_; }
@@ -177,6 +186,8 @@ static STATE_RESULT st_parse(FSM_Ctx& ctx) {
     return STATE_RESULT::PASS_;
 }
 
+
+//FIND_RULE STATE: Looks in the RuleContext to find a matching rule with the parsed packet. Either Compression or No Compression rule.
 static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
     spdlog::info("State: FIND_RULE. Searching for matching rule...");
     if (!ctx.rulesCtx) { 
@@ -252,6 +263,8 @@ static STATE_RESULT st_find_rule(FSM_Ctx& ctx) {
     return STATE_RESULT::PASS_;
 }
 
+
+//NO_COMPRESSION STATE: Creates a SCHC_Packet with the raw packet if the selected rule is for no compression or didn't find a rule
 static STATE_RESULT st_nocompress(FSM_Ctx& ctx){
     spdlog::info("State: NO_COMPRESS. Generating uncompressed packet...");
     ctx.residueBits.clear();
@@ -290,6 +303,7 @@ static STATE_RESULT st_nocompress(FSM_Ctx& ctx){
     return STATE_RESULT::PASS_;
 }
 
+//MO STATE: Evaluates the TV and the Value of the packet field with the corresponding MO
 static STATE_RESULT st_mo(FSM_Ctx& ctx) {
     spdlog::info("State: MO. Evaluating Matching Operators...");
     std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);//Vector flags to verify if the field have already been checked
@@ -388,7 +402,7 @@ static STATE_RESULT st_mo(FSM_Ctx& ctx) {
     ctx.next_state = COMP_STATE::COMP_STATE_CDA;
     return STATE_RESULT::PASS_;
 }
-
+//CDA STATE: Evaluates the CDAs of the rule and generates the corresponding residue 
 static STATE_RESULT st_cda(FSM_Ctx& ctx) {
     spdlog::info("State: CDA. Evaluating Compression/Decompression Actions...");
     std::vector<bool> used(ctx.parsedPacketHeaders.size(), false);
@@ -459,6 +473,7 @@ static STATE_RESULT st_cda(FSM_Ctx& ctx) {
     return STATE_RESULT::PASS_;
 }
 
+//GEN STATE: Generates the SCHC_Packet with the RuleID and the generated residue in a structure to use and the raw completed packet
 static STATE_RESULT st_gen(FSM_Ctx& ctx) {
     spdlog::info("State: GEN. Generating compressed packet...");
     ctx.totalPacket.clear();
@@ -494,7 +509,7 @@ static STATE_RESULT st_gen(FSM_Ctx& ctx) {
     return STATE_RESULT::PASS_;
 }
 
-
+//DECOMP STATE: For future use, not implemented yet.
 static STATE_RESULT st_decomp(FSM_Ctx& ctx) {
     
     ctx.next_state = COMP_STATE::COMP_STATE_IDLE;

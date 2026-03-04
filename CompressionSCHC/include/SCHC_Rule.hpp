@@ -2,13 +2,11 @@
 Static Context Header File
 This file defines the StaticContext in de SCHC protocol, 
 which is used for compressing and decompressing headers in constrained networks.
-It contains the definition of the RuleID class and the FieldDescription struct for it.
-Also contains enum parameters for the Rules created.
+It contains the definition of the RuleID class and the FieldDescription struct for it,
+following the YANG model for SCHC Rules. The RuleID class represents a SCHC Rule.
 */
-
 //+------------------------------------------------------------------------------------------------------+
-//Enum values para simplificar la lectura de las reglas. Reemplazan los valores numéricos en las reglas.
-//Se optimiza el uso de memoria usando uint8_t en lugar de int
+
 
 #ifndef SCHC_RULE_HPP
 #define SCHC_RULE_HPP
@@ -17,6 +15,9 @@ Also contains enum parameters for the Rules created.
 #include <iostream>
 #include <vector>
 #include <iomanip>
+
+//Enum values to define the nature of the rule, the matching operator,
+// the direction indicator and the compression/decompression action
 
 enum class nature_type_t : uint8_t {
     COMPRESSION = 0,
@@ -49,8 +50,7 @@ enum class cd_action_t : uint8_t {
 
 
 //+------------------------------------------------------------------------------------------------------+
-
-//struct container of TV index and value:
+//struct container of TV index and value, as described in the YANG model for SCHC Rules:
 struct TV_item
 {
     uint16_t size; //number of items of the TV list
@@ -80,12 +80,11 @@ struct SCHC_Entry {
 
 //+------------------------------------------------------------------------------------------------------+
 
-//Class that models a SCHC Rule
-
+//Class that models a SCHC
 class SCHC_Rule{
 
     private:
-        uint8_t rule_id; //Rule ID
+        uint8_t rule_id; //Rule ID, represented with 8 bits, as in the mayority of the SCHC implementations
         uint8_t rule_id_length; //Rule ID Length in bits
         nature_type_t nature_type; //Nature Type (Compression, No Compression, Fragmentation)
        
@@ -114,7 +113,7 @@ class SCHC_Rule{
 
 };
 
-//Functions to print field values of the rule
+//Overloaded Functions to print field values of the rule
 
 std:: ostream& operator <<(std:: ostream& os, const cd_action_t & cda); // For printing with de enum values
 std:: ostream & operator <<(std::ostream &os, const TV_item &tv);

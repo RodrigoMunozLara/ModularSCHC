@@ -2,8 +2,6 @@
 #ifndef SCHC_COMPRESSOR_HPP
 #define SCHC_COMPRESSOR_HPP
 
-
-
 #include <cstdint>
 #include <vector>
 #include <array>
@@ -13,7 +11,13 @@
 #include "PacketParser.hpp"
 #include "SCHC_Packet.hpp"
 
-
+/*
+Static Compression Header File
+It contains the definition of the FSM class for the compressor and the definition of the context for it,
+The context contains the RuleContext, the parsed packet, the output packet and the control variables
+to manage the FSM. 
+*/
+//+--------------------------------------------------+
 
 // Rule comparator state machine for SCHC Rules
 enum class RULE_TYPE : uint8_t{
@@ -21,6 +25,7 @@ enum class RULE_TYPE : uint8_t{
     DEFAULT_RULE = 1
 };
 
+//States for the FSM
 enum class COMP_STATE : uint8_t{
     COMP_STATE_IDLE,
     COMP_STATE_PARSE, 
@@ -28,10 +33,12 @@ enum class COMP_STATE : uint8_t{
     COMP_STATE_MO,
     COMP_STATE_CDA, 
     COMP_STATE_GEN, 
-    COMP_STATE_DECOMP,
+    COMP_STATE_DECOMP, //For future use, not implemented in this version
+    //And maybe extended with more states for de Decompression process
     COMP_STATE_NOCOMPRESS
 };
 
+//Results of the execution of the state functions
 enum class STATE_RESULT:uint8_t{
     PASS_,
     STAY_, 
@@ -40,6 +47,8 @@ enum class STATE_RESULT:uint8_t{
     ERROR_
 };
 
+
+//Principal structure of the compressor
 struct FSM_Ctx{ //Context for de FSM
 
     RuleContext *rulesCtx = nullptr; //Pointer to Rules
@@ -55,7 +64,7 @@ struct FSM_Ctx{ //Context for de FSM
 
 
     std::vector<FieldValue> parsedPacketHeaders; //parsed original packet
-    std::vector<uint8_t> payload;
+    std::vector<uint8_t> payload;//raw payload data
     std::unordered_map<std::string, std::size_t> idx; // hash table to link FID of the packet (for compression) with position
     
     const FieldValue* getField(const std::string& fid) const { //helper to get the FID of the packet
@@ -86,8 +95,8 @@ class CompressorFSM{
 
     public:
         CompressorFSM();
-        STATE_RESULT stepFSM(FSM_Ctx &ctx);
-        STATE_RESULT runFSM(FSM_Ctx &ctx);
+        STATE_RESULT stepFSM(FSM_Ctx &ctx); //Execute one step and the function of the current state, returns the result of the execution
+        STATE_RESULT runFSM(FSM_Ctx &ctx); //Run the FSM until something switch off the OnFSM flag
 
     private:
         static constexpr std::size_t N = static_cast<std::size_t>(COMP_STATE::COMP_STATE_NOCOMPRESS) + 1;

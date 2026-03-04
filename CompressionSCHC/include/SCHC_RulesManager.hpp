@@ -7,7 +7,17 @@
 #include <unordered_map>
 #include <libyang/libyang.h>
 #include <stdexcept>
-#include <nlohmann/json.hpp>    
+#include <nlohmann/json.hpp> 
+
+/*
+Static Context Header File
+This file defines functions and structures for managing SCHC Rules,
+which are loeaded from JSON files and stored in a RuleContext (vector of SCHC_Rules).
+It also includes functions for validating the JSON files against a YANG model,
+and functions for estimating the memory usage of the rules in memory and createing rules interactively.
+*/
+//+------------------------------------------------------------------------------------------------------+
+
 //String to enum class types helpers
 direction_indicator_t di_from_string(const std::string& s);
 matching_operator_t mo_from_string(const std::string& s);

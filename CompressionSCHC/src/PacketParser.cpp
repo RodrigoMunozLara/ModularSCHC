@@ -13,6 +13,8 @@
 #include "SCHC_Rule.hpp"
 #include "PacketParser.hpp"
 
+
+// Helper functions for big-endian parsing and bit extraction
 static inline uint16_t read_u16_be(const uint8_t* p) {
     return static_cast<uint16_t>((p[0] << 8) | p[1]);
 }
@@ -52,6 +54,7 @@ static std::vector<uint8_t> extract_bits_be(const uint8_t* data, size_t data_len
     return out;
 }
 
+//Helper to push a completed field into the output vector of FieldValue
 static void push_field(std::vector<FieldValue>& out,
                        const std::string& fid,
                        const std::vector<uint8_t>& val,
