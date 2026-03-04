@@ -29,6 +29,7 @@ class SCHCCore : public ICore
         void enqueueFromStack(std::unique_ptr<StackMessage> msg);
         void start() override;
         void stop() override;
+        void handleRxFrame(const std::vector<uint8_t>& frame);
     private:
         void runTx() override;
         void runRx() override;

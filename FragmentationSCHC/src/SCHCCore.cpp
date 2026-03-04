@@ -422,3 +422,19 @@ void SCHCCore::enqueueFromStack(std::unique_ptr<StackMessage> msg)
 
 }
 
+void SCHCCore::handleRxFrame(const std::vector<uint8_t>& frame)
+{
+    auto msg = std::make_unique<RoutedMessage>();
+
+    // Populate minimal routing metadata
+    msg->meta.ingress = CoreId::SCHC;
+    msg->meta.payloadSize = frame.size();
+    msg->payload = frame;
+
+    SPDLOG_DEBUG("Message in hex: {:Xp}", spdlog::to_hex(frame));
+    SPDLOG_DEBUG("Message size: {}", msg->meta.payloadSize);
+
+
+    // Forward immediately to the Orchestrator
+    orchestrator.onMessageFromCore(std::move(msg));
+}

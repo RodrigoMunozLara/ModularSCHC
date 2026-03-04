@@ -36,7 +36,8 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         // uniform_int_distribution<int> dist(0, 100);
         // int random_number = dist(gen);
         //if(random_number < _error_prob)
-        if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4 || _ctx._counter == 6 || _ctx._counter == 7 )
+        //if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4 || _ctx._counter == 6 || _ctx._counter == 7 )
+        if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 7 )
         {
                 //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
                 SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   

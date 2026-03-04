@@ -118,6 +118,11 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
+                /* ToDo: Enqueue schc_packet in Backhaul Core*/
+                _ctx._schcCore.handleRxFrame(schc_packet);
+
+
+
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
                 _ctx.executeAgain();
