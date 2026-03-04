@@ -171,7 +171,70 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
         else
         {
             /* ToDo: ERROR, no se puede recibir un fragmento diferente del primero */
-            SPDLOG_ERROR("A fragment cannot be received with a tile different from WindowSize - 1.");
+            //SPDLOG_ERROR("A fragment cannot be received with a tile different from WindowSize - 1.");
+
+
+            w = decoder.get_w();
+
+            if(w > _ctx._last_window)
+                _ctx._last_window    = w;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
+
+
+            payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
+            
+            /* Creacion de buffer para almacenar el schc payload del SCHC fragment */
+            payload = decoder.get_schc_payload();
+
+
+            /* Obteniendo la cantidad de tiles en el mensaje */
+            int tiles_in_payload = (payload_len/8)/_ctx._tileSize;
+
+            /* Se almacenan los tiles en el mapa de recepción de tiles */
+            int tile_ptr    = get_tile_ptr(w, fcn);   // tile_ptr: posicion donde se debe almacenar el tile en el _tileArray.
+            int bitmap_ptr  = get_bitmap_ptr(fcn);    // bitmap_ptr: posicion donde se debe comenzar escribiendo un 1 en el _bitmapArray.
+
+            for(int i=0; i<tiles_in_payload; i++)
+            {
+                std::copy(payload.begin() + (i * _ctx._tileSize), payload.begin() + ((i + 1) * _ctx._tileSize),  _ctx._tilesArray[tile_ptr + i].begin());
+
+                if((bitmap_ptr + i) > (_ctx._windowSize - 1))
+                {
+                    /* ha finalizado la ventana w y ha comenzado la ventana w+1*/
+                    _ctx._bitmapArray[w+1][bitmap_ptr + i - _ctx._windowSize] = 1;
+                }
+                else
+                {
+                    _ctx._bitmapArray[w][bitmap_ptr + i] = 1;
+                }
+
+                /* Storing tiles in C-matrix */
+                uint8_t tmp_window  = static_cast<uint8_t>((tile_ptr+i) / _ctx._windowSize);
+                uint8_t tmp_fcn     = static_cast<uint8_t>(( (tmp_window + 1) * _ctx._windowSize - 1) - (tile_ptr+i));
+                
+            }
+
+            /* Se almacena el puntero al siguiente tile esperado */
+            if((tile_ptr + tiles_in_payload) > _ctx._currentTile_ptr)
+            {
+                _ctx._currentTile_ptr = tile_ptr + tiles_in_payload;
+                SPDLOG_DEBUG("Updating _currentTile_ptr. New value is: {}", _ctx._currentTile_ptr);
+            }
+            else
+            {
+                SPDLOG_DEBUG("_currentTile_ptr is not updated. The previous value is kept {}", _ctx._currentTile_ptr);
+            }
+
+            /* Se imprime mensaje de la llegada de un SCHC fragment*/
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+            SPDLOG_INFO("|--- W={:<1}, FCN={:<2} --->| {:>2} tiles", w, fcn, tiles_in_payload);
+            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+
+
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_INIT --> STATE_RX_RCV_WINDOW");
+            _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_RCV_WINDOW;
+            return;
+
+
         }
     }
     else
