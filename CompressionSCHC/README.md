@@ -1,4 +1,3 @@
-
 # Modular SCHC: Compression
 
 This section implements the SCHC Compression mechanism in C++. The system parses network packets, selecting a matching SCHC Rule and generates the corresponding SCHC Packet, composed of:
@@ -28,12 +27,16 @@ This project is compatible with C++17 and above, it uses CMake for build the exe
 
 --- 
 ## Compression Test
-The config folder contains the JSON file of the rules. The rule with ID: 100 match the network packet in the demo1.txt file in the packets folder. If wanna test other packets, must create another rule that matches the values of the packet.
+The config folder contains the JSON file of the rules. The rule with ID: 100 match the network packet in the demo1.txt file in the packets folder. The demo1.txt file contains the raw sequence in hex of the network packet
+
+If wanna test other packets, must create another rule that matches the values of the packet and create a text file with the hex sequence and with name demoX, where X is the number if exists more than one text file.
 
 After compiling the project, execute the CompressionTest file with a linux terminal, it will display a simple menu with the following options:
 - Print Rules loaded
 - Create Rule
 - Start Compression
 - Close Program
+
+The **Create Rule** option goes to an interactive menu to create a new rule, field by field.
 
 The process of the compression and the resulting package will be displayed in the logs.txt file.
