@@ -99,7 +99,7 @@ void BackhaulCore::start()
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
         // Create RAW socket for ICMPv6/IPv6 packets
-        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IP));
         if (sockfd < 0) {
             SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
             return;
@@ -179,6 +179,12 @@ void BackhaulCore::stop()
 
 void BackhaulCore::runRx()
 {
+    SPDLOG_DEBUG("BackhaulCore::runRx() starting...");
+
+
+
+
+
     struct pollfd fds[2];
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
@@ -262,6 +268,7 @@ void BackhaulCore::handleRxFrame(const std::vector<uint8_t>& frame)
 
 void BackhaulCore::runTx()
 {
+    SPDLOG_DEBUG("BackhaulCore::runTx() starting...");
     while (running.load()) {
 
         std::unique_ptr<RoutedMessage> msg;

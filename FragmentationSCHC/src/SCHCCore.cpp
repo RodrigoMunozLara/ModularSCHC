@@ -140,7 +140,7 @@ void SCHCCore::runTx()
     * - Release session
     * */
 
-    SPDLOG_DEBUG("Starting SCHCCore::runTx() thread...");
+    SPDLOG_DEBUG("SCHCCore::runTx() starting...");
     int i = 1;
     while (running.load())
     {
@@ -232,7 +232,7 @@ void SCHCCore::runRx()
     *       - 
     * */
 
-    SPDLOG_DEBUG("Starting SCHCCore::runRx() thread...");
+    SPDLOG_DEBUG("SCHCCore::runRx() starting...");
     while (running.load())
     {
         std::unique_ptr<StackMessage> msg;
