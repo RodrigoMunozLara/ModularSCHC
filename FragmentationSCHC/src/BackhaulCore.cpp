@@ -53,6 +53,7 @@ void BackhaulCore::start()
             return;
         }
 
+
         // Obtain interface index
         struct ifreq ifr;
         int ifindex;
@@ -93,24 +94,40 @@ void BackhaulCore::start()
     }
     else if(_appConfig.schc.schc_type.compare("schc_gateway") == 0)
     {
-        stopfd = eventfd(0, EFD_NONBLOCK);
-
         // name of the interface to which the socket will be associated
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
-        // Create RAW socket for ICMPv6/IPv6 packets
-        sockfd = socket(AF_INET, SOCK_RAW, 41);
+        // 1. Crear el socket
+        // AF_PACKET: Para control total de la interfaz
+        // SOCK_DGRAM: Para que el kernel elimine la cabecera externa (IPv4) 
+        // y te entregue desde la IPv6.
+        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
+
         if (sockfd < 0) {
-            SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
+            SPDLOG_ERROR("Error al crear socket: {}", strerror(errno));
             return;
         }
 
-
-        // Asociarlo a la interfaz física donde llega el túnel
-        if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, iface, strlen(iface)) < 0) {
-            SPDLOG_ERROR("SO_BINDTODEVICE failed: {}", strerror(errno));
+        // 2. Obtener el índice de la interfaz (he-ipv6)
+        struct ifreq ifr;
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
+            SPDLOG_ERROR("No se pudo obtener el índice de he-ipv6");
+            return;
         }
-        
+
+        // 3. Bind a la interfaz
+        struct sockaddr_ll saddr;
+        memset(&saddr, 0, sizeof(saddr));
+        saddr.sll_family = AF_PACKET;
+        saddr.sll_protocol = htons(ETH_P_IPV6);
+        saddr.sll_ifindex = ifr.ifr_ifindex;
+
+        if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) {
+            SPDLOG_ERROR("Error en bind: {}", strerror(errno));
+        }
+
         SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
 
         SPDLOG_DEBUG("Starting threads...");
@@ -157,60 +174,104 @@ void BackhaulCore::runRx()
 {
     SPDLOG_DEBUG("BackhaulCore::runRx() starting...");
 
+struct pollfd fds[2];
+fds[0].fd = sockfd;
+fds[0].events = POLLIN;
 
+fds[1].fd = stopfd;
+fds[1].events = POLLIN;
 
-
-
-    struct pollfd fds[2];
-    fds[0].fd = sockfd;
-    fds[0].events = POLLIN;
-
-    fds[1].fd = stopfd;
-    fds[1].events = POLLIN;
-
-    while (running.load())
-    {
-        int ret = poll(fds, 2, 100); // bloqueante
-        if (ret < 0) {
-            SPDLOG_ERROR("Poll");
-            break;
-        }
-
-        // Señal de salida
-        if (fds[1].revents & POLLIN) {
-            SPDLOG_DEBUG("Stop signal received");
-            break;
-        }
-
-        // Paquete recibido
-        if (fds[0].revents & POLLIN)
-        {
-            uint8_t buffer[2048];
-            struct sockaddr_ll saddr;
-            socklen_t saddr_len = sizeof(saddr);
-
-            ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
-
-
-            if(saddr.sll_pkttype == PACKET_OTHERHOST) 
-            {
-
-                if (!running.load())
-                    break;
-
-                if (len < 0)
-                {
-                    if (errno == EINTR)
-                        continue;
-
-                    SPDLOG_ERROR("recvfrom failed");
-                    break;
-                }
-
-                handleRxFrame({buffer, buffer + len});
-            }
-        }
+while (running.load())
+{
+    int ret = poll(fds, 2, 100);
+    if (ret < 0) {
+        if (errno == EINTR) continue;
+        SPDLOG_ERROR("Poll error");
+        break;
     }
+
+    if (fds[1].revents & POLLIN) {
+        SPDLOG_DEBUG("Stop signal received");
+        break;
+    }
+
+    if (fds[0].revents & POLLIN)
+    {
+        uint8_t buffer[2048];
+        // CAMBIO 1: Usar la estructura correcta para IPv6
+        struct sockaddr_in6 saddr; 
+        socklen_t saddr_len = sizeof(saddr);
+
+        ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
+
+        if (len < 0) {
+            if (errno == EINTR) continue;
+            SPDLOG_ERROR("recvfrom failed: {}", strerror(errno));
+            break;
+        }
+
+        // CAMBIO 2: Eliminar el filtro de pkttype. 
+        // Si quieres filtrar por una IP específica, hazlo aquí:
+        char str_addr[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &saddr.sin6_addr, str_addr, sizeof(str_addr));
+        SPDLOG_DEBUG("Paquete recibido desde: {}", str_addr);
+
+        // Procesar el frame
+        handleRxFrame({buffer, buffer + len});
+    }
+}
+
+
+    // struct pollfd fds[2];
+    // fds[0].fd = sockfd;
+    // fds[0].events = POLLIN;
+
+    // fds[1].fd = stopfd;
+    // fds[1].events = POLLIN;
+
+    // while (running.load())
+    // {
+    //     int ret = poll(fds, 2, 100); // bloqueante
+    //     if (ret < 0) {
+    //         SPDLOG_ERROR("Poll");
+    //         break;
+    //     }
+
+    //     // Señal de salida
+    //     if (fds[1].revents & POLLIN) {
+    //         SPDLOG_DEBUG("Stop signal received");
+    //         break;
+    //     }
+
+    //     // Paquete recibido
+    //     if (fds[0].revents & POLLIN)
+    //     {
+    //         uint8_t buffer[2048];
+    //         struct sockaddr_ll saddr;
+    //         socklen_t saddr_len = sizeof(saddr);
+
+    //         ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
+
+
+    //         if(saddr.sll_pkttype == PACKET_OTHERHOST) 
+    //         {
+
+    //             if (!running.load())
+    //                 break;
+
+    //             if (len < 0)
+    //             {
+    //                 if (errno == EINTR)
+    //                     continue;
+
+    //                 SPDLOG_ERROR("recvfrom failed");
+    //                 break;
+    //             }
+
+    //             handleRxFrame({buffer, buffer + len});
+    //         }
+    //     }
+    // }
 
     SPDLOG_DEBUG("Thread finished");
 }
