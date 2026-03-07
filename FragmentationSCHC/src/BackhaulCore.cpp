@@ -99,7 +99,7 @@ void BackhaulCore::start()
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
         // Create RAW socket for ICMPv6/IPv6 packets
-        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
+        sockfd = socket(AF_INET, SOCK_RAW, 0);
         if (sockfd < 0) {
             SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
             return;
@@ -125,8 +125,8 @@ void BackhaulCore::start()
         // Prepare sockaddr_ll for bind
         struct sockaddr_ll addr;
         memset(&addr, 0, sizeof(addr));
-        addr.sll_family = AF_PACKET;
-        addr.sll_protocol = htons(ETH_P_IPV6);
+        addr.sll_family = AF_INET;
+        addr.sll_protocol = 0;
         addr.sll_ifindex = ifindex;
 
         // Associate socket with interface
