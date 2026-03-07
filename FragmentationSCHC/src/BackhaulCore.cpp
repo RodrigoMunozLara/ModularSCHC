@@ -99,42 +99,18 @@ void BackhaulCore::start()
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
         // Create RAW socket for ICMPv6/IPv6 packets
-        sockfd = socket(AF_INET, SOCK_RAW, 0);
+        sockfd = socket(AF_INET, SOCK_RAW, 41);
         if (sockfd < 0) {
             SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
             return;
         }
 
-        // Obtain interface index
-        struct ifreq ifr;
-        int ifindex;
-        memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
-        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
-            SPDLOG_ERROR("Failed to obtain interface index");
-            close(sockfd);
-            return;
-        }
-        else
-        {
-            ifindex = ifr.ifr_ifindex;
-            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
-        }
 
-
-        // Prepare sockaddr_ll for bind
-        struct sockaddr_ll addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sll_family = AF_INET;
-        addr.sll_protocol = 0;
-        addr.sll_ifindex = ifindex;
-
-        // Associate socket with interface
-        if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-            SPDLOG_ERROR("Failed to associate socket with interface");
-            close(sockfd);
-            return;
+        // Asociarlo a la interfaz física donde llega el túnel
+        if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, iface, strlen(iface)) < 0) {
+            SPDLOG_ERROR("SO_BINDTODEVICE failed: {}", strerror(errno));
         }
+        
         SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
 
         SPDLOG_DEBUG("Starting threads...");
