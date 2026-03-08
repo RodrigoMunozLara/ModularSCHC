@@ -97,38 +97,37 @@ void BackhaulCore::start()
         // name of the interface to which the socket will be associated
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
-        // 1. Crear el socket
-        // AF_PACKET: Para control total de la interfaz
-        // SOCK_DGRAM: Para que el kernel elimine la cabecera externa (IPv4) 
-        // y te entregue desde la IPv6.
-        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6));
-
-        if (sockfd < 0) {
-            SPDLOG_ERROR("Error al crear socket: {}", strerror(errno));
+        int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+        if (sockfd < 0) 
+        {
+            perror("Socket creation failed");
             return;
         }
 
-        // 2. Obtener el índice de la interfaz (he-ipv6)
         struct ifreq ifr;
-        memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
-        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
-            SPDLOG_ERROR("No se pudo obtener el índice de he-ipv6");
+        std::memset(&ifr, 0, sizeof(ifr));
+        std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0)
+        {
+            perror("ioctl failed");
+            close(sockfd);
             return;
         }
 
-        // 3. Bind a la interfaz
         struct sockaddr_ll saddr;
-        memset(&saddr, 0, sizeof(saddr));
+        std::memset(&saddr, 0, sizeof(saddr));
         saddr.sll_family = AF_PACKET;
-        saddr.sll_protocol = htons(ETH_P_IPV6);
+        saddr.sll_protocol = htons(ETH_P_IP);
         saddr.sll_ifindex = ifr.ifr_ifindex;
 
-        if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) {
-            SPDLOG_ERROR("Error en bind: {}", strerror(errno));
+        if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) 
+        {
+            perror("Bind failed");
+            close(sockfd);
+            return;
         }
 
-        SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
+        SPDLOG_DEBUG("Listen 6in4 tunnel in '{}' phisical interface", iface);
 
         SPDLOG_DEBUG("Starting threads...");
         rxThread = std::thread(&BackhaulCore::runRx, this);
@@ -205,6 +204,7 @@ void BackhaulCore::runRx()
 
             ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
 
+            SPDLOG_DEBUG("saddr.sll_pkttype: {}", saddr.sll_pkttype);
 
             if(saddr.sll_pkttype == PACKET_OTHERHOST) 
             {
