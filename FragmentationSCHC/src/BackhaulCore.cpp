@@ -198,12 +198,14 @@ void BackhaulCore::runRx()
         // Paquete recibido
         if (fds[0].revents & POLLIN)
         {
-            uint8_t buffer[2048];
+            //uint8_t buffer[2048];
+            std::vector<uint8_t> buffer(2048);
             struct sockaddr_ll saddr;
             socklen_t saddr_len = sizeof(saddr);
 
-            ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
-
+            //ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
+            ssize_t len = recvfrom(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&saddr, &saddr_len);
+            
             SPDLOG_DEBUG("saddr.sll_pkttype: {}", saddr.sll_pkttype);
 
             if(saddr.sll_pkttype == PACKET_OTHERHOST) 
@@ -221,7 +223,7 @@ void BackhaulCore::runRx()
                     break;
                 }
 
-                handleRxFrame({buffer, buffer + len});
+                handleRxFrame({buffer.begin(), buffer.begin() + len});
             }
         }
     }
