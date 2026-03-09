@@ -82,7 +82,7 @@ void BackhaulCore::start()
             close(sockfd);
             return;
         }
-        
+
         SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
 
         SPDLOG_DEBUG("Starting threads...");
@@ -98,7 +98,7 @@ void BackhaulCore::start()
         // name of the interface to which the socket will be associated
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
-        int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+        sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
         if (sockfd < 0) 
         {
             SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
@@ -106,7 +106,6 @@ void BackhaulCore::start()
         }
 
         struct ifreq ifr;
-        int ifindex;
         memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
         if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0)
@@ -117,15 +116,14 @@ void BackhaulCore::start()
         }
         else
         {
-            ifindex = ifr.ifr_ifindex;
-            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
+            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifr.ifr_ifindex);
         }
 
         struct sockaddr_ll saddr;
         std::memset(&saddr, 0, sizeof(saddr));
         saddr.sll_family = AF_PACKET;
         saddr.sll_protocol = htons(ETH_P_IP);
-        saddr.sll_ifindex = ifindex;
+        saddr.sll_ifindex = ifr.ifr_ifindex;
 
         if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) 
         {
