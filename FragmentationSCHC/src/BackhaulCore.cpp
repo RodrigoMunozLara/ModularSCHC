@@ -210,8 +210,7 @@ void BackhaulCore::runRx()
 
             //ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
             ssize_t len = recvfrom(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&saddr, &saddr_len);
-            
-            SPDLOG_DEBUG("saddr.sll_pkttype: {}", saddr.sll_pkttype);
+        
 
             if(saddr.sll_pkttype == PACKET_OTHERHOST) 
             {
