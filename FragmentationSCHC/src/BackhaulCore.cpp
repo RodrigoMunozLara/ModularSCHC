@@ -105,7 +105,6 @@ void BackhaulCore::start()
             return;
         }
 
-        struct ifreq ifr;
         memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
         if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0)
@@ -212,7 +211,7 @@ void BackhaulCore::runRx()
             ssize_t len = recvfrom(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&saddr, &saddr_len);
         
 
-            if(saddr.sll_pkttype == PACKET_OTHERHOST) 
+            if(saddr.sll_pkttype == PACKET_OTHERHOST || saddr.sll_ifindex == ifr.ifr_ifindex) 
             {
 
                 if (!running.load())

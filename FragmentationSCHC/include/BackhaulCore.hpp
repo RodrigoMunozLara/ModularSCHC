@@ -70,4 +70,6 @@ private:
     /* IPv6 socket file descriptor */
     int sockfd{-1};
     int stopfd{-1};
+
+    struct ifreq ifr;
 };
