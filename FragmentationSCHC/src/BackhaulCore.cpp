@@ -53,13 +53,12 @@ void BackhaulCore::start()
             return;
         }
 
-
-        // Obtain interface index
         struct ifreq ifr;
         int ifindex;
-        memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
-        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) {
+        std::memset(&ifr, 0, sizeof(ifr));
+        std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+        if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) 
+        {
             SPDLOG_ERROR("Failed to obtain interface index");
             close(sockfd);
             return;
@@ -71,19 +70,19 @@ void BackhaulCore::start()
         }
 
 
-        // Prepare sockaddr_ll for bind
         struct sockaddr_ll addr;
         memset(&addr, 0, sizeof(addr));
         addr.sll_family = AF_PACKET;
         addr.sll_protocol = htons(ETH_P_IPV6);
         addr.sll_ifindex = ifindex;
 
-        // Associate socket with interface
-        if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) 
+        {
             SPDLOG_ERROR("Failed to associate socket with interface");
             close(sockfd);
             return;
         }
+        
         SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
 
         SPDLOG_DEBUG("Starting threads...");
@@ -94,35 +93,43 @@ void BackhaulCore::start()
     }
     else if(_appConfig.schc.schc_type.compare("schc_gateway") == 0)
     {
+        stopfd = eventfd(0, EFD_NONBLOCK);
+
         // name of the interface to which the socket will be associated
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
         int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
         if (sockfd < 0) 
         {
-            perror("Socket creation failed");
+            SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
             return;
         }
 
         struct ifreq ifr;
-        std::memset(&ifr, 0, sizeof(ifr));
+        int ifindex;
+        memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
         if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0)
         {
-            perror("ioctl failed");
+            SPDLOG_ERROR("Failed to obtain interface index");
             close(sockfd);
             return;
+        }
+        else
+        {
+            ifindex = ifr.ifr_ifindex;
+            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
         }
 
         struct sockaddr_ll saddr;
         std::memset(&saddr, 0, sizeof(saddr));
         saddr.sll_family = AF_PACKET;
         saddr.sll_protocol = htons(ETH_P_IP);
-        saddr.sll_ifindex = ifr.ifr_ifindex;
+        saddr.sll_ifindex = ifindex;
 
         if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) 
         {
-            perror("Bind failed");
+            SPDLOG_ERROR("Failed to associate socket with interface");
             close(sockfd);
             return;
         }
