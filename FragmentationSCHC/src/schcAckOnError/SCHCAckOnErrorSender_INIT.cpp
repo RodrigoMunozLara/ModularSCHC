@@ -15,7 +15,7 @@ SCHCAckOnErrorSender_INIT::~SCHCAckOnErrorSender_INIT()
 void SCHCAckOnErrorSender_INIT::execute(const std::vector<uint8_t>& msg)
 {
 
-    if(_ctx._appConfig.schc.schc_l2_protocol.compare("lorawan") == 0)
+    if(_ctx._appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0)
     {
         /*
              8.4.3.1. Sender Behavior

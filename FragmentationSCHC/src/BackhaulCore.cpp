@@ -1,5 +1,5 @@
 #include "BackhaulCore.hpp"
-
+#include <netinet/ip.h>
 
 BackhaulCore::BackhaulCore(Orchestrator& orch, AppConfig& appConfig): orchestrator(orch), _appConfig(appConfig)
 {
@@ -39,7 +39,7 @@ void BackhaulCore::start()
         running.store(true);
     }
 
-    if(_appConfig.schc.schc_type.compare("schc_node") == 0)
+    if(_appConfig.backhaul.tunnel_6to4.compare("false") == 0)
     {
         stopfd = eventfd(0, EFD_NONBLOCK);
 
@@ -54,7 +54,6 @@ void BackhaulCore::start()
         }
 
         struct ifreq ifr;
-        int ifindex;
         std::memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
         if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0) 
@@ -65,8 +64,7 @@ void BackhaulCore::start()
         }
         else
         {
-            ifindex = ifr.ifr_ifindex;
-            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifindex);
+            SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", ifr.ifr_name, ifr.ifr_ifindex);
         }
 
 
@@ -74,7 +72,7 @@ void BackhaulCore::start()
         memset(&addr, 0, sizeof(addr));
         addr.sll_family = AF_PACKET;
         addr.sll_protocol = htons(ETH_P_IPV6);
-        addr.sll_ifindex = ifindex;
+        addr.sll_ifindex = ifr.ifr_ifindex;
 
         if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) 
         {
@@ -83,7 +81,7 @@ void BackhaulCore::start()
             return;
         }
 
-        SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", iface);
+        SPDLOG_DEBUG("Socket AF_PACKET associated with '{}'", ifr.ifr_name);
 
         SPDLOG_DEBUG("Starting threads...");
         rxThread = std::thread(&BackhaulCore::runRx, this);
@@ -91,7 +89,7 @@ void BackhaulCore::start()
         SPDLOG_DEBUG("BackhaulCore::runRx thread STARTED");
         SPDLOG_DEBUG("BackhaulCore::runTx thread STARTED");
     }
-    else if(_appConfig.schc.schc_type.compare("schc_gateway") == 0)
+    else if(_appConfig.backhaul.tunnel_6to4.compare("true") == 0)
     {
         stopfd = eventfd(0, EFD_NONBLOCK);
 
@@ -185,7 +183,7 @@ void BackhaulCore::runRx()
     fds[1].fd = stopfd;
     fds[1].events = POLLIN;
 
-    while (running.load())
+    while(running.load())
     {
         int ret = poll(fds, 2, 100); // bloqueante
         if (ret < 0) {
@@ -202,18 +200,15 @@ void BackhaulCore::runRx()
         // Paquete recibido
         if (fds[0].revents & POLLIN)
         {
-            //uint8_t buffer[2048];
             std::vector<uint8_t> buffer(2048);
             struct sockaddr_ll saddr;
             socklen_t saddr_len = sizeof(saddr);
 
-            //ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&saddr, &saddr_len);
             ssize_t len = recvfrom(sockfd, buffer.data(), buffer.size(), 0, (struct sockaddr*)&saddr, &saddr_len);
-        
 
-            if(saddr.sll_pkttype == PACKET_OTHERHOST || saddr.sll_ifindex == ifr.ifr_ifindex) 
+
+            if(_appConfig.backhaul.tunnel_6to4.compare("false") == 0) 
             {
-
                 if (!running.load())
                     break;
 
@@ -228,6 +223,48 @@ void BackhaulCore::runRx()
 
                 handleRxFrame({buffer.begin(), buffer.begin() + len});
             }
+            else if (_appConfig.backhaul.tunnel_6to4.compare("true") == 0)
+            {
+                if (!running.load())
+                    break;
+
+                if (len < 0)
+                {
+                    if (errno == EINTR)
+                        continue;
+
+                    SPDLOG_ERROR("recvfrom failed");
+                    break;
+                }
+
+                // Minimum: Ethernet (14) + IPv4 (20)
+                if (len < 14 + 20) continue;
+
+                uint16_t eth_proto = ntohs(saddr.sll_protocol);
+                if (eth_proto != ETH_P_IP) continue;
+
+
+                struct iphdr* ip4 = reinterpret_cast<struct iphdr*>(buffer.data() + 14);
+                if (ip4->protocol == 41) 
+                {
+                    int ip4_hdr_len         = ip4->ihl * 4;
+                    int total_headers_len   = 14 + ip4_hdr_len;
+
+                    if (len > total_headers_len)
+                    {
+                        // Extraemos el paquete IPv6 a un nuevo vector
+                        std::vector<uint8_t> ipv6_data(buffer.begin() + total_headers_len, buffer.begin() + len);
+
+                        if (ipv6_data.size() >= 40)
+                        {
+                            handleRxFrame(ipv6_data);
+                        }
+                    }
+                }
+
+
+            }
+            
         }
     }
 

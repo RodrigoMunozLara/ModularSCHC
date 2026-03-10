@@ -6,7 +6,7 @@ SCHCAckOnErrorSender::SCHCAckOnErrorSender(SCHCFragDir dir, AppConfig& appConfig
 {
     _stack = _schcCore._stack.get();
 
-    if(appConfig.schc.schc_l2_protocol.compare("lorawan") == 0)
+    if(appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0)
     {
         /* Static SCHC parameters */
         _protoType              = ProtocolType::LORAWAN;

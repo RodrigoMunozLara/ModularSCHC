@@ -1,7 +1,7 @@
 from scapy.all import *
 
 # Capa de enlace (Ethernet)
-eth = Ether(src="00:11:22:33:44:55", dst="00:15:5d:02:64:2d")
+eth = Ether(src="00:15:5d:02:6e:40", dst="00:00:00:00:00:00")
 
 # Capa de red (IPv6)
 #ipv6 = IPv6(src="2001:db8::1", dst="fc00:1::1")

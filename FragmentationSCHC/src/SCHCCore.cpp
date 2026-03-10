@@ -32,7 +32,7 @@ void SCHCCore::start()
 
     /* Creating stack according to layer 2 protocol */
     SPDLOG_DEBUG("Creating stack object according to layer 2 protocol");
-    if(_appConfig.schc.schc_l2_protocol.compare("lorawan") == 0)
+    if(_appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0)
     {
         _stack = std::make_unique<SCHCLoRaWANStack>(_appConfig, *this);
         _stack->init();
@@ -208,6 +208,47 @@ void SCHCCore::runTx()
                 SPDLOG_WARN("No free SCHC uplinkSessions available");
             }
         }
+        else if (_appConfig.schc.schc_type.compare("schc_gateway") == 0)
+        {
+            SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned DOWNLINK session");
+            /* Obtaining a unsigned session*/
+            if (_downlinkSessionCounter <= _downlinkSessionCounterMax)
+            {
+                /* Create a new downlink session to process the message from Orchestator */
+                /* The currentId is the Dtag in a SCHC session. 
+                If the SCHC session does not have Dtag (like in LoRaWAN), the currentID is the RuleID*/
+
+                uint8_t currentId = 21 + _downlinkSessionCounter;
+
+                auto session = std::make_unique<SCHCSession>(currentId, SCHCFragDir::DOWNLINK_DIR, _appConfig, *this);
+
+                std::lock_guard<std::mutex> lock(sessionsMtx);
+                auto [it, inserted] = downlinkSessions.try_emplace(currentId, std::move(session));
+
+                if (inserted) 
+                {
+                    it->second->init(); 
+                    
+                    SPDLOG_DEBUG("DOWNLINK Session with id '{}' started", currentId);
+
+                    auto evMsg = std::make_unique<EventMessage>();
+                    evMsg->payload = msg->payload;
+                    evMsg->evType = EventType::SCHCCoreMsgReceived;
+
+                    it->second->enqueueEvent(std::move(evMsg));
+                    _downlinkSessionCounter++;
+                } 
+                else 
+                {
+                    SPDLOG_WARN("Session ID {} already exists, ignoring message", currentId);
+                }
+            }
+            else
+            {
+                SPDLOG_WARN("No free SCHC downlinkSessions available");
+            }
+        }
+        
 
         SPDLOG_DEBUG("SCHCCore::runTx() loop counter: {}" , i);
         i++;
@@ -304,7 +345,7 @@ void SCHCCore::runRx()
             } /* Uplink Message */
         } /* SCHC Gateway + LoRaWAN_NT */     
         else if ((_appConfig.schc.schc_type.compare("schc_node") == 0) 
-            && (_appConfig.schc.schc_l2_protocol.compare("lorawan") == 0))
+            && (_appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0))
         {
             uint8_t currentId;
             SPDLOG_DEBUG("msg->ruleId: {}", msg->ruleId);

@@ -431,7 +431,6 @@ std::vector<std::string> SCHCLoRaWANStack::parseUnicastEvents(const std::string&
     return results;
 }
 
-
 // Función auxiliar basada en tu lógica para convertir UNICAST:... a bytes
 std::vector<uint8_t> SCHCLoRaWANStack::convertUnicastToBytes(const std::string& input) {
     std::string target = "UNICAST:";

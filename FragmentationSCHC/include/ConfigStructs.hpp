@@ -13,15 +13,14 @@ struct LoggingConfig {
 
 struct BackhaulCoreConfig {
     std::string interface_name;
+    std::string tunnel_6to4;
 };
 
 struct SCHCCoreConfig {
     std::string schc_l2_protocol;
     std::string schc_type;
     std::string schc_ack_mechanism;
-    double error_prob;
-    std::string schc_reliability;
-    
+    double error_prob;    
 };
 
 struct MQTTConfig {
