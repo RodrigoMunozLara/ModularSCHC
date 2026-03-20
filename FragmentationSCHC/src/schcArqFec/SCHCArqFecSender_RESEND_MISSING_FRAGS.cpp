@@ -19,7 +19,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
     {
         SCHCNodeMessage decoder;
         SPDLOG_DEBUG("Decoding Message...");
-        SCHCMsgType msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+        SCHCMsgType msg_type = decoder.get_msg_type(_ctx._protoType, _ctx._ruleID, msg);
 
         if(msg_type == SCHCMsgType::SCHC_ACK_MSG)
         {
@@ -28,7 +28,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             SPDLOG_DEBUG("Stoping the Retransmission timer...");
             _ctx._timer.stop();
 
-            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
+            decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
             uint8_t w = decoder.get_w();
             decoder.print_msg(SCHCMsgType::SCHC_ACK_MSG, msg, _ctx._bitmapArray);

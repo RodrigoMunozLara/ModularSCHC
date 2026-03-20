@@ -58,8 +58,8 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
     // resp = sendCommand("AT+NJM=1"); /* Network Join Mode: AT+NJM: get or set the network join mode (0 = ABP, 1 = OTAA)*/
     // SPDLOG_DEBUG("{}", cleanString(resp));
 
-    resp = send_command("AT+CLASS=A");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
-    SPDLOG_DEBUG("AT+CLASS=A {}", resp);
+    resp = send_command("AT+CLASS=C");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
+    SPDLOG_DEBUG("AT+CLASS=C {}", resp);
 
     resp = send_command("AT+ADR=0"); /* Adaptive Rate: AT+ADR: get or set the adaptive data rate setting (0 = OFF, 1 = ON)*/
     SPDLOG_DEBUG("AT+ADR=0 {}", resp);

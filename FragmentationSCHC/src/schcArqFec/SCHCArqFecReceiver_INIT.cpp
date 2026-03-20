@@ -46,7 +46,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
     std::vector<uint8_t>    payload;
     int                     payload_len;    // in bits
 
-    msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+    msg_type = decoder.get_msg_type(_ctx._protoType, _ctx._ruleID, msg);
 
 
     if(!(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG))
@@ -79,7 +79,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
         // _ctx._counter++;
 
         /* Decoding el SCHC fragment */
-        decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+        decoder.decode_message(_ctx._protoType, _ctx._ruleID, msg);
         fcn = decoder.get_fcn();
         
         if(fcn == (_ctx._windowSize - 1))

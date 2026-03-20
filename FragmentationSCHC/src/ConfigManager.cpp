@@ -41,7 +41,14 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     config.lorawan_node.appeui = j["lorawan_node"]["appeui"].get<std::string>();
     config.lorawan_node.appkey = j["lorawan_node"]["appkey"].get<std::string>();
     config.lorawan_node.data_rate = j["lorawan_node"]["data_rate"].get<std::string>();
-    
+
+    // Myriota Node
+    config.myriota_node.serial_port = j["myriota_node"]["serial_port"].get<std::string>();
+
+    // Myriota HTTP
+    config.myriota_http.port = std::stoi(j["myriota_http"]["port"].get<std::string>());
+    config.myriota_http.ngrok_user = j["myriota_http"]["ngrok_user"].get<std::string>();
+
     return true;
 }
 

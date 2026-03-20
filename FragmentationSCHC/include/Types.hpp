@@ -18,7 +18,8 @@ enum class ProtocolType {
     NB_IOT,
     SIGFOX,
     MYRIOTA,
-    LORAWAN_NS
+    LORAWAN_NS,
+    MYRIOTA_NS
 };
 
 struct RoutedMetadata {

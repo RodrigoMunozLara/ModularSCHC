@@ -39,6 +39,14 @@ struct LoRaWAN_Node_Config {
     std::string appkey;
 };
 
+struct Myriota_Node_Config {
+    std::string serial_port;
+};
+
+struct Myriota_HTTP_Config {
+    int         port;
+    std::string ngrok_user;
+};
 
 struct AppConfig {
     GeneralConfig general;
@@ -47,4 +55,6 @@ struct AppConfig {
     BackhaulCoreConfig backhaul;
     MQTTConfig mqtt;
     SCHCCoreConfig schc;
+    Myriota_Node_Config myriota_node;
+    Myriota_HTTP_Config myriota_http;
 };

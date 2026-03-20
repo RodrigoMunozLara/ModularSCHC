@@ -51,11 +51,11 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
     int                     payload_len;    // in bits
 
     SPDLOG_DEBUG("Decoding Message...");
-    msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+    msg_type = decoder.get_msg_type(_ctx._protoType, _ctx._ruleID, msg);
 
     if(msg_type == SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG)
     {
-        decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+        decoder.decode_message(_ctx._protoType, _ctx._ruleID, msg);
 
         _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
         _ctx._last_window   = decoder.get_w();

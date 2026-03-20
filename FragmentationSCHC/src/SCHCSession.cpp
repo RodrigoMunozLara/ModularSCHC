@@ -45,6 +45,24 @@ void SCHCSession::init()
     {
         _stateMachine = std::make_unique<SCHCArqFecReceiver>(_dir, _appConfig, _schcCore, *this);
     }
+    else if((_dir == SCHCFragDir::UPLINK_DIR) 
+        && (_appConfig.schc.schc_type.compare("schc_node") == 0) 
+        && (_appConfig.schc.schc_ack_mechanism.compare("arq_fec") == 0) 
+        && (_appConfig.schc.schc_l2_protocol.compare("myriota_at") == 0))
+    {
+        _stateMachine = std::make_unique<SCHCArqFecSender>(_dir, _appConfig, _schcCore, *this);
+    }
+    else if((_dir == SCHCFragDir::UPLINK_DIR) 
+        && (_appConfig.schc.schc_type.compare("schc_gateway") == 0) 
+        && (_appConfig.schc.schc_ack_mechanism.compare("arq_fec") == 0) 
+        && (_appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0))
+    {
+        _stateMachine = std::make_unique<SCHCArqFecReceiver>(_dir, _appConfig, _schcCore, *this);
+    }
+    else
+    {
+        SPDLOG_ERROR("There is no setting in the configuration file specifying which state machine to start");
+    }
 
     running.store(true);
 

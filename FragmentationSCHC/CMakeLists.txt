@@ -4,20 +4,20 @@ project(ModularSCHC LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 1. Definimos las rutas de destino claramente
+# Definimos las rutas de destino claramente
 set(BIN_OUT_DIR "${PROJECT_SOURCE_DIR}/binaries")
 set(NODE_DIR "${BIN_OUT_DIR}/schc_node")
 set(GATEWAY_DIR "${BIN_OUT_DIR}/schc_gateway")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_OUT_DIR})
 
-# 2. Configuración de paquetes y dependencias
+# Configuración de paquetes y dependencias
 find_package(PkgConfig REQUIRED)
 find_package(fmt 9.1.0 REQUIRED)
 find_package(spdlog 1.12.0 REQUIRED)
 pkg_check_modules(MOSQUITTO REQUIRED libmosquitto)
 
-# 3. Lista de archivos fuente
+# Lista de archivos fuente
 set(CPP_FILES
     "src/BackhaulCore.cpp"
     "src/Orchestrator.cpp"
@@ -27,6 +27,8 @@ set(CPP_FILES
     "src/SCHCTimer.cpp"
     "src/stacks/SCHCLoRaWANStack.cpp"
     "src/stacks/SCHCLoRaWAN_NS_MQTT_Stack.cpp"
+    "src/stacks/SCHCMyriotaStack.cpp"
+    "src/stacks/SCHCMyriotaHTTPStack.cpp"
     "src/schcAckOnError/SCHCNodeMessage.cpp"
     "src/schcAckOnError/SCHCGWMessage.cpp"   
     "src/schcAckOnError/SCHCAckOnErrorSender.cpp"
@@ -56,18 +58,17 @@ set(CPP_FILES
     "src/schcArqFec/SCHCArqFecReceiver_WAIT_X_ALL_1.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_END.cpp"
     "src/schcArqFec/SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS.cpp"
-
 )
 
 add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 
-# 4. CREAR EL TARGET (Primero se crea, luego se configura)
+# CREAR EL TARGET (Primero se crea, luego se configura)
 add_library(module_schc STATIC ${CPP_FILES})
 
 target_include_directories(module_schc PUBLIC include)
 target_link_libraries(module_schc PRIVATE fmt::fmt spdlog::spdlog ${MOSQUITTO_LIBRARIES})
 
-# 5. ASAN (AddressSanitizer) - Mejorado para ser más limpio
+# ASAN (AddressSanitizer) - Mejorado para ser más limpio
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address)

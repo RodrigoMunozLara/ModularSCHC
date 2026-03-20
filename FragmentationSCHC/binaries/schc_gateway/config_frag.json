@@ -13,10 +13,10 @@
   },
   "schc_core": {
     "_comment_1": ["schc_type: schc_node, schc_gateway"],
-    "_comment_2": ["schc_l2_protocol: lorawan_at, lorawan_ns_mqtt, lorawan_ns_http"],
-    "_comment_3": ["schc_ack_mode: ack_end_win, ack_end_session, compound_ack, arq_fec"],
+    "_comment_2": ["schc_l2_protocol: lorawan_at, lorawan_ns_mqtt, lorawan_ns_http, myriota_at, myriota_ns_http"],
+    "_comment_3": ["schc_ack_mechanism: ack_end_win, ack_end_session, compound_ack, arq_fec"],
     "schc_type": "schc_gateway",
-    "schc_l2_protocol": "lorawan_ns_mqtt",
+    "schc_l2_protocol": "myriota_ns_http",
     "schc_ack_mechanism": "arq_fec",
     "error_prob": "0"
   },
@@ -33,5 +33,12 @@
     "appeui" : "0000000000000001",
     "appkey" : "B1B097925017FBA74FBA536900C76CAC",
     "data_rate": "DR4"
+  },
+  "myriota_node": {
+    "serial_port":"/dev/ttyACM0"
+  },
+  "myriota_http": {
+    "port":"18080",
+    "ngrok_user":"rodrigo"
   }
 }

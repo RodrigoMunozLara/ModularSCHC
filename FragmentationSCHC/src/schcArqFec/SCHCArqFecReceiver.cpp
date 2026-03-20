@@ -36,6 +36,37 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
         _counter = 1;
 
     }
+    else if(appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0)
+    {
+        /* Static SCHC parameters */
+        _protoType              = ProtocolType::MYRIOTA_NS;
+        _ruleID                 = 20;
+        _dTag                   = -1;
+        _windowSize             = 63;
+        _tileSize               = 10;
+        _inactivityTimer        = 5;    /* seconds */
+        _maxAckReq              = 8;
+        _m                      = 2;
+        _nTotalTiles            = _windowSize * pow(2,_m);
+        _nMaxWindows            = 4;
+         
+        /* Dynamic SCHC parameters */
+        _nFullTiles             = 0;
+        _lastTileSize           = 0;             
+        _rtxAttemptsCounter     = 0;
+        _all_tiles_sent         = false;
+        _last_confirmed_window  = 0;
+        _current_L2_MTU         = _schcCore._stack->getMtu();
+        SPDLOG_DEBUG("Using MTU: {}", _current_L2_MTU);
+
+        SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+        _currentState = std::make_unique<SCHCArqFecReceiver_INIT>(*this);
+
+        _enable_to_process_msg = false;
+
+        _counter = 1;
+
+    }
     
 }
 

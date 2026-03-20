@@ -1,0 +1,23 @@
+t=2026-03-20T14:48:01-0300 lvl=info msg="no configuration paths supplied"
+t=2026-03-20T14:48:01-0300 lvl=info msg="using configuration at default config path" path=/home/rodrigo/.config/ngrok/ngrok.yml
+t=2026-03-20T14:48:01-0300 lvl=info msg="open config file" path=/home/rodrigo/.config/ngrok/ngrok.yml err=nil
+t=2026-03-20T14:48:01-0300 lvl=info msg="FIPS 140 mode" enabled=false
+t=2026-03-20T14:48:01-0300 lvl=warn msg="can't bind default web address, trying alternatives" obj=web addr=127.0.0.1:4040
+t=2026-03-20T14:48:01-0300 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4041 allow_hosts=[]
+t=2026-03-20T14:48:02-0300 lvl=info msg="client session established" obj=tunnels.session
+t=2026-03-20T14:48:02-0300 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2026-03-20T14:48:02-0300 lvl=eror msg="session closing" obj=tunnels.session err="failed to start tunnel: The endpoint 'https://admissive-complementally-angelo.ngrok-free.dt=2026-03-20T14:48:15-0300 lvl=info msg="join connections" obj=join id=d89ea7a004eb l=127.0.0.1:18080 r=50.17.52.19:6392
+ to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
+t=2026-03-20T14:48:02-0300 lvl=info msg="accept failed" obj=tunnels.session obj=csess id=5614ba5a3cd7 err="reconnecting session closed"
+t=2026-03-20T14:48:02-0300 lvl=info msg="received stop request" obj=app stopReq="{err:{Inner:{Inner:0xc000149970}} restart:false}"
+t=2026-03-20T14:48:02-0300 lvl=eror msg="terminating with error" obj=app err="failed to start tunnel: The endpoint 'https://admissive-complementally-angelo.ngrok-free.dev' is already online. Either\n1. stop your existing endpoint first, or\n2. start both endpoints with `--pooling-enabled` to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
+t=2026-03-20T14:48:02-0300 lvl=info msg="no more state changes" obj=tunnels.session
+t=2026-03-20T14:48:02-0300 lvl=warn msg="failed to check for update" obj=updater err="Post \"https://update.ngrok-agent.com/check\": context canceled"
+t=2026-03-20T14:48:02-0300 lvl=crit msg="command failed" err="failed to start tunnel: The endpoint 'https://admissive-complementally-angelo.ngrok-free.dev' is already online. Either\n1. stop your existing endpoint first, or\n2. start both endpoints with `--pooling-enabled` to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
+ERROR:  failed to start tunnel: The endpoint 'https://admissive-complementally-angelo.ngrok-free.dev' is already online. Either
+ERROR:  1. stop your existing endpoint first, or
+ERROR:  2. start both endpoints with `--pooling-enabled` to load balance between them.
+ERROR:  
+ERROR:  ERR_NGROK_334
+ERROR:  https://ngrok.com/docs/errors/err_ngrok_334
+ERROR:  

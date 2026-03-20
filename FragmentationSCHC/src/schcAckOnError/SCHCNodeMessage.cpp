@@ -100,7 +100,7 @@ std::vector<uint8_t> SCHCNodeMessage::create_all_1_fragment(uint8_t ruleID, uint
 SCHCMsgType SCHCNodeMessage::get_msg_type(ProtocolType protocol, int rule_id, const std::vector<uint8_t>& msg)
 {
     
-    if(protocol==ProtocolType::LORAWAN)
+    if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA)
     {
         int len = msg.size();
         uint8_t schc_header = msg[0];
@@ -126,7 +126,7 @@ SCHCMsgType SCHCNodeMessage::get_msg_type(ProtocolType protocol, int rule_id, co
 
 uint8_t SCHCNodeMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::vector<uint8_t>& msg, SCHCAckMechanism ack_type, std::vector<std::vector<uint8_t>>* bitmap_array)
 {
-    if(protocol==ProtocolType::LORAWAN)
+    if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA)
     {
         int len = msg.size();
 

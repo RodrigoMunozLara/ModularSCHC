@@ -6,6 +6,8 @@
 #include "ConfigStructs.hpp"
 #include "stacks/SCHCLoRaWANStack.hpp"
 #include "stacks/SCHCLoRaWAN_NS_MQTT_Stack.hpp"
+#include "stacks/SCHCMyriotaStack.hpp"
+#include "stacks/SCHCMyriotaHTTPStack.hpp"
 
 #include <thread>
 #include <atomic>

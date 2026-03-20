@@ -40,6 +40,40 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
 
 
     }
+    else if(appConfig.schc.schc_l2_protocol.compare("myriota_at") == 0 || appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0)
+    {
+        /* Static SCHC parameters */
+        _protoType              = ProtocolType::MYRIOTA;
+        _ruleID                 = 20;
+        _dTag                   = -1;
+        _windowSize             = 63;
+        _tileSize               = 10;
+        _retransTimer           = 5;    /* seconds */
+        _sTimer                 = 30;    /* seconds */
+        _maxAckReq              = 8;
+        _m                      = 2;
+
+        if(appConfig.schc.schc_ack_mechanism.compare("ack_end_win") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_WIN;
+        else if (appConfig.schc.schc_ack_mechanism.compare("ack_end_session") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_SES;
+        else if (appConfig.schc.schc_ack_mechanism.compare("compound_ack") == 0) _ackMechanism = SCHCAckMechanism::ACK_COMPOUND;
+        else if (appConfig.schc.schc_ack_mechanism.compare("arq_fec") == 0) _ackMechanism = SCHCAckMechanism::ARQ_FEC;
+         
+        /* Dynamic SCHC parameters */
+        _nFullTiles             = 0;
+        _lastTileSize           = 0;             
+        _rtxAttemptsCounter     = 0;
+        _all_tiles_sent         = false;
+        _last_confirmed_window  = -1;
+        _current_L2_MTU         = _schcCore._stack->getMtu();
+        SPDLOG_DEBUG("Using MTU: {}", _current_L2_MTU);
+
+        SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+        _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
+
+        /* ARQ-FEC parameters inictialization*/
+
+
+    }
 }
 
 SCHCArqFecSender::~SCHCArqFecSender()

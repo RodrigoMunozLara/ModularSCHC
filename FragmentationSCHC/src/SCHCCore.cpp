@@ -55,15 +55,31 @@ void SCHCCore::start()
 
         SPDLOG_DEBUG("Pool of sessions created for NB-IoT");
     }
-    else if (_appConfig.schc.schc_l2_protocol.compare("myriota") == 0)
+    else if (_appConfig.schc.schc_l2_protocol.compare("myriota_at") == 0)
     {
-        /* ToDo: Create pool sessions*/
+        _stack = std::make_unique<SCHCMyriotaStack>(_appConfig, *this);
+        _stack->init();
 
-        SPDLOG_DEBUG("Pool of sessions created for MYRIOTA");
+        /* In LoRaWAN there are only two session: uplink and downlink */
+        _uplinkSessionCounterMax = 1;
+        _uplinkSessionCounter = 0;
+        _downlinkSessionCounterMax = 1;
+        _downlinkSessionCounter = 0;
     }
     else if (_appConfig.schc.schc_l2_protocol.compare("lorawan_ns_mqtt") == 0)
     {
         _stack = std::make_unique<SCHCLoRaWAN_NS_MQTT_Stack>(_appConfig, *this);
+        _stack->init();
+
+        /* In LoRaWAN there are only two session: uplink and downlink */
+        _uplinkSessionCounterMax = 1;
+        _uplinkSessionCounter = 0;
+        _downlinkSessionCounterMax = 1;
+        _downlinkSessionCounter = 0;
+    }
+    else if (_appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0)
+    {
+        _stack = std::make_unique<SCHCMyriotaHTTPStack>(_appConfig, *this);
         _stack->init();
 
         /* In LoRaWAN there are only two session: uplink and downlink */
@@ -373,10 +389,50 @@ void SCHCCore::runRx()
                     }
                 }/* Mutex */
             }
-
-
-
         }
+        else if ((_appConfig.schc.schc_type.compare("schc_gateway") == 0) 
+            && (_appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0))
+        {
+            uint8_t currentId;
+
+            /* Identifying whether the message is an uplink or downlink message */
+            if(msg->ruleId == 20)
+            {
+                SPDLOG_DEBUG("Receiving an UPLINK message");
+                currentId = msg->ruleId;
+                {
+                    std::lock_guard<std::mutex> lock(sessionsMtx);
+                    auto it = uplinkSessions.find(currentId);
+
+                    if (it == uplinkSessions.end()) 
+                    {
+                        SPDLOG_DEBUG("Creating a new session with ID {}, and storing it on the map", currentId);
+                        auto [it2, inserted] = uplinkSessions.try_emplace(currentId, std::make_unique<SCHCSession>(currentId, SCHCFragDir::UPLINK_DIR, _appConfig, *this));
+
+                        it2->second->init();
+                        it2->second->setDevId(msg->deviceId);
+                        
+                        SPDLOG_DEBUG("UPLINK Session with id '{}' started", currentId);
+
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it2->second->enqueueEvent(std::move(evMsg));
+                        _uplinkSessionCounter++;
+                    }
+                    else
+                    {
+                        SPDLOG_DEBUG("There is already a session associated with the message with ID {}", currentId);
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it->second->enqueueEvent(std::move(evMsg));
+                    }
+                }
+            } 
+        }   
     }/*Loop*/
 
     SPDLOG_DEBUG("SCHCCore::runRx() thread finished");
