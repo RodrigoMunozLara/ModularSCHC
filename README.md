@@ -1,8 +1,5 @@
 # ModularSCHC: A SCHC core logic in C++
 
-[TOC]
-
-# Introduction
 ModularSCHC is an implementation of the Static Context Header Compression & Fragmentation (SCHC) standard based on the following documents:
 
 -   [RFC 8724](https://www.rfc-editor.org/rfc/rfc8724.html) --> SCHC: Generic Framework for Static Context Header
@@ -124,7 +121,7 @@ delivered to the destination indicated by the destination IPv6 address.
 node.
 
 <div align="center" id="modularschc_schc_node">
-  <img src="FragmentationSCHC/images/modularschc_schc_node.png" width="600" alt="SCHC Node architecture">
+  <img src="FragmentationSCHC/images/modularschc_schc_node.png" width="400" alt="SCHC Node architecture">
   <br>
   <small><em>Figure 2: SCHC Node architecture.</em></small>
 </div>
