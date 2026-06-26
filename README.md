@@ -18,9 +18,7 @@ ModularSCHC is an implementation of the Static Context Header Compression & Frag
 ModularSCHC is designed modularly to integrate different technologies
 into the compression and fragmentation process. The software can
 function as an SCHC Node or as an SCHC Gateway. The choice of operating
-mode is controlled at the compilation and configuration levels. Figure
-[1](#fig:modularschc_architecture){reference-type="ref"
-reference="fig:modularschc_architecture"} shows the ModularSCHC
+mode is controlled at the compilation and configuration levels. [Figure 1](#fig:modularschc_architecture) shows the ModularSCHC
 architecture. The implementation is divided into four layers.
 
 -   The first layer (from bottom to top) is the ***protocol layer***.
@@ -40,9 +38,9 @@ architecture. The implementation is divided into four layers.
     passing messages between Cores, based on source and destination
     identifier rules.
 
-![Architecture of
-ModularSCHC](FragmentationSCHC/images/modularschc_architecture.png){#fig:modularschc_architecture
-width="60%"}
+<div align="center">
+  <img src="FragmentationSCHC/images/modularschc_architecture.png" width="400" id="fig:modularschc_architecture" alt="Architecture of ModularSCHC">
+</div>
 
 ## Getting Started
 
@@ -153,8 +151,7 @@ reference="fig:modularschc_schc_gateway"} shows the architecture for a
 SCHC node.
 
 ![SCHC Gateway
-architecture](imagenes/modularschc_schc_gateway.pdf){#fig:modularschc_schc_gateway
-width="80%"}
+architecture](imagenes/modularschc_schc_gateway.pdf)
 
 The SCHC stack can connect via two technologies:
 
