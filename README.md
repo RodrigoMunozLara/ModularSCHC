@@ -1,5 +1,8 @@
 # ModularSCHC: A SCHC core logic in C++
 
+[TOC]
+
+# Introduction
 ModularSCHC is an implementation of the Static Context Header Compression & Fragmentation (SCHC) standard based on the following documents:
 
 -   [RFC 8724](https://www.rfc-editor.org/rfc/rfc8724.html) --> SCHC: Generic Framework for Static Context Header
@@ -41,17 +44,17 @@ architecture. The implementation is divided into four layers.
 <div align="center" id="modularschc_architecture">
   <img src="FragmentationSCHC/images/modularschc_architecture.png" width="600" alt="Architecture of ModularSCHC">
   <br>
-  <small><em>Figura 1: Architecture of ModularSCHC.</em></small>
+  <small><em>Figure 1: Architecture of ModularSCHC.</em></small>
 </div>
 
-## Getting Started
+# Getting Started
 
 The first step in installing ModularSCHC is to decide whether the device
 where the software will be installed will function as an SCHC Node
 (end-device) or as an SCHC Gateway. The steps for deploying ModularSCHC
 are as follows:
 
-### Requirements
+## Requirements
 
 Although ModularSCHC was developed in C++, its use is only guaranteed
 for the Linux operating system, specifically Ubuntu 24.04. The necessary
@@ -64,16 +67,14 @@ packages are:
 -   spdlog, version 1.12.0
 -   cmake, version 3.28.3
 
-### Installation
+## Installation
 
 The following steps are the same for installing ModularSCHC as an SCHC
 node or SCHC gateway.
 
 1.  Create a directory to download the project.
-
 2.  Clone the project:
 
-            
                 git clone https://github.com/RodrigoMunozLara/ModularSCHC.git
 
 3.  Compile the project: ModularSCHC is compiled by SCHC sublayer. This
@@ -110,7 +111,7 @@ node or SCHC gateway.
 
                     ModularSCHC/FragmentationSCHC/binaries/schc_gateway
 
-## ModularSCHC as a SCHC Node
+# ModularSCHC as a SCHC Node
 
 When ModularSCHC acts as an SCHC node, it fragments an IPv6 packet and
 sends the fragments to the SCHC gateway using SCHC messages. The IPv6
@@ -119,19 +120,19 @@ installed or from a machine on the same subnet. Conversely, when
 ModularSCHC receives SCHC messages containing fragments, it reassembles
 those fragments to construct a complete IPv6 packet. This packet is then
 delivered to the destination indicated by the destination IPv6 address.
-Figure [2](#fig:modularschc_schc_node){reference-type="ref"
-reference="fig:modularschc_schc_node"} shows the architecture for a SCHC
+[Figure 2](#modularschc_schc_node) shows the architecture for a SCHC
 node.
 
-![SCHC Node
-architecture](imagenes/modularschc_schc_node.pdf){#fig:modularschc_schc_node
-width="50%"}
+<div align="center" id="modularschc_schc_node">
+  <img src="FragmentationSCHC/images/modularschc_schc_node.png" width="600" alt="SCHC Node architecture">
+  <br>
+  <small><em>Figure 2: SCHC Node architecture.</em></small>
+</div>
 
 The SCHC stack can connect via two technologies:
 
 -   To a RAK brand SoC, model RAK4631, using AT commands. The RAK4631
     SoC supports LoRaWAN communication, or
-
 -   using a Myriota satellite modem. Communication is carried out via
     the serial port, using the RS-485 protocol.
 
@@ -139,7 +140,7 @@ To convert a RAK4631 module to a RAK4631-R module and thus support AT
 commands, follow the steps indicated in the following link
 [@RAK4631-RUpdate].
 
-## ModularSCHC as a SCHC Gateway
+# ModularSCHC as a SCHC Gateway
 
 When ModularSCHC acts as an SCHC gateway, it receives SCHC messages
 containing fragments of an IPv6 packet, reassembles these fragments to
@@ -147,22 +148,24 @@ construct a complete IPv6 packet, and then sends it through an
 IPv6-over-IPv4 tunnel. If the SCHC gateway receives an IPv6 packet from
 the IPv6-over-IPv4 tunnel, it fragments the packet and sends the
 fragments to the SCHC node using SCHC messages. The IPv6 packet can only
-originate from the IPv6-over-IPv4 tunnel. Figure
-[3](#fig:modularschc_schc_gateway){reference-type="ref"
-reference="fig:modularschc_schc_gateway"} shows the architecture for a
+originate from the IPv6-over-IPv4 tunnel. [Figure 3](#modularschc_schc_gateway) shows the architecture for a
 SCHC node.
 
-![SCHC Gateway
-architecture](imagenes/modularschc_schc_gateway.pdf)
+
+<div align="center" id="modularschc_schc_gateway">
+  <img src="FragmentationSCHC/images/modularschc_schc_gateway.png" width="600" alt="SCHC Gateway architecture">
+  <br>
+  <small><em>Figure 3: SCHC Gateway architecture.</em></small>
+</div>
+
 
 The SCHC stack can connect via two technologies:
 
 -   to an MQTT broker on TheThingsNetwork (TTN) servers. The SCHC
     gateway subscribes to a topic using the libmosquitto library. or
-
 -   To Myriota's servers via HTTP messages.
 
-## Configuration File
+# Configuration File
 
 The configuration file is called `config_frag.json`. A sample
 configuration file can be found at the following path
@@ -170,22 +173,15 @@ configuration file can be found at the following path
 format and is divided into eight sections.
 
 -   **general** (used in the SCHC node and the SCHC gateway)
-
 -   **logging** (used in the SCHC node and the SCHC gateway)
-
 -   **backhaul_core** (used in the SCHC node and the SCHC gateway)
-
 -   **schc_core** (used in the SCHC node and the SCHC gateway)
-
 -   **mqtt** (only used in the SCHC gateway)
-
 -   **lorawan_node** (only used in the SCHC node)
-
 -   **myriota_node** (only used in the SCHC node)
-
 -   **myriota_http** (only used in the SCHC gateway)
 
-### general section
+## general section
 
 This section configures the general parameters of the ModuleSCHC. This
 section must be used on an SCHC gateway and an SCHC node. It is divided
@@ -194,17 +190,11 @@ into the following subsections:
 -   **cores**: Selects the cores that will be instantiated when the
     binary is executed. It is represented as an strings array.
 
-    -   schc_core: activate the core SCHC (see figure
-        [1](#fig:modularschc_architecture){reference-type="ref"
-        reference="fig:modularschc_architecture"})
-
-    -   backhaul_core: activate the core backhaul (see figure
-        [1](#fig:modularschc_architecture){reference-type="ref"
-        reference="fig:modularschc_architecture"})
-
+    -   schc_core: activate the core SCHC (see [figure 1](#modularschc_architecture))
+    -   backhaul_core: activate the core backhaul (see [figure 1](#modularschc_architecture))
     -   example: `“cores”: [“schc_core”,“backhaul_core”]`
 
-### logging section
+## logging section
 
 This section configures the logs parameters. This section must be used
 on an SCHC gateway and an SCHC node. It is divided into the following
@@ -214,22 +204,15 @@ subsections:
     represented as an string.
 
     -   TRACE
-
     -   DEBUG
-
     -   INFO
-
     -   WARN
-
     -   ERROR
-
     -   CRITICAL
-
     -   OFF
-
     -   example: `“log_level”: “DEBUG”`
 
-### backhaul_core section
+## backhaul_core section
 
 This section configures the parameters of the Backhaul Core. This
 section must be used on an SCHC gateway and an SCHC node. It is divided
@@ -239,9 +222,7 @@ into the following subsections:
     ipv4. It is represented as an string.
 
     -   false
-
     -   true
-
     -   example: `“6to4_tunnel”: “true”`
 
 -   **interface**: If 6to4_tunnel is true, then interface is the name of
@@ -250,13 +231,10 @@ into the following subsections:
     packets will be listened for. It is represented as an string.
 
     -   lo
-
     -   eth0
-
     -   example: `“interface”: “lo”`
 
-### schc_core section
-
+## schc_core section
 This section configures the parameters of the SCHC Core. This section
 must be used on an SCHC gateway and an SCHC node. It is divided into the
 following subsections:
@@ -265,9 +243,7 @@ following subsections:
     an string.
 
     -   schc_node
-
     -   schc_gateway
-
     -   example: `“schc_type”: “schc_node”`
 
 -   **schc_l2_protocol**: Define the protocol type of the Protocol Layer
@@ -276,38 +252,28 @@ following subsections:
     string. You can select only one protocol type.
 
     -   lorawan_at
-
     -   lorawan_ns_mqtt
-
     -   lorawan_ns_http
-
     -   myriota_at
-
     -   myriota_ns_http
-
     -   example: `“schc_l2_protocol”: “lorawan_ns_mqtt”`
 
 -   **ack_end_win**: Define the acknowledgment mechanism or whether or
     not SCHC-HARQ mode is activated. It is represented as an string.
 
     -   ack_end_win
-
     -   ack_end_session
-
     -   compound_ack
-
     -   arq_fec
-
     -   example: `“ack_end_win”: “compound_ack”`
 
 -   **error_prob**: Select the frame loss rate on the receiver. This is
     used for fragment loss simulation. It is represented as an string.
 
     -   number between 0 and 100.
-
     -   example: `“error_prob”: “10”`
 
-### mqtt section
+## mqtt section
 
 This section configure the connection parameters to the The Things
 Network MQTT broker represented by LoRAWAN-NS protocol block (see
@@ -337,7 +303,7 @@ an SCHC gateway. It is divided into the following subsections:
     -   example:
         `“password”: “asdfsadfD4H7AG7HasdfasKINF43XPNX3E7GFPYQ.Hsadfsdfdsadf”`
 
-### lorawan_node section
+## lorawan_node section
 
 This section configures the connection parameters of the end device to
 the LoRaWAN network. This section must be used on an SCHC node. It is
@@ -376,7 +342,7 @@ following subsections:
 
     -   example: `“data_rate”: “DR4”`
 
-### myriota_node section
+## myriota_node section
 
 This section configures the connection parameters to the Myriota modem.
 This section must be used on an SCHC node. It is represented by Serial
@@ -391,7 +357,7 @@ following subsections:
 
     -   example: `“serial_port”: “/dev/ttyACM0”`
 
-### myriota_http section
+## myriota_http section
 
 This section configures the connection parameters to the Myriota
 Servers. This section must be used on an SCHC gateway. It is represented
