@@ -40,6 +40,8 @@ architecture. The implementation is divided into four layers.
 
 <div align="center" id="modularschc_architecture">
   <img src="FragmentationSCHC/images/modularschc_architecture.png" width="600" alt="Architecture of ModularSCHC">
+  <br>
+  <small><em>Figura 1: Architecture of ModularSCHC.</em></small>
 </div>
 
 ## Getting Started
