@@ -135,7 +135,7 @@ The SCHC stack can connect via two technologies:
 
 To convert a RAK4631 module to a RAK4631-R module and thus support AT
 commands, follow the steps indicated in the following link
-[@RAK4631-RUpdate].
+[RAK4631-RUpdate](https://docs.rakwireless.com/product-categories/wisblock/rak4631-r/dfu/#updating-rak4631-to-rui3).
 
 # ModularSCHC as a SCHC Gateway
 
