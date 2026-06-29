@@ -51,7 +51,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
 
     if(!(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG))
     {
-        SPDLOG_DEBUG("Receiving a message that does not belong to the session. Discarting Message...");
+        SPDLOG_DEBUG("Receiving a message that does not belong to the session. Discarting Message...{}", msg_type);
         SPDLOG_DEBUG("Changing STATE: From STATE_RX_INIT --> STATE_RX_END");
         _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
         _ctx.executeAgain();
