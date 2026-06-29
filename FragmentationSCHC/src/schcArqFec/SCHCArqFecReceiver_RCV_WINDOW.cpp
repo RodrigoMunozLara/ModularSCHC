@@ -89,7 +89,8 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);         
         }
 
-        printMatrixHex(_ctx._encodedMatrix);
+        //printMatrixHex(_ctx._encodedMatrix);
+        //printMatrixHex(_ctx._encodedMatrixMap);
 
         /* Se almacena el puntero al siguiente tile esperado */
         if((tile_ptr + tiles_in_payload) > _ctx._currentTile_ptr)
@@ -270,6 +271,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::storeTileinCmatrix(std::vector<uint8_t> tile
     for(int j=0; j<_ctx._tileSize; j++)
     {
         _ctx._encodedMatrix[j][col] = tile[j];
+        _ctx._encodedMatrixMap[j][col] = 1;
     }
 
     //printMatrixHex(_ctx._encodedMatrix);
@@ -300,7 +302,7 @@ bool SCHCArqFecReceiver_RCV_WINDOW::checkEnoughSymbols()
     for(const auto& row : _ctx._encodedMatrixMap)
     {
         int sum = std::accumulate(row.begin(), row.end(), 0u);
-        SPDLOG_DEBUG("checkEnoughSymbols: {}", sum);
+
         if(sum < _ctx._ksymbols )
             return false;
     }

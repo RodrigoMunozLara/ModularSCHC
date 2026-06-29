@@ -133,7 +133,8 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
             storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);       
         }
 
-        printMatrixHex(_ctx._encodedMatrix);
+        //printMatrixHex(_ctx._encodedMatrix);
+        //printMatrixHex(_ctx._encodedMatrixMap);
 
         /* Se almacena el puntero al siguiente tile esperado */
         if((tile_ptr + tiles_in_payload) > _ctx._currentTile_ptr)
@@ -211,7 +212,7 @@ void SCHCArqFecReceiver_INIT::initializeMatrices(size_t S, size_t k, size_t n)
         _ctx._encodedMatrix[i].resize(n); // Allocate n columns per row
     }
 
-    // Initializes the encoding matrix with 'S' rows and 'n' columns filled with zeros.
+    // Initializes the encoding matrix Map with 'S' rows and 'n' columns filled with zeros.
     _ctx._encodedMatrixMap.assign(S, std::vector<uint8_t>(n, 0));
 
     spdlog::info("Matrices initialized: Data({}x{}), Encoded({}x{}), Map({}x{})", 
@@ -226,6 +227,7 @@ void SCHCArqFecReceiver_INIT::storeTileinCmatrix(std::vector<uint8_t> tile, int 
     for(int j=0; j<_ctx._tileSize; j++)
     {
         _ctx._encodedMatrix[j][col] = tile[j];
+        _ctx._encodedMatrixMap[j][col] = 1;
     }
 
     //printMatrixHex(_ctx._encodedMatrix);
