@@ -271,7 +271,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::storeTileinCmatrix(std::vector<uint8_t> tile
         _ctx._encodedMatrix[j][col] = tile[j];
     }
 
-    //printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
     //printMatrixHex(_ctx._encodedMatrixMap);
 
 }

@@ -55,8 +55,8 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
     std::string resp = send_command("AT+VER=?");
     SPDLOG_DEBUG("AT+VER=? {}", resp);
 
-    resp = send_command("AT+NJM=1");   /* Network Join Mode: AT+NJM: get or set the network join mode (0 = ABP, 1 = OTAA)*/
-    SPDLOG_DEBUG("AT+NJM=1 {}", resp);
+    // resp = send_command("AT+NJM=1");   /* Network Join Mode: AT+NJM: get or set the network join mode (0 = ABP, 1 = OTAA)*/
+    // SPDLOG_DEBUG("AT+NJM=1 {}", resp);
 
     resp = send_command("AT+CLASS=A");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
     SPDLOG_DEBUG("AT+CLASS=A {}", resp);
@@ -99,14 +99,15 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
     SPDLOG_DEBUG("{} {}", _appkey, resp);
 
 
-    
-    resp = send_command("AT+NJS=?");
-    SPDLOG_DEBUG("{}", resp);
+    std::string _njs = "AT+NJS=?";
+    resp = send_command(_njs);
+    SPDLOG_DEBUG("{} {}", _njs, resp);
     size_t foundPos = resp.find("AT+NJS=0");
     if (foundPos != std::string::npos)
     {
-        resp = send_command("AT+JOIN=1");  /* Join LoRaWAN Network: AT+JOIN: join network*/
-        SPDLOG_DEBUG("AT+JOIN=1 {}", resp);
+        std::string _njs_1 = "AT+JOIN=1";
+        resp = send_command(_njs_1);  /* Join LoRaWAN Network: AT+JOIN: join network*/
+        SPDLOG_DEBUG("{} {}", _njs_1, resp);
     }    
 
 
