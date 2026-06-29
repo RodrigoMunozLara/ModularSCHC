@@ -22,6 +22,7 @@ add_custom_command(TARGET modular_schc POST_BUILD
 #        ${PROJECT_SOURCE_DIR}/config/config_frag.json
 #        $<TARGET_FILE_DIR:modular_schc>/config_frag.json
 
+
 #    COMMENT "Copying config_frag.json to binaries folder")
 
 
