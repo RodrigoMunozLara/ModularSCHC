@@ -235,7 +235,7 @@ std::vector<uint8_t> SCHCGWMessage::create_schc_ack_compound(uint8_t rule_id, ui
 SCHCMsgType SCHCGWMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, std::vector<uint8_t> msg)
 {
 
-    if((protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS) && rule_id == 20)
+    if(protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS)
     {
         uint8_t schc_header = msg[0];
         int len = msg.size();
@@ -259,7 +259,7 @@ SCHCMsgType SCHCGWMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, 
 
 uint8_t SCHCGWMessage::decode_message(ProtocolType protocol, uint8_t rule_id, std::vector<uint8_t> msg)
 {
-    if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA_NS)
+    if(protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS)
     {
         int len = msg.size();
 
