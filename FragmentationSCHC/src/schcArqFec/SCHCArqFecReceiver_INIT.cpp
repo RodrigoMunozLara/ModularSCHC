@@ -221,8 +221,7 @@ void SCHCArqFecReceiver_INIT::initializeMatrices(size_t S, size_t k, size_t n)
 void SCHCArqFecReceiver_INIT::storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn)
 {
 
-    int col = _ctx._windowSize * (w+1) - fcn;  
-    int row = 1;
+    int col = _ctx._windowSize * (w+1) - fcn - 1;
 
     for(int j=0; j<_ctx._tileSize; j++)
     {

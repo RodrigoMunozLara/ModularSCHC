@@ -265,8 +265,7 @@ int SCHCArqFecReceiver_RCV_WINDOW::get_bitmap_ptr(uint8_t fcn)
 void SCHCArqFecReceiver_RCV_WINDOW::storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn)
 {
 
-    int col = _ctx._windowSize * (w+1) - fcn;  
-    int row = 1;
+    int col = _ctx._windowSize * (w+1) - fcn - 1;  
 
     for(int j=0; j<_ctx._tileSize; j++)
     {
