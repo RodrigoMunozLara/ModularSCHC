@@ -130,9 +130,10 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
             uint8_t tmp_window  = static_cast<uint8_t>((tile_ptr+i) / _ctx._windowSize);
             uint8_t tmp_fcn     = static_cast<uint8_t>(( (tmp_window + 1) * _ctx._windowSize - 1) - (tile_ptr+i));
 
-            storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);   
-            
+            storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);       
         }
+
+        printMatrixHex(_ctx._encodedMatrix);
 
         /* Se almacena el puntero al siguiente tile esperado */
         if((tile_ptr + tiles_in_payload) > _ctx._currentTile_ptr)

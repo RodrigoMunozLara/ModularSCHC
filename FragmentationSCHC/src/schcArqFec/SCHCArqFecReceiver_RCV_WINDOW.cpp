@@ -89,6 +89,8 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);         
         }
 
+        printMatrixHex(_ctx._encodedMatrix);
+
         /* Se almacena el puntero al siguiente tile esperado */
         if((tile_ptr + tiles_in_payload) > _ctx._currentTile_ptr)
         {
@@ -271,8 +273,8 @@ void SCHCArqFecReceiver_RCV_WINDOW::storeTileinCmatrix(std::vector<uint8_t> tile
         _ctx._encodedMatrix[j][col] = tile[j];
     }
 
-    printMatrixHex(_ctx._encodedMatrix);
-    printMatrixHex(_ctx._encodedMatrixMap);
+    //printMatrixHex(_ctx._encodedMatrix);
+    //printMatrixHex(_ctx._encodedMatrixMap);
 
 }
 
