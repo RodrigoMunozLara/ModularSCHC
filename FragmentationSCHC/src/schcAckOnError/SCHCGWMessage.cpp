@@ -234,6 +234,9 @@ std::vector<uint8_t> SCHCGWMessage::create_schc_ack_compound(uint8_t rule_id, ui
 
 SCHCMsgType SCHCGWMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, std::vector<uint8_t> msg)
 {
+    SPDLOG_DEBUG("protocol: {}", static_cast<int>(protocol));
+
+
     if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA_NS)
     {
         uint8_t schc_header = msg[0];
