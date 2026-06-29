@@ -27,6 +27,7 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     config.schc.schc_type = j["schc_core"]["schc_type"].get<std::string>();
     config.schc.schc_ack_mechanism = j["schc_core"]["schc_ack_mechanism"].get<std::string>();
     config.schc.error_prob = std::stod(j["schc_core"]["error_prob"].get<std::string>());
+    config.schc.overhead = std::stod(j["schc_core"]["overhead"].get<std::string>());
 
     // MQTT
     config.mqtt.host = j["mqtt"]["host"].get<std::string>();

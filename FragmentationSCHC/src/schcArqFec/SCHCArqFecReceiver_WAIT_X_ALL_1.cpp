@@ -1,8 +1,4 @@
 #include "schcArqFec/SCHCArqFecReceiver_WAIT_X_ALL_1.hpp"
-#include <schifra/schifra_galois_field.hpp>
-#include <schifra/schifra_galois_field_polynomial.hpp>
-#include <schifra/schifra_sequential_root_generator_polynomial_creator.hpp>
-#include <schifra/schifra_reed_solomon_decoder.hpp>
 #include <set>
 
 SCHCArqFecReceiver_WAIT_X_ALL_1::SCHCArqFecReceiver_WAIT_X_ALL_1(SCHCArqFecReceiver& ctx): _ctx(ctx)
@@ -65,22 +61,11 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
         _ctx._bitmapArray[_ctx._last_window][_ctx._windowSize-1]  = 1;
 
-        int residualFragmentationBits_size  = ((_ctx._encodedMatrix.size() * _ctx._encodedMatrix[0].size()) % _ctx._tileSize)*8;
-        int residualCodingBits_size         = _ctx._lastTileSize * 8 - ((_ctx._encodedMatrix.size() * _ctx._encodedMatrix[0].size()) % _ctx._tileSize)*8;
+        int residualCodingBits_size         = _ctx._lastTileSize * 8;
         SPDLOG_DEBUG("Last Tile size                 : {} bits", _ctx._lastTileSize * 8);
-        SPDLOG_DEBUG("Residual fragmentation bits    : {} bits", residualFragmentationBits_size);
         SPDLOG_DEBUG("Residual coding bits + padding : {} bits", residualCodingBits_size);
         SPDLOG_DEBUG("Last Tile received             : {:X}", spdlog::to_hex(_ctx._lastTile));
 
-
-        /* Storing the Residual fragmentation bits in the C-Matrix */
-        int row = _ctx._rowCount - (residualFragmentationBits_size/8);
-        int col = _ctx._nsymbols;
-        for(int i=0; i < residualFragmentationBits_size/8; i++)
-        {
-            _ctx._encodedMatrix[row + i][col-1] = _ctx._lastTile[i];
-            _ctx._encodedMatrixMap[row + i][col-1] = 1;
-        }
 
         //getBitmapArrayFromEncodedMatrixMap();
 
@@ -92,7 +77,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
             /* Convert D-matrix in a SCHC packet*/
             std::vector<uint8_t> schc_packet = convertDmatrix_to_SCHCPacket();
-            schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin() + residualFragmentationBits_size/8, _ctx._lastTile.end());
+            schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin(), _ctx._lastTile.end());
 
             uint32_t calculated_rcs = calculate_crc32(schc_packet);
             SPDLOG_DEBUG("Received RCS  : {}",_ctx._rcs);
@@ -161,13 +146,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
         }
 
-
-
-
-
-
-
-
     }
     else
     {
@@ -231,81 +209,81 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
 
-   /* Finite Field Parameters */
-   const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
-   const std::size_t generator_polynomial_index      = 120;
-   const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
+//    /* Finite Field Parameters */
+//    const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
+//    const std::size_t generator_polynomial_index      = 120;
+//    const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
 
-   /* Reed Solomon Code Parameters */
-   const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
-   const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
-   const std::size_t data_length = code_length - fec_length;
+//    /* Reed Solomon Code Parameters */
+//    const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
+//    const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
+//    const std::size_t data_length = code_length - fec_length;
 
-   /* Instantiate Finite Field and Generator Polynomials */
-   const schifra::galois::field field(field_descriptor,
-                                      schifra::galois::primitive_polynomial_size06,
-                                      schifra::galois::primitive_polynomial06);
+//    /* Instantiate Finite Field and Generator Polynomials */
+//    const schifra::galois::field field(field_descriptor,
+//                                       schifra::galois::primitive_polynomial_size06,
+//                                       schifra::galois::primitive_polynomial06);
 
-   schifra::galois::field_polynomial generator_polynomial(field);
+//    schifra::galois::field_polynomial generator_polynomial(field);
 
-   if (
-        !schifra::make_sequential_root_generator_polynomial(field,
-                                                            generator_polynomial_index,
-                                                            generator_polynomial_root_count,
-                                                            generator_polynomial)
-      )
-   {
-      std::cout << "Error - Failed to create sequential root generator!" << std::endl;
-      return;
-   }
+//    if (
+//         !schifra::make_sequential_root_generator_polynomial(field,
+//                                                             generator_polynomial_index,
+//                                                             generator_polynomial_root_count,
+//                                                             generator_polynomial)
+//       )
+//    {
+//       std::cout << "Error - Failed to create sequential root generator!" << std::endl;
+//       return;
+//    }
 
-   /* Instantiate Encoder and Decoder (Codec) */
-   //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
-   typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
+//    /* Instantiate Encoder and Decoder (Codec) */
+//    //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
+//    typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
 
-   //const encoder_t encoder(field,generator_polynomial);
-   const decoder_t decoder(field,generator_polynomial_index);
+//    //const encoder_t encoder(field,generator_polynomial);
+//    const decoder_t decoder(field,generator_polynomial_index);
 
 
-    for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
-    {
-        /* Instantiate RS Block For Codec */
-        schifra::reed_solomon::block<code_length,fec_length> block;
+//     for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
+//     {
+//         /* Instantiate RS Block For Codec */
+//         schifra::reed_solomon::block<code_length,fec_length> block;
 
-        // Cargamos los datos usando el operador []
-        for (std::size_t j = 0; j < code_length; ++j) {
-            block[j] = _ctx._encodedMatrix[i][j];
-        }
+//         // Cargamos los datos usando el operador []
+//         for (std::size_t j = 0; j < code_length; ++j) {
+//             block[j] = _ctx._encodedMatrix[i][j];
+//         }
 
-        schifra::reed_solomon::erasure_locations_t erasure_location_list;
-        erasure_location_list.clear();
-        for(int k=0; k < code_length; k++)
-        {
-            if(_ctx._encodedMatrixMap[i][k] == 0)
-            {
-                erasure_location_list.push_back(k);
-            }
+//         schifra::reed_solomon::erasure_locations_t erasure_location_list;
+//         erasure_location_list.clear();
+//         for(int k=0; k < code_length; k++)
+//         {
+//             if(_ctx._encodedMatrixMap[i][k] == 0)
+//             {
+//                 erasure_location_list.push_back(k);
+//             }
 
-        }
+//         }
 
-        // 5. Intento de decodificación con log de error
-        bool res = decoder.decode(block, erasure_location_list);
+//         // 5. Intento de decodificación con log de error
+//         bool res = decoder.decode(block, erasure_location_list);
         
-        if (!res) {
-            // Si entra aquí, imprimiremos los parámetros para debuguear
-            SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
-            SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
-            continue;
-        }
+//         if (!res) {
+//             // Si entra aquí, imprimiremos los parámetros para debuguear
+//             SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
+//             SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
+//             continue;
+//         }
 
-        for (std::size_t j = 0; j < data_length; ++j) {
-            _ctx._dataMatrix[i][j] = block[j];
-        }
-    }   
+//         for (std::size_t j = 0; j < data_length; ++j) {
+//             _ctx._dataMatrix[i][j] = block[j];
+//         }
+//     }   
 
-    SPDLOG_DEBUG("*** D matrix generated ***");
+//     SPDLOG_DEBUG("*** D matrix generated ***");
 
-    //printMatrixHex(_ctx._dataMatrix);
+//     //printMatrixHex(_ctx._dataMatrix);
 
 
 }

@@ -16,6 +16,7 @@ find_package(PkgConfig REQUIRED)
 find_package(fmt 9.1.0 REQUIRED)
 find_package(spdlog 1.12.0 REQUIRED)
 pkg_check_modules(MOSQUITTO REQUIRED libmosquitto)
+find_library(LIBCORRECT_LIB correct REQUIRED)
 
 # Lista de archivos fuente
 set(CPP_FILES
@@ -47,7 +48,6 @@ set(CPP_FILES
     "src/schcAckOnError/SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG.cpp"
     "src/schcArqFec/SCHCArqFecSender.cpp"
     "src/schcArqFec/SCHCArqFecSender_INIT.cpp"
-    "src/schcArqFec/SCHCArqFecSender_WAIT_X_S_ACK.cpp"
     "src/schcArqFec/SCHCArqFecSender_SEND.cpp"
     "src/schcArqFec/SCHCArqFecSender_WAIT_X_SESSION_ACK.cpp"
     "src/schcArqFec/SCHCArqFecSender_END.cpp"
@@ -66,7 +66,10 @@ add_definitions(-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
 add_library(module_schc STATIC ${CPP_FILES})
 
 target_include_directories(module_schc PUBLIC include)
-target_link_libraries(module_schc PRIVATE fmt::fmt spdlog::spdlog ${MOSQUITTO_LIBRARIES})
+target_link_libraries(module_schc 
+        PRIVATE fmt::fmt spdlog::spdlog ${MOSQUITTO_LIBRARIES} 
+        PUBLIC ${LIBCORRECT_LIB}
+)
 
 # ASAN (AddressSanitizer) - Mejorado para ser más limpio
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

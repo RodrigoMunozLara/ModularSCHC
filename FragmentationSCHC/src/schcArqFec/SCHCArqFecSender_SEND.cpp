@@ -25,9 +25,6 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK msg");
 
-            SPDLOG_DEBUG("Stoping the S timer...");
-            _ctx._timer.stop();
-
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
             uint8_t w = decoder.get_w();
@@ -52,14 +49,7 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
                 _ctx.executeTimer(_ctx._retransTimer);
                 return;
                 
-            }
-            else if (c == 1 && w == 0)
-            {
-                SPDLOG_DEBUG("Parameter S successfully received");
-
-                _ctx.executeAgain();
-                return;
-            }           
+            }        
             else
             {
                 SPDLOG_ERROR("The SCHC ACK message must have the following parameters (C=1 and W=1)");     
@@ -75,7 +65,7 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
     else
     {
         /* Number of tiles that can be sent in a payload */
-        int payload_available_in_bytes = _ctx._current_L2_MTU - 1; // MTU = SCHC header + SCHC payload
+        int payload_available_in_bytes = _ctx._current_L2_MTU - 2; // MTU = SCHC header (1 byte) + k parameter (1 byte) + SCHC payload
         int payload_available_in_tiles = payload_available_in_bytes/_ctx._tileSize;
 
         /* Temporary variables */
@@ -96,6 +86,9 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
 
             /* buffer que almacena todos los tiles que se van a enviar */           
             std::vector<uint8_t>   schc_payload = extractTiles(_ctx._currentTile_ptr, n_tiles_to_send);
+
+            /* Agregar el parametro k al comienzo del SCHC payload. Utiliza 1 byte*/
+            schc_payload.insert(schc_payload.begin(), _ctx._ksymbols);
 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._currentFcn, schc_payload);
@@ -135,6 +128,8 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
             /* vector que almacena todos los tiles que se van a enviar */ 
             std::vector<uint8_t>   schc_payload = extractTiles(_ctx._currentTile_ptr, n_tiles_to_send);
 
+            /* Agregar el parametro k al comienzo del SCHC payload. Utiliza 1 byte*/
+            schc_payload.insert(schc_payload.begin(), _ctx._ksymbols);
 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._currentFcn, schc_payload);
@@ -186,9 +181,6 @@ void SCHCArqFecSender_SEND::timerExpired()
 
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
-
-    SPDLOG_DEBUG("Setting S-timer: {} seconds", _ctx._sTimer);
-    _ctx.executeTimer(_ctx._sTimer);
 
     _ctx.executeAgain();
 

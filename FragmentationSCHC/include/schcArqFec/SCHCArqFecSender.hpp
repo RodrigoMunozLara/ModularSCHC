@@ -7,7 +7,6 @@
 #include "ConfigStructs.hpp"
 #include "stacks/SCHCLoRaWANStack.hpp"
 #include "schcArqFec/SCHCArqFecSender_INIT.hpp"
-#include "schcArqFec/SCHCArqFecSender_WAIT_X_S_ACK.hpp"
 #include "schcArqFec/SCHCArqFecSender_SEND.hpp"
 #include "schcArqFec/SCHCArqFecSender_WAIT_X_SESSION_ACK.hpp"
 #include "schcArqFec/SCHCArqFecSender_END.hpp"
@@ -58,7 +57,6 @@ class SCHCArqFecSender: public ISCHCStateMachine
         uint8_t             _t;                     // bits of the DTag field
         uint8_t             _maxAckReq;             // max number of ACK Request msg
         int                 _retransTimer;          // Retransmission timer in seconds
-        int                 _sTimer;                // S timer in seconds
 
         /* Dynamic SCHC parameters */
         uint8_t                             _currentWindow;
@@ -85,14 +83,16 @@ class SCHCArqFecSender: public ISCHCStateMachine
 
 
         /* ARQ FEC variables */
-        static constexpr std::size_t        _ksymbols = 10;                     // number of data symbols for each row
-        static constexpr std::size_t        _nsymbols = 15;                     // number of encoded symbols for each row
-        static constexpr std::size_t        _mbits = 8;                     // number of bits for each symbol
+        std::size_t                         _ksymbols;                  // number of data symbols for each row
+        std::size_t                         _rsymbols;                  // number of parity symbols for each row
+        std::size_t                         _nsymbols;                  // number of encoded symbols for each row
+        std::size_t                         _mbits;                     // number of bits for each symbol
         std::vector<std::vector<uint8_t>>   _dataMatrix;                // Matrix D (S rows x k columns)
         std::vector<std::vector<uint8_t>>   _encodedMatrix;             // Matrix C (S rows x n columns)
         std::vector<uint8_t>                _residualBitsContainer;     // Individual bits (0 or 1)
-        int                                 _residualCodingBitsCount;   // (P mod (k * m)) as integer
-        int                                 _rowCount;                  // S = floor(P / (k * m)) as integer
+        int                                 _residualCodingBitsCount;   // (L mod (S * m)) as integer
+        int                                 _S;
+        double                              _overhead;
 
         std::vector<uint8_t>                _first_fragment_msg;
 };

@@ -1,9 +1,5 @@
 #include "schcArqFec/SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS.hpp"
 #include "schcArqFec/SCHCArqFecReceiver.hpp"
-#include <schifra/schifra_galois_field.hpp>
-#include <schifra/schifra_galois_field_polynomial.hpp>
-#include <schifra/schifra_sequential_root_generator_polynomial_creator.hpp>
-#include <schifra/schifra_reed_solomon_decoder.hpp>
 
 SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS(SCHCArqFecReceiver& ctx): _ctx(ctx)
 {
@@ -230,31 +226,12 @@ int SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::get_bitmap_ptr(uint8_t fcn)
 
 void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn)
 {
-    int S = _ctx._rowCount;
-
-    /* correlative tile number (ctn). ctn starts in 1 */
-    int ctn = _ctx._windowSize * (w+1) - fcn;  
-    
-    /* row = (ctn-1)*ts + 1 - floor((ctn-1)*ts/S)*S. Row starts in 1 */
-    int row = (ctn-1)*_ctx._tileSize + 1 - std::floor((ctn-1)*_ctx._tileSize/S)*S;
-    
-    /* column = floor((ctn-1)*ts/S) + 1. Column starts in 1 */
-    int col = std::floor((ctn-1)*_ctx._tileSize/S) + 1; 
-
-    
+    int col = _ctx._windowSize * (w+1) - fcn;  
+    int row = 1;
 
     for(int j=0; j<_ctx._tileSize; j++)
     {
-        if((row-1+j) >= S)
-        {
-            _ctx._encodedMatrix[row-1+j - S][col] = tile[j]; 
-            _ctx._encodedMatrixMap[row-1+j - S][col] = 1;
-        }
-        else
-        {
-            _ctx._encodedMatrix[row-1+j][col-1] = tile[j]; 
-            _ctx._encodedMatrixMap[row-1+j][col-1] = 1;
-        }
+        _ctx._encodedMatrix[j][col] = tile[j];
     }
 
     //printMatrixHex(_ctx._encodedMatrix);
@@ -296,81 +273,81 @@ bool SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::checkEnoughSymbols()
 void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::decodeCmatrix()
 {
 
-   /* Finite Field Parameters */
-   const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
-   const std::size_t generator_polynomial_index      = 120;
-   const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
+//    /* Finite Field Parameters */
+//    const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
+//    const std::size_t generator_polynomial_index      = 120;
+//    const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
 
-   /* Reed Solomon Code Parameters */
-   const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
-   const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
-   const std::size_t data_length = code_length - fec_length;
+//    /* Reed Solomon Code Parameters */
+//    const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
+//    const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
+//    const std::size_t data_length = code_length - fec_length;
 
-   /* Instantiate Finite Field and Generator Polynomials */
-   const schifra::galois::field field(field_descriptor,
-                                      schifra::galois::primitive_polynomial_size06,
-                                      schifra::galois::primitive_polynomial06);
+//    /* Instantiate Finite Field and Generator Polynomials */
+//    const schifra::galois::field field(field_descriptor,
+//                                       schifra::galois::primitive_polynomial_size06,
+//                                       schifra::galois::primitive_polynomial06);
 
-   schifra::galois::field_polynomial generator_polynomial(field);
+//    schifra::galois::field_polynomial generator_polynomial(field);
 
-   if (
-        !schifra::make_sequential_root_generator_polynomial(field,
-                                                            generator_polynomial_index,
-                                                            generator_polynomial_root_count,
-                                                            generator_polynomial)
-      )
-   {
-      std::cout << "Error - Failed to create sequential root generator!" << std::endl;
-      return;
-   }
+//    if (
+//         !schifra::make_sequential_root_generator_polynomial(field,
+//                                                             generator_polynomial_index,
+//                                                             generator_polynomial_root_count,
+//                                                             generator_polynomial)
+//       )
+//    {
+//       std::cout << "Error - Failed to create sequential root generator!" << std::endl;
+//       return;
+//    }
 
-   /* Instantiate Encoder and Decoder (Codec) */
-   //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
-   typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
+//    /* Instantiate Encoder and Decoder (Codec) */
+//    //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
+//    typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
 
-   //const encoder_t encoder(field,generator_polynomial);
-   const decoder_t decoder(field,generator_polynomial_index);
+//    //const encoder_t encoder(field,generator_polynomial);
+//    const decoder_t decoder(field,generator_polynomial_index);
 
 
-    for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
-    {
-        /* Instantiate RS Block For Codec */
-        schifra::reed_solomon::block<code_length,fec_length> block;
+//     for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
+//     {
+//         /* Instantiate RS Block For Codec */
+//         schifra::reed_solomon::block<code_length,fec_length> block;
 
-        // Cargamos los datos usando el operador []
-        for (std::size_t j = 0; j < code_length; ++j) {
-            block[j] = _ctx._encodedMatrix[i][j];
-        }
+//         // Cargamos los datos usando el operador []
+//         for (std::size_t j = 0; j < code_length; ++j) {
+//             block[j] = _ctx._encodedMatrix[i][j];
+//         }
 
-        schifra::reed_solomon::erasure_locations_t erasure_location_list;
-        erasure_location_list.clear();
-        for(int k=0; k < code_length; k++)
-        {
-            if(_ctx._encodedMatrixMap[i][k] == 0)
-            {
-                erasure_location_list.push_back(k);
-            }
+//         schifra::reed_solomon::erasure_locations_t erasure_location_list;
+//         erasure_location_list.clear();
+//         for(int k=0; k < code_length; k++)
+//         {
+//             if(_ctx._encodedMatrixMap[i][k] == 0)
+//             {
+//                 erasure_location_list.push_back(k);
+//             }
 
-        }
+//         }
 
-        // 5. Intento de decodificación con log de error
-        bool res = decoder.decode(block, erasure_location_list);
+//         // 5. Intento de decodificación con log de error
+//         bool res = decoder.decode(block, erasure_location_list);
         
-        if (!res) {
-            // Si entra aquí, imprimiremos los parámetros para debuguear
-            SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
-            SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
-            continue;
-        }
+//         if (!res) {
+//             // Si entra aquí, imprimiremos los parámetros para debuguear
+//             SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
+//             SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
+//             continue;
+//         }
 
-        for (std::size_t j = 0; j < data_length; ++j) {
-            _ctx._dataMatrix[i][j] = block[j];
-        }
-    }   
+//         for (std::size_t j = 0; j < data_length; ++j) {
+//             _ctx._dataMatrix[i][j] = block[j];
+//         }
+//     }   
 
-    SPDLOG_DEBUG("*** D matrix generated ***");
+//     SPDLOG_DEBUG("*** D matrix generated ***");
 
-    //printMatrixHex(_ctx._dataMatrix);
+//     //printMatrixHex(_ctx._dataMatrix);
 
 
 }

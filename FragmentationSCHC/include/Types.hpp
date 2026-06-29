@@ -94,7 +94,6 @@ enum class SCHCAckOnErrorReceiverStates{
 
 enum class SCHCArqFecSenderStates{
     STATE_INIT,
-    STATE_WAIT_X_S_ACK,
     STATE_SEND,
     STATE_WAIT_x_SESSION_ACK,
     STATE_RESEND_MISSING_TILES,
@@ -104,7 +103,6 @@ enum class SCHCArqFecSenderStates{
 
 enum class SCHCArqFecReceiverStates{
     STATE_INIT,
-    STATE_WAIT_X_S,
     STATE_RCV_WINDOW,
     STATE_WAIT_X_MISSING_FRAG,
     STATE_WAIT_X_ALL1,

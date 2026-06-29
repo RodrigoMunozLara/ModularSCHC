@@ -15,7 +15,6 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _sTimer                 = 30;    /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
 
@@ -37,6 +36,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
 
         /* ARQ-FEC parameters inictialization*/
+        _mbits                  = 8;
 
 
     }
@@ -49,7 +49,6 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _sTimer                 = 30;    /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
 
@@ -71,6 +70,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
 
         /* ARQ-FEC parameters inictialization*/
+        _S                      = _tileSize;
 
 
     }
@@ -101,12 +101,6 @@ void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
             SPDLOG_DEBUG("Changing STATE to STATE_INIT");
             _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
-        }
-        else if (_nextStateStr == SCHCArqFecSenderStates::STATE_WAIT_X_S_ACK)
-        {
-            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_X_S_ACK");
-            _currentState = std::make_unique<SCHCArqFecSender_WAIT_X_S_ACK>(*this);
-            _currentStateStr = SCHCArqFecSenderStates::STATE_WAIT_X_S_ACK;
         }
         else if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
         {
@@ -148,12 +142,6 @@ void SCHCArqFecSender::timerExpired()
             SPDLOG_DEBUG("Changing STATE to STATE_INIT");
             _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
-        }
-        else if (_nextStateStr == SCHCArqFecSenderStates::STATE_WAIT_X_S_ACK)
-        {
-            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_X_S_ACK");
-            _currentState = std::make_unique<SCHCArqFecSender_WAIT_X_S_ACK>(*this);
-            _currentStateStr = SCHCArqFecSenderStates::STATE_WAIT_X_S_ACK;
         }
         else if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
         {

@@ -2,7 +2,7 @@
 add_executable(schc_test main.cpp) 
 
 # 2. Enlazamos con tu librería y dependencias
-target_link_libraries(schc_test PRIVATE module_schc)
+target_link_libraries(schc_test PRIVATE module_schc correct)
 
 # 3. COMANDO DE COPIA (Atado al ejecutable)
 # Usamos PROJECT_SOURCE_DIR para subir un nivel desde 'testing' a la raíz

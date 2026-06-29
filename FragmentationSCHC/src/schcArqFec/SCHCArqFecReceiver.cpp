@@ -35,6 +35,9 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
 
         _counter = 1;
 
+        _S                      = _tileSize;
+        _overhead               = appConfig.schc.overhead;
+
     }
     else if(appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0)
     {
@@ -65,6 +68,8 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
         _enable_to_process_msg = false;
 
         _counter = 1;
+        _S                      = _tileSize;
+        _overhead               = appConfig.schc.overhead;
 
     }
     

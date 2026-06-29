@@ -88,9 +88,6 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
 
-    SPDLOG_DEBUG("Setting S-timer: {} seconds", _ctx._sTimer);
-    _ctx.executeTimer(_ctx._sTimer);
-
     _ctx.executeAgain();
 }
 

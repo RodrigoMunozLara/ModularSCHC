@@ -95,7 +95,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
 
         /* Numero de tiles que se pueden enviar un un payload */
-        int payload_available_in_bytes = _ctx._current_L2_MTU - 1; // MTU = SCHC header + SCHC payload
+        int payload_available_in_bytes = _ctx._current_L2_MTU - 1; // MTU = SCHC header (1 byte) + SCHC payload
         int payload_available_in_tiles = payload_available_in_bytes/_ctx._tileSize;
 
         int n_tiles_to_send     = 0;    // numero de tiles a enviar

@@ -55,11 +55,11 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
     std::string resp = send_command("AT+VER=?");
     SPDLOG_DEBUG("AT+VER=? {}", resp);
 
-    // resp = sendCommand("AT+NJM=1"); /* Network Join Mode: AT+NJM: get or set the network join mode (0 = ABP, 1 = OTAA)*/
-    // SPDLOG_DEBUG("{}", cleanString(resp));
+    resp = send_command("AT+NJM=1");   /* Network Join Mode: AT+NJM: get or set the network join mode (0 = ABP, 1 = OTAA)*/
+    SPDLOG_DEBUG("AT+NJM=1 {}", resp);
 
-    resp = send_command("AT+CLASS=C");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
-    SPDLOG_DEBUG("AT+CLASS=C {}", resp);
+    resp = send_command("AT+CLASS=A");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
+    SPDLOG_DEBUG("AT+CLASS=A {}", resp);
 
     resp = send_command("AT+ADR=0"); /* Adaptive Rate: AT+ADR: get or set the adaptive data rate setting (0 = OFF, 1 = ON)*/
     SPDLOG_DEBUG("AT+ADR=0 {}", resp);
@@ -78,6 +78,12 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
 
     resp = send_command("AT+CFM=0"); /* Confirm Mode: AT+CFM: get or set the confirmation mode (0 = OFF, 1 = ON)*/
     SPDLOG_DEBUG("AT+CFM=0 {}", resp);
+
+    resp = send_command("AT+RX1DL=1"); /* get or set the delay between the end of TX and the RX window 1 in seconds (1-15)*/
+    SPDLOG_DEBUG("AT+RX1DL=1 {}", resp);
+
+    resp = send_command("AT+RX2DL=2"); /* get or set the delay between the end of TX and the RX window 2 in seconds (2-16)*/
+    SPDLOG_DEBUG("AT+RX2DL=2 {}", resp);
 
 
     std::string _deveui = "AT+DEVEUI=" + _appConfig.lorawan_node.deveui;
@@ -139,14 +145,13 @@ std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff,
         std::string accumulator = "";
         auto startTime = std::chrono::steady_clock::now();
         char readBuffer[256];
-        int timeoutMs = 5000;
+        //int timeoutMs = 5000;
+        int timeoutMs = 0;
 
         while (true) 
         {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - startTime).count();
-
-            
 
             if (elapsed >= timeoutMs)
             {

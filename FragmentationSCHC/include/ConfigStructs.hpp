@@ -20,7 +20,8 @@ struct SCHCCoreConfig {
     std::string schc_l2_protocol;
     std::string schc_type;
     std::string schc_ack_mechanism;
-    double error_prob;    
+    double error_prob;
+    double overhead;    
 };
 
 struct MQTTConfig {

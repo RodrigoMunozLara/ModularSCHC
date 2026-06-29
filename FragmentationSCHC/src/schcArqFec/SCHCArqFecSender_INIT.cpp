@@ -1,9 +1,5 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_INIT.hpp"
-#include <schifra/schifra_galois_field.hpp>
-#include <schifra/schifra_galois_field_polynomial.hpp>
-#include <schifra/schifra_sequential_root_generator_polynomial_creator.hpp>
-#include <schifra/schifra_reed_solomon_encoder.hpp>
 #include <schcAckOnError/SCHCNodeMessage.hpp>
 
 
@@ -60,10 +56,10 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
 
 
     SPDLOG_DEBUG("*** D matrix created ***");
-    SPDLOG_DEBUG("Packet size (P):              {} bits", msg.size() * 8);
-    SPDLOG_DEBUG("D matrix size:                {} bits", _ctx._rowCount * SCHCArqFecSender::_ksymbols * _ctx._mbits);
-    SPDLOG_DEBUG("D matrix row (S):             {}", _ctx._rowCount);
-    SPDLOG_DEBUG("D matrix col (k):             {}", SCHCArqFecSender::_ksymbols);
+    SPDLOG_DEBUG("Packet size (L):              {} bits", msg.size() * 8);
+    SPDLOG_DEBUG("D matrix size:                {} bits", _ctx._tileSize * _ctx._ksymbols * _ctx._mbits);
+    SPDLOG_DEBUG("D matrix row (S):             {}", _ctx._tileSize);
+    SPDLOG_DEBUG("D matrix col (k):             {}", _ctx._ksymbols);
     SPDLOG_DEBUG("Residual coding bits:         {} bits", _ctx._residualCodingBitsCount);
 
     SPDLOG_DEBUG("*** C matrix created ***");
@@ -101,7 +97,7 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
     /* *********** Sending the first SCHC fragment **********/
 
     /* Number of tiles that can be sent in a payload */
-    int payload_available_in_bytes = _ctx._current_L2_MTU - 2; // MTU = SCHC header (1 byte) + S parameter (1 byte) + SCHC payload
+    int payload_available_in_bytes = _ctx._current_L2_MTU - 2; // MTU = SCHC header (1 byte) + k parameter (1 byte) + SCHC payload
     int payload_available_in_tiles = payload_available_in_bytes/_ctx._tileSize;
 
     /* Temporary variables */
@@ -132,8 +128,8 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         /* buffer que almacena todos los tiles que se van a enviar */           
         std::vector<uint8_t>   schc_payload = extractTiles(_ctx._currentTile_ptr, n_tiles_to_send);
 
-        /* Agregar el parametro S al comienzo del SCHC payload. Utiliza 1 byte*/
-        schc_payload.insert(schc_payload.begin(), _ctx._encodedMatrix.size());
+        /* Agregar el parametro k al comienzo del SCHC payload. Utiliza 1 byte*/
+        schc_payload.insert(schc_payload.begin(), _ctx._ksymbols);
 
         /* Crea un mensaje SCHC en formato hexadecimal */
         _ctx._first_fragment_msg = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._currentFcn, schc_payload);
@@ -148,9 +144,6 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         _ctx._currentTile_ptr    = _ctx._currentTile_ptr + n_tiles_to_send;
         _ctx._currentFcn         = _ctx._currentFcn - n_tiles_to_send;
 
-
-        SPDLOG_DEBUG("Setting S-timer: {} seconds", _ctx._sTimer);
-        _ctx.executeTimer(_ctx._sTimer);
 
         SPDLOG_DEBUG("Changing STATE: From STATE_INIT --> STATE_SEND");
         _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_SEND;
@@ -176,34 +169,15 @@ the number of SCHC windows.*/
 SPDLOG_DEBUG("Starting the process of dividing a SCHC packet into tiles");
 
 
-/* RFC9011
- 5.6.2. Uplink Fragmentation: From Device to SCHC Gateway
-
-Last tile: It can be carried in a Regular SCHC Fragment, alone 
-in an All-1 SCHC Fragment, or with any of these two methods. 
-Implementations must ensure that:
-*/
-    if((msg.size() % _ctx._tileSize) == 0)
-    {
-        /* El ultimo tile es del tamaño de _TileSize */
-        _ctx._nFullTiles = (msg.size()/_ctx._tileSize)-1;
-        //_ctx._lastTileSize = _ctx._tileSize;  
-    }
-    else
-    {
-        /* El ultimo tile es menor _TileSize */
-        _ctx._nFullTiles = (msg.size()/_ctx._tileSize);
-        //_ctx._lastTileSize = (msg.size()%_ctx._tileSize);
-    }
+    _ctx._nFullTiles = msg.size()/_ctx._tileSize;
 
     /* Converts D-matrix residual bits into bytes. If the number of residual bits obtained 
     when converting an SCHC packet into a D-matrix is not a multiple of 8, padding is used. */
     std::vector<uint8_t> residualBytes = packBitsWithPadding(_ctx._residualBitsContainer);
 
     int residualCodingBit_size = residualBytes.size();                              // bytes
-    int residualFragmentationBit_size = (msg.size()%_ctx._tileSize);                // bytes
 
-    _ctx._lastTileSize = residualFragmentationBit_size + residualCodingBit_size;    // bytes
+    _ctx._lastTileSize = residualCodingBit_size;    // bytes
 
 
     // memory allocated for elements of rows.
@@ -227,15 +201,9 @@ Implementations must ensure that:
 
     //_ctx._lastTile.resize(_ctx._lastTileSize);
 
-    /* Coping the Residual Fragmentation Bits in LastTile */
-    for(int i=0; i<residualFragmentationBit_size; i++)
-    {
-        _ctx._lastTile.push_back(msg[k]);
-        k++;
-    }
 
     /* Coping the Residual Encoding Bits in LastTile */
-    _ctx._lastTile.insert(_ctx._lastTile.begin() + residualFragmentationBit_size, residualBytes.begin(), residualBytes.end());
+    _ctx._lastTile.insert(_ctx._lastTile.begin(), residualBytes.begin(), residualBytes.end());
 
     /* Numero de ventanas SCHC */
     if(msg.size()>(_ctx._tileSize * _ctx._windowSize*3))
@@ -288,29 +256,29 @@ uint32_t SCHCArqFecSender_INIT::calculate_crc32(const std::vector<uint8_t>& msg)
 
 void SCHCArqFecSender_INIT::generateDataMatrix(const std::vector<uint8_t>& inputBuffer) 
 {
-    // 1. Initial configuration
-    const int k = SCHCArqFecSender::_ksymbols; // Number of columns
-    const int m = SCHCArqFecSender::_mbits;  // Bits per symbol
-
-    // 2. Calculate total bits (P)
+    // Calculate total bits (L)
     // We use long long for the intermediate calculation to avoid overflow before the cast
     int totalBits = static_cast<int>(inputBuffer.size()) * 8;
 
-    // 3. Calculate rowCount (S) and Residual Count
+    // Calculate ksymbols and Residual Count
     // Integer division inherently performs the floor operation
-    _ctx._rowCount                  = static_cast<int>(totalBits / (k * m));
-    _ctx._residualCodingBitsCount   = static_cast<int>(totalBits % (k * m));
+    _ctx._overhead                  = _ctx._appConfig.schc.overhead;
+    _ctx._S                         = _ctx._tileSize;
+    _ctx._ksymbols                  = static_cast<int>(totalBits / (_ctx._S * _ctx._mbits));
+    _ctx._residualCodingBitsCount   = static_cast<int>(totalBits % (_ctx._S * _ctx._mbits));
+    _ctx._rsymbols                  = ceil(_ctx._ksymbols * _ctx._overhead);
+    _ctx._nsymbols                  = _ctx._ksymbols + _ctx._rsymbols; 
 
     // 4. Initialize Matrix D with dimensions S x k
-    _ctx._dataMatrix = std::vector<std::vector<uint8_t>>(_ctx._rowCount, std::vector<uint8_t>(k));
+    _ctx._dataMatrix = std::vector<std::vector<uint8_t>>(_ctx._S, std::vector<uint8_t>(_ctx._ksymbols));
 
     // 5. Populate the matrix row by row
     // Only full rows are included in the matrix
-    for (int i = 0; i < _ctx._rowCount; ++i) 
+    for (int i = 0; i < _ctx._S; ++i) 
     {
-        for (int j = 0; j < k; ++j) 
+        for (int j = 0; j < _ctx._ksymbols; ++j) 
         {
-            _ctx._dataMatrix[i][j] = inputBuffer[(i * k) + j];
+            _ctx._dataMatrix[i][j] = inputBuffer[(i * _ctx._ksymbols) + j];
         }
     }
 
@@ -318,7 +286,7 @@ void SCHCArqFecSender_INIT::generateDataMatrix(const std::vector<uint8_t>& input
     // Any byte not included in the rowCount rows is moved to the bit container
     _ctx._residualBitsContainer.reserve(_ctx._residualCodingBitsCount);
 
-    int d_matrix_size = _ctx._rowCount * k;
+    int d_matrix_size = _ctx._S * _ctx._ksymbols;
     for (int i = d_matrix_size; i < inputBuffer.size(); ++i) 
     {
         uint8_t currentByte = inputBuffer[i];
@@ -338,69 +306,40 @@ void SCHCArqFecSender_INIT::generateDataMatrix(const std::vector<uint8_t>& input
 bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<uint8_t>>& matrixD) 
 {
     // Initialize Matrix D with dimensions S x k
-    _ctx._encodedMatrix = std::vector<std::vector<uint8_t>>(_ctx._rowCount, std::vector<uint8_t>(15));
+    _ctx._encodedMatrix = std::vector<std::vector<uint8_t>>(_ctx._tileSize, std::vector<uint8_t>(_ctx._nsymbols));
 
 
-   /* Finite Field Parameters */
-   const std::size_t field_descriptor                = SCHCArqFecSender::_mbits;
-   const std::size_t generator_polynomial_index      = 120;
-   const std::size_t generator_polynomial_root_count = SCHCArqFecSender::_nsymbols - SCHCArqFecSender::_ksymbols; 
+    correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
+    
+    if (!rs) {
+        SPDLOG_ERROR("Error initializing libcorrect");
+        return false;
+    }
 
-   /* Reed Solomon Code Parameters */
-   const std::size_t code_length = SCHCArqFecSender::_nsymbols;
-   const std::size_t fec_length  = SCHCArqFecSender::_nsymbols - SCHCArqFecSender::_ksymbols; ;
-   const std::size_t data_length = code_length - fec_length;
-
-   /* Instantiate Finite Field and Generator Polynomials */
-   const schifra::galois::field field(field_descriptor,
-                                      schifra::galois::primitive_polynomial_size06,
-                                      schifra::galois::primitive_polynomial06);
-
-   schifra::galois::field_polynomial generator_polynomial(field);
-
-   if(!schifra::make_sequential_root_generator_polynomial(field,
-                                                            generator_polynomial_index,
-                                                            generator_polynomial_root_count,
-                                                            generator_polynomial)
-      )
-   {
-      std::cout << "Error - Failed to create sequential root generator!" << std::endl;
-      return false;
-   }
-
-   /* Instantiate Encoder and Decoder (Codec) */
-   typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
-   //typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
-
-   const encoder_t encoder(field,generator_polynomial);
-   //const decoder_t decoder(field,generator_polynomial_index);
-
-
-    for (std::size_t i = 0; i < matrixD.size(); ++i) 
+    for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
-        /* Instantiate RS Block For Codec */
-        schifra::reed_solomon::block<code_length,fec_length> block;
-
-        // Cargamos los datos usando el operador []
-        for (std::size_t j = 0; j < data_length; ++j) {
-            block[j] = matrixD[i][j];
-        }
-
-        // 5. Intento de codificación con log de error
-        bool res = encoder.encode(block);
         
+        // Obtenemos el puntero a la fila actual de tu matriz
+        // _ctx._encodedMatrix[i].data() apunta al inicio del vector de tamaño _nsymbols (100 bytes)
+        uint8_t* row_ptr = _ctx._encodedMatrix[i].data();
 
-        if (!res) {
-            // Si entra aquí, imprimiremos los parámetros para debuguear
-            SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
-            SPDLOG_ERROR("block.error_as_string: {}", block.error_as_string());
-            return false;
-        }
+        // Extraemos los datos puros para esta fila (deben medir exactamente data_length / K bytes)
+        const uint8_t* msg_in = reinterpret_cast<const uint8_t*>(matrixD[i].data());
 
-        for (std::size_t j = 0; j < code_length; ++j) {
-            _ctx._encodedMatrix[i][j] = block[j];
-        }
+        // LLAMADA A LIBCORRECT:
+        // Esta función lee 'data_length' bytes de msg_in, realiza la codificación,
+        // escribe los datos originales al principio de row_ptr y añade los bytes de FEC
+        // al final de row_ptr de forma contigua, llenando los '_nsymbols' completos.
+        correct_reed_solomon_encode(
+            rs, 
+            msg_in, 
+            _ctx._ksymbols, 
+            row_ptr
+        );
+
     }   
+
+    correct_reed_solomon_destroy(rs);
 
     return true;
 
