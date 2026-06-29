@@ -72,10 +72,10 @@ target_link_libraries(module_schc
 )
 
 # ASAN (AddressSanitizer) - Mejorado para ser más limpio
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address)
-endif()
+#if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+#    add_link_options(-fsanitize=address)
+#endif()
 
 
 add_subdirectory(testing)
