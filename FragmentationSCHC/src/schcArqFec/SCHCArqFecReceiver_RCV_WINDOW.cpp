@@ -300,7 +300,7 @@ bool SCHCArqFecReceiver_RCV_WINDOW::checkEnoughSymbols()
     for(const auto& row : _ctx._encodedMatrixMap)
     {
         int sum = std::accumulate(row.begin(), row.end(), 0u);
-
+        SPDLOG_DEBUG("checkEnoughSymbols: {}", sum);
         if(sum < _ctx._ksymbols )
             return false;
     }
