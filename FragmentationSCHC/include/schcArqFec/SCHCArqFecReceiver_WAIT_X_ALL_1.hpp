@@ -5,6 +5,11 @@
 #include "schcArqFec/SCHCArqFecReceiver.hpp"
 #include <spdlog/spdlog.h>
 #include <memory>
+extern "C" {
+    #include <correct.h>
+}
+
+
 
 class SCHCArqFecReceiver;   // ← forward declaration
 

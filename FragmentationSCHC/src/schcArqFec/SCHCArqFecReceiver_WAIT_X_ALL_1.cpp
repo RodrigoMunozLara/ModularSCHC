@@ -209,6 +209,59 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
 
+    // Validar que la matriz codificada recibida sea válida
+    if (_ctx._encodedMatrix.empty() || _ctx._encodedMatrix[0].empty()) {
+        SPDLOG_ERROR("Encoded matrix is empty. Cannot decode.");
+        return;
+    }
+
+    // Inicializar la instancia de Reed-Solomon en libcorrect (mismos parámetros que el TX)
+    correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
+    
+    if (!rs) {
+        SPDLOG_ERROR("Error initializing libcorrect for decoding");
+        return;
+    }
+
+    // Decodificar fila por fila
+    for (size_t i = 0; i < _ctx._tileSize; ++i) 
+    {
+        // Puntero de entrada: La fila con errores que llegó por la red (Tamaño: _nsymbols)
+        const uint8_t* encoded_row_ptr = _ctx._encodedMatrix[i].data();
+
+        // Puntero de salida: Dónde guardará libcorrect los datos corregidos (Tamaño: _ksymbols)
+        uint8_t* decoded_msg_out = _ctx._dataMatrix[i].data();
+
+        // LLAMADA A LIBCORRECT DECODING:
+        // Toma los '_nsymbols' (datos + paridad), detecta/corrige errores de transmisión,
+        // y escribe los '_ksymbols' de datos limpios en 'decoded_msg_out'.
+        // Retorna la cantidad de bytes corregidos, o -1 si hubo demasiados errores y falló.
+        ssize_t result = correct_reed_solomon_decode(
+            rs, 
+            encoded_row_ptr, 
+            _ctx._nsymbols, 
+            decoded_msg_out
+        );
+
+        if (result < 0) 
+        {
+            SPDLOG_ERROR("Reed-Solomon decoding failed at row {} (Too many errors to fix)", i);
+            break; 
+        } 
+        else 
+        {
+            SPDLOG_DEBUG("Row {} decoded successfully. Bytes corrected: {}", i, result);
+        }
+    }   
+
+    // Liberar recursos de la librería
+    correct_reed_solomon_destroy(rs);
+
+    return;
+
+
+
+
 //    /* Finite Field Parameters */
 //    const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
 //    const std::size_t generator_polynomial_index      = 120;

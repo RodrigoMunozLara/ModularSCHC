@@ -146,8 +146,8 @@ std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff,
         std::string accumulator = "";
         auto startTime = std::chrono::steady_clock::now();
         char readBuffer[256];
-        //int timeoutMs = 5000;
-        int timeoutMs = 0;
+        int timeoutMs = 5000;
+        //int timeoutMs = 0;
 
         while (true) 
         {
