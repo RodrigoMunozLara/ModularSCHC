@@ -210,7 +210,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
     printMatrixHex(_ctx._dataMatrix);
     //printMatrixHex(_ctx._encodedMatrix);
-    //printMatrixHex(_ctx._encodedMatrixMap);
+    printMatrixHex(_ctx._encodedMatrixMap);
 
     // Reservamos memoria estimada para evitar realocaciones dinámicas
     std::vector<uint8_t> erasure_locations;
@@ -224,6 +224,8 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
             erasure_locations.push_back(static_cast<uint8_t>(i));
         }
     }
+
+    SPDLOG_DEBUG("erasure_locations: {}", fmt::join(erasure_locations, ", ") );
 
     if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
     {
