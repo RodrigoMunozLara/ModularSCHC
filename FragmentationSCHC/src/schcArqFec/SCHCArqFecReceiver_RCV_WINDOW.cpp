@@ -312,83 +312,72 @@ bool SCHCArqFecReceiver_RCV_WINDOW::checkEnoughSymbols()
 
 void SCHCArqFecReceiver_RCV_WINDOW::decodeCmatrix()
 {
+    printMatrixHex(_ctx._dataMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrixMap);
 
-//    /* Finite Field Parameters */
-//    const std::size_t field_descriptor                = SCHCArqFecReceiver::_mbits;
-//    const std::size_t generator_polynomial_index      = 120;
-//    const std::size_t generator_polynomial_root_count = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; 
+    // Reservamos memoria estimada para evitar realocaciones dinámicas
+    std::vector<uint8_t> erasure_locations;
+    erasure_locations.reserve(_ctx._encodedMatrixMap[0].size());
 
-//    /* Reed Solomon Code Parameters */
-//    const std::size_t code_length = SCHCArqFecReceiver::_nsymbols;
-//    const std::size_t fec_length  = SCHCArqFecReceiver::_nsymbols - SCHCArqFecReceiver::_ksymbols; ;
-//    const std::size_t data_length = code_length - fec_length;
+    for (size_t i = 0; i < _ctx._encodedMatrixMap[0].size(); ++i) 
+    {
+        // Si es 0, significa que la columna se perdió en la red
+        if (_ctx._encodedMatrixMap[0][i] == 0) {
+            // Guardamos el ÍNDICE de la columna faltante
+            erasure_locations.push_back(static_cast<uint8_t>(i));
+        }
+    }
+    size_t erasure_length = erasure_locations.size();
 
-//    /* Instantiate Finite Field and Generator Polynomials */
-//    const schifra::galois::field field(field_descriptor,
-//                                       schifra::galois::primitive_polynomial_size06,
-//                                       schifra::galois::primitive_polynomial06);
-
-//    schifra::galois::field_polynomial generator_polynomial(field);
-
-//    if (
-//         !schifra::make_sequential_root_generator_polynomial(field,
-//                                                             generator_polynomial_index,
-//                                                             generator_polynomial_root_count,
-//                                                             generator_polynomial)
-//       )
-//    {
-//       std::cout << "Error - Failed to create sequential root generator!" << std::endl;
-//       return;
-//    }
-
-//    /* Instantiate Encoder and Decoder (Codec) */
-//    //typedef schifra::reed_solomon::shortened_encoder<code_length,fec_length,data_length> encoder_t;
-//    typedef schifra::reed_solomon::shortened_decoder<code_length,fec_length,data_length> decoder_t;
-
-//    //const encoder_t encoder(field,generator_polynomial);
-//    const decoder_t decoder(field,generator_polynomial_index);
+    if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
+    {
+        SPDLOG_ERROR("Unable to decode C-matrix: {} columns were lost, but the limit is {}", 
+                    erasure_locations.size(), _ctx._rsymbols);
+        return; 
+    }
 
 
-//     for (std::size_t i = 0; i < _ctx._encodedMatrix.size(); ++i) 
-//     {
-//         /* Instantiate RS Block For Codec */
-//         schifra::reed_solomon::block<code_length,fec_length> block;
+    // Validar que la matriz codificada recibida sea válida
+    if (_ctx._encodedMatrix.empty() || _ctx._encodedMatrix[0].empty()) {
+        SPDLOG_ERROR("Encoded matrix is empty. Cannot decode.");
+        return;
+    }
 
-//         // Cargamos los datos usando el operador []
-//         for (std::size_t j = 0; j < code_length; ++j) {
-//             block[j] = _ctx._encodedMatrix[i][j];
-//         }
+    // Inicializar la instancia de Reed-Solomon en libcorrect (mismos parámetros que el TX)
+    correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
+    
+    if (!rs) {
+        SPDLOG_ERROR("Error initializing libcorrect for decoding");
+        return;
+    }
 
-//         schifra::reed_solomon::erasure_locations_t erasure_location_list;
-//         erasure_location_list.clear();
-//         for(int k=0; k < code_length; k++)
-//         {
-//             if(_ctx._encodedMatrixMap[i][k] == 0)
-//             {
-//                 erasure_location_list.push_back(k);
-//             }
+    for (size_t i = 0; i < _ctx._tileSize; ++i) 
+    {
+        const uint8_t* encoded_row_ptr = _ctx._encodedMatrix[i].data();
+        uint8_t* decoded_msg_out = _ctx._dataMatrix[i].data();
 
-//         }
+        // LLAMADA CON ERASURES:
+        ssize_t result = correct_reed_solomon_decode_with_erasures(
+            rs,
+            encoded_row_ptr,
+            _ctx._nsymbols,          
+            erasure_locations.data(),
+            erasure_length,
+            decoded_msg_out
+        );
 
-//         // 5. Intento de decodificación con log de error
-//         bool res = decoder.decode(block, erasure_location_list);
-        
-//         if (!res) {
-//             // Si entra aquí, imprimiremos los parámetros para debuguear
-//             SPDLOG_ERROR("Error in row {}: n={}, fec={}", i, code_length, fec_length);
-//             SPDLOG_DEBUG("block.error_as_string: {}", block.error_as_string());
-//             continue;
-//         }
+        if (result < 0) {
+            SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
+            break;
+        } else {
+            SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
+        }
+    }
+    // Liberar recursos de la librería
+    correct_reed_solomon_destroy(rs);
 
-//         for (std::size_t j = 0; j < data_length; ++j) {
-//             _ctx._dataMatrix[i][j] = block[j];
-//         }
-//     }   
-
-//     SPDLOG_DEBUG("*** D matrix generated ***");
-
-//     //printMatrixHex(_ctx._dataMatrix);
-
+    return;
 
 }
 

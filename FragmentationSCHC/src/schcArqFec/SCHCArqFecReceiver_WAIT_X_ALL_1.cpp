@@ -208,8 +208,30 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
-    printMatrixHex(_ctx._encodedMatrix);
     printMatrixHex(_ctx._dataMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrixMap);
+
+    // Reservamos memoria estimada para evitar realocaciones dinámicas
+    std::vector<uint8_t> erasure_locations;
+    erasure_locations.reserve(_ctx._encodedMatrixMap[0].size());
+
+    for (size_t i = 0; i < _ctx._encodedMatrixMap[0].size(); ++i) 
+    {
+        // Si es 0, significa que la columna se perdió en la red
+        if (_ctx._encodedMatrixMap[0][i] == 0) {
+            // Guardamos el ÍNDICE de la columna faltante
+            erasure_locations.push_back(static_cast<uint8_t>(i));
+        }
+    }
+    size_t erasure_length = erasure_locations.size();
+
+    if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
+    {
+        SPDLOG_ERROR("Unable to decode C-matrix: {} columns were lost, but the limit is {}", 
+                    erasure_locations.size(), _ctx._rsymbols);
+        return; 
+    }
 
 
     // Validar que la matriz codificada recibida sea válida
@@ -226,37 +248,28 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
         return;
     }
 
-    // Decodificar fila por fila
     for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
-        // Puntero de entrada: La fila con errores que llegó por la red (Tamaño: _nsymbols)
         const uint8_t* encoded_row_ptr = _ctx._encodedMatrix[i].data();
-
-        // Puntero de salida: Dónde guardará libcorrect los datos corregidos (Tamaño: _ksymbols)
         uint8_t* decoded_msg_out = _ctx._dataMatrix[i].data();
 
-        // LLAMADA A LIBCORRECT DECODING:
-        // Toma los '_nsymbols' (datos + paridad), detecta/corrige errores de transmisión,
-        // y escribe los '_ksymbols' de datos limpios en 'decoded_msg_out'.
-        // Retorna la cantidad de bytes corregidos, o -1 si hubo demasiados errores y falló.
-        ssize_t result = correct_reed_solomon_decode(
-            rs, 
-            encoded_row_ptr, 
-            _ctx._nsymbols, 
+        // LLAMADA CON ERASURES:
+        ssize_t result = correct_reed_solomon_decode_with_erasures(
+            rs,
+            encoded_row_ptr,
+            _ctx._nsymbols,          
+            erasure_locations.data(),
+            erasure_length,
             decoded_msg_out
         );
 
-        if (result < 0) 
-        {
-            SPDLOG_ERROR("Reed-Solomon decoding failed at row {} (Too many errors to fix)", i);
-            break; 
-        } 
-        else 
-        {
-            SPDLOG_DEBUG("Row {} decoded successfully. Bytes corrected: {}", i, result);
+        if (result < 0) {
+            SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
+            break;
+        } else {
+            SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
         }
-    }   
-
+    }
     // Liberar recursos de la librería
     correct_reed_solomon_destroy(rs);
 

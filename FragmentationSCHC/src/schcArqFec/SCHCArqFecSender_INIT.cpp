@@ -34,14 +34,14 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         Residual coding bits are saved in   _ctx._residualBitsContainer 
     */
     generateDataMatrix(msg);
-    //printMatrixHex(_ctx._dataMatrix);
+    printMatrixHex(_ctx._dataMatrix);
 
 
     /* Creating C-Matrix:
         C-matrix is saved in    _ctx._encodedMatrix 
     */
     generateEncodedMatrix(_ctx._dataMatrix);
-    //printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
 
     /* Creating encoded SCHC packet (e-SCHC packet)
         e-SCHC packet = S parameter (1 byte) + C-matrix + Residual coding bits
@@ -318,13 +318,14 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
 
     for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
+        // Copiar primero los datos puros (95 bytes) al INICIO de la fila codificada
+        std::memcpy(_ctx._encodedMatrix[i].data(), _ctx._dataMatrix[i].data(), _ctx._ksymbols);
         
-        // Obtenemos el puntero a la fila actual de tu matriz
-        // _ctx._encodedMatrix[i].data() apunta al inicio del vector de tamaño _nsymbols (100 bytes)
-        uint8_t* row_ptr = _ctx._encodedMatrix[i].data();
+        // Calcular el puntero apuntando JUSTO AL FINAL de los datos (offset de k symbols)
+        uint8_t* fec_ptr = _ctx._encodedMatrix[i].data() + _ctx._ksymbols;
 
         // Extraemos los datos puros para esta fila (deben medir exactamente data_length / K bytes)
-        const uint8_t* msg_in = reinterpret_cast<const uint8_t*>(matrixD[i].data());
+        const uint8_t* msg_in = reinterpret_cast<const uint8_t*>(_ctx._dataMatrix[i].data());
 
         // LLAMADA A LIBCORRECT:
         // Esta función lee 'data_length' bytes de msg_in, realiza la codificación,
@@ -334,7 +335,7 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
             rs, 
             msg_in, 
             _ctx._ksymbols, 
-            row_ptr
+            fec_ptr  // <--- ¡Aquí se escribe la paridad del código de borrado!
         );
 
     }   
