@@ -209,14 +209,14 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
     printMatrixHex(_ctx._dataMatrix);
-    printMatrixHex(_ctx._encodedMatrix);
-    printMatrixHex(_ctx._encodedMatrixMap);
+    //printMatrixHex(_ctx._encodedMatrix);
+    //printMatrixHex(_ctx._encodedMatrixMap);
 
     // Reservamos memoria estimada para evitar realocaciones dinámicas
     std::vector<uint8_t> erasure_locations;
-    erasure_locations.reserve(_ctx._encodedMatrixMap[0].size());
+    erasure_locations.reserve(_ctx._nsymbols);
 
-    for (size_t i = 0; i < _ctx._encodedMatrixMap[0].size(); ++i) 
+    for (size_t i = 0; i < _ctx._nsymbols; ++i) 
     {
         // Si es 0, significa que la columna se perdió en la red
         if (_ctx._encodedMatrixMap[0][i] == 0) {
@@ -224,20 +224,12 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
             erasure_locations.push_back(static_cast<uint8_t>(i));
         }
     }
-    size_t erasure_length = erasure_locations.size();
 
     if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
     {
         SPDLOG_ERROR("Unable to decode C-matrix: {} columns were lost, but the limit is {}", 
                     erasure_locations.size(), _ctx._rsymbols);
         return; 
-    }
-
-
-    // Validar que la matriz codificada recibida sea válida
-    if (_ctx._encodedMatrix.empty() || _ctx._encodedMatrix[0].empty()) {
-        SPDLOG_ERROR("Encoded matrix is empty. Cannot decode.");
-        return;
     }
 
     // Inicializar la instancia de Reed-Solomon en libcorrect (mismos parámetros que el TX)
@@ -250,17 +242,13 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
     for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
-        const uint8_t* encoded_row_ptr = _ctx._encodedMatrix[i].data();
-        uint8_t* decoded_msg_out = _ctx._dataMatrix[i].data();
-
-        // LLAMADA CON ERASURES:
         ssize_t result = correct_reed_solomon_decode_with_erasures(
             rs,
-            encoded_row_ptr,
+            _ctx._encodedMatrix[i].data(),
             _ctx._nsymbols,          
             erasure_locations.data(),
-            erasure_length,
-            decoded_msg_out
+            erasure_locations.size(),
+            _ctx._dataMatrix[i].data()
         );
 
         if (result < 0) {
@@ -272,6 +260,8 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
     }
     // Liberar recursos de la librería
     correct_reed_solomon_destroy(rs);
+
+    printMatrixHex(_ctx._dataMatrix);
 
     return;
 }

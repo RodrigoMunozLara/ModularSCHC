@@ -1,7 +1,7 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_INIT.hpp"
 #include <schcAckOnError/SCHCNodeMessage.hpp>
-
+#include <spdlog/fmt/ranges.h>
 
 SCHCArqFecSender_INIT::SCHCArqFecSender_INIT(SCHCArqFecSender& ctx): _ctx(ctx)
 {
@@ -34,14 +34,14 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         Residual coding bits are saved in   _ctx._residualBitsContainer 
     */
     generateDataMatrix(msg);
-    printMatrixHex(_ctx._dataMatrix);
+    //printMatrixHex(_ctx._dataMatrix);
 
 
     /* Creating C-Matrix:
         C-matrix is saved in    _ctx._encodedMatrix 
     */
     generateEncodedMatrix(_ctx._dataMatrix);
-    printMatrixHex(_ctx._encodedMatrix);
+    //printMatrixHex(_ctx._encodedMatrix);
 
     /* Creating encoded SCHC packet (e-SCHC packet)
         e-SCHC packet = S parameter (1 byte) + C-matrix + Residual coding bits
@@ -60,16 +60,15 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
     SPDLOG_DEBUG("D matrix size:                {} bits", _ctx._tileSize * _ctx._ksymbols * _ctx._mbits);
     SPDLOG_DEBUG("D matrix row (S):             {}", _ctx._tileSize);
     SPDLOG_DEBUG("D matrix col (k):             {}", _ctx._ksymbols);
-    SPDLOG_DEBUG("Residual coding bits:         {} bits", _ctx._residualCodingBitsCount);
+    SPDLOG_DEBUG("Residual coding bits size:    {} bits", _ctx._residualCodingBitsCount);
+    SPDLOG_DEBUG("Residual coding bits:         {::#x}", _ctx._residualBitsContainer);
 
     SPDLOG_DEBUG("*** C matrix created ***");
     SPDLOG_DEBUG("C matrix size:                {} bits", _ctx._encodedMatrix.size() * _ctx._encodedMatrix[0].size() * _ctx._mbits);
     SPDLOG_DEBUG("C matrix row number (S):      {}", _ctx._encodedMatrix.size());
     SPDLOG_DEBUG("C matrix col number (n):      {}", _ctx._encodedMatrix[0].size());
-    SPDLOG_DEBUG("Residual fragmentation bits:  {} bits", (encodedSchcPacket.size() % _ctx._tileSize)*8);
+
     
-
-
     SPDLOG_DEBUG("*** e-SCHC packet created ***");
     SPDLOG_DEBUG("e-SCHC packet = C-matrix");
     SPDLOG_DEBUG("e-SCHC Packet size:           {} bits", encodedSchcPacket.size() * 8);
@@ -308,7 +307,6 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
     // Initialize Matrix D with dimensions S x k
     _ctx._encodedMatrix = std::vector<std::vector<uint8_t>>(_ctx._tileSize, std::vector<uint8_t>(_ctx._nsymbols));
 
-
     correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
     
     if (!rs) {
@@ -318,24 +316,15 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
 
     for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
-        // Copiar primero los datos puros (95 bytes) al INICIO de la fila codificada
-        std::memcpy(_ctx._encodedMatrix[i].data(), _ctx._dataMatrix[i].data(), _ctx._ksymbols);
-        
-        // Calcular el puntero apuntando JUSTO AL FINAL de los datos (offset de k symbols)
-        uint8_t* fec_ptr = _ctx._encodedMatrix[i].data() + _ctx._ksymbols;
-
-        // Extraemos los datos puros para esta fila (deben medir exactamente data_length / K bytes)
-        const uint8_t* msg_in = reinterpret_cast<const uint8_t*>(_ctx._dataMatrix[i].data());
-
         // LLAMADA A LIBCORRECT:
         // Esta función lee 'data_length' bytes de msg_in, realiza la codificación,
         // escribe los datos originales al principio de row_ptr y añade los bytes de FEC
         // al final de row_ptr de forma contigua, llenando los '_nsymbols' completos.
         correct_reed_solomon_encode(
             rs, 
-            msg_in, 
+            _ctx._dataMatrix[i].data(), 
             _ctx._ksymbols, 
-            fec_ptr  // <--- ¡Aquí se escribe la paridad del código de borrado!
+            _ctx._encodedMatrix[i].data()
         );
 
     }   
