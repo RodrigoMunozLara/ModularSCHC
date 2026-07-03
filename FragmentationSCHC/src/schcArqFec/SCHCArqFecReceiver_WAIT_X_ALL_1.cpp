@@ -257,7 +257,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
         if (result < 0) {
             SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
-            break;
+            //break;
         } else {
             SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
 
