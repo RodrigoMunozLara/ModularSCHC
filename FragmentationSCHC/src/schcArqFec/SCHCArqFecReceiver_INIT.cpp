@@ -76,7 +76,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
         //         _ctx._counter++;
         //         return;
         // }
-        // _ctx._counter++;
+        _ctx._counter++;
 
         /* Decoding el SCHC fragment */
         decoder.decode_message(_ctx._protoType, _ctx._ruleID, msg);
