@@ -213,26 +213,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
     printMatrixHex(_ctx._encodedMatrix);
     printMatrixHex(_ctx._encodedMatrixMap);
 
-    // Reservamos memoria estimada para evitar realocaciones dinámicas
-    std::vector<uint8_t> erasure_locations;
-    erasure_locations.reserve(_ctx._nsymbols);
-
-    for (size_t i = 0; i < _ctx._nsymbols; ++i) 
-    {
-        if (_ctx._encodedMatrixMap[0][i] == 0) {
-            erasure_locations.push_back(static_cast<uint8_t>(i));
-        }
-    }
-
-    SPDLOG_DEBUG("erasure_locations: {}", fmt::join(erasure_locations, ", ") );
-
-    if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
-    {
-        SPDLOG_ERROR("Unable to decode C-matrix: {} columns were lost, but the limit is {}", 
-                    erasure_locations.size(), _ctx._rsymbols);
-        return; 
-    }
-
     correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
     
     if (!rs) {
@@ -245,6 +225,28 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
         uint8_t* encoded_ptr = _ctx._encodedMatrix[i].data();
         //std::vector<uint8_t> clean_output(95, 0);
         SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
+
+        std::vector<uint8_t> erasure_locations;
+        erasure_locations.reserve(_ctx._nsymbols);
+
+        for (size_t col = 0; col < _ctx._nsymbols; ++col) 
+        {
+            // Cambiado [0] por [i] para leer el mapa real de esta fila
+            if (_ctx._encodedMatrixMap[i][col] == 0) { 
+                erasure_locations.push_back(static_cast<uint8_t>(col));
+            }
+        }
+
+        // Validación defensiva por cada fila antes de intentar decodificar
+        if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
+        {
+            SPDLOG_ERROR("Unable to decode row {}: {} columns lost, limit is {}", 
+                        i, erasure_locations.size(), _ctx._rsymbols);
+            break; // Falla la ventana completa, activar ARQ
+        }
+
+        SPDLOG_DEBUG("Row {} -> erasure_locations: [{}]", i, fmt::join(erasure_locations, ", "));
+
 
         uint8_t erasure_locations_buffer[erasure_locations.size()];
         std::memcpy(erasure_locations_buffer, erasure_locations.data(), erasure_locations.size() * sizeof(uint8_t));
