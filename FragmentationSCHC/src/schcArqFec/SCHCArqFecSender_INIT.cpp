@@ -34,7 +34,7 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         Residual coding bits are saved in   _ctx._residualBitsContainer 
     */
     generateDataMatrix(msg);
-    printMatrixHex(_ctx._dataMatrix);
+    //printMatrixHex(_ctx._dataMatrix);
 
 
     /* Creating C-Matrix:
@@ -53,6 +53,7 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         last tile is saved in   _ctx._lastTile
     */
     divideInTiles(encodedSchcPacket);
+    printMatrixHex(_ctx._tilesArray);
 
 
     SPDLOG_DEBUG("*** D matrix created ***");
@@ -329,7 +330,7 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
         _ctx._encodedMatrix[i].assign(encodedMatrix_buffer, encodedMatrix_buffer + _ctx._nsymbols);
 
         //SPDLOG_DEBUG("_dataMatrix[{}]: {::#x}", i, _ctx._dataMatrix[i]);
-        //SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
+        //SPDLOG_DEBUG("_encodedMatrix[{}]: {::x}", i, _ctx._encodedMatrix[i]);
     }   
 
     correct_reed_solomon_destroy(rs);
@@ -380,7 +381,17 @@ std::vector<uint8_t> SCHCArqFecSender_INIT::generateencodedSCHCpacket(const std:
         }
     }
 
+    // std::cout << "--- Encoded SCHC Packet ---" << std::endl;
     
+    // for (size_t j = 0; j < res.size(); ++j) {
+    //     // Imprime cada byte como Hexadecimal de 2 dígitos
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') 
+    //                 << static_cast<int>(res[j]) << " ";
+    // }
+    
+    // std::cout << std::dec << std::endl; // Volver a decimal para el resto del programa
+    // std::cout << "-----------------------" << std::endl;
+
     return res;
 
 }
