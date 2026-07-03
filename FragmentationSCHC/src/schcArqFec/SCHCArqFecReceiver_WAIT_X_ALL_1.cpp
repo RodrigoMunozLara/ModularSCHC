@@ -209,7 +209,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
     printMatrixHex(_ctx._dataMatrix);
-    //printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
     printMatrixHex(_ctx._encodedMatrixMap);
 
     // Reservamos memoria estimada para evitar realocaciones dinámicas
