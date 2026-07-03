@@ -246,13 +246,21 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
         //std::vector<uint8_t> clean_output(95, 0);
         SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
 
-        ssize_t result = correct_reed_solomon_decode_with_erasures(rs, _ctx._encodedMatrix[i].data(), _ctx._nsymbols, erasure_locations.data(), erasure_locations.size(), _ctx._dataMatrix[i].data());
+        uint8_t erasure_locations_buffer[erasure_locations.size()];
+        std::memcpy(erasure_locations_buffer, erasure_locations.data(), erasure_locations.size() * sizeof(uint8_t));
+        uint8_t dataMatrix[_ctx._ksymbols];
+
+
+        ssize_t result = correct_reed_solomon_decode_with_erasures(rs, _ctx._encodedMatrix[i].data(), _ctx._nsymbols, erasure_locations_buffer, erasure_locations.size(), dataMatrix);
 
         if (result < 0) {
             SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
             break;
         } else {
             SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
+
+            _ctx._dataMatrix[i].assign(dataMatrix, dataMatrix + _ctx._ksymbols);
+
         }
     }
     // Liberar recursos de la librería
