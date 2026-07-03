@@ -60,6 +60,11 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
         /* Creacion de buffer para almacenar el schc payload del SCHC fragment */
         std::vector<uint8_t> payload = decoder.get_schc_payload();
 
+        /* Extrae el primer byte del payload que corresponde al parametro k*/
+        _ctx._ksymbols = static_cast<int>(payload.front());
+        payload.erase(payload.begin());
+        SPDLOG_DEBUG("k parameter received: {}", _ctx._ksymbols);
+
         /* Obteniendo la cantidad de tiles en el mensaje */
         int tiles_in_payload = (payload_len/8)/_ctx._tileSize;
 
@@ -273,10 +278,6 @@ bool SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::checkEnoughSymbols()
 
 void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::decodeCmatrix()
 {
-    printMatrixHex(_ctx._dataMatrix);
-    printMatrixHex(_ctx._encodedMatrix);
-    printMatrixHex(_ctx._encodedMatrixMap);
-
     // Reservamos memoria estimada para evitar realocaciones dinámicas
     std::vector<uint8_t> erasure_locations;
     erasure_locations.reserve(_ctx._encodedMatrixMap[0].size());

@@ -60,6 +60,11 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         /* Creacion de buffer para almacenar el schc payload del SCHC fragment */
         std::vector<uint8_t> payload = decoder.get_schc_payload();
 
+        /* Extrae el primer byte del payload que corresponde al parametro k*/
+        _ctx._ksymbols = static_cast<int>(payload.front());
+        payload.erase(payload.begin());
+        SPDLOG_DEBUG("k parameter received: {}", _ctx._ksymbols);
+
         /* Obteniendo la cantidad de tiles en el mensaje */
         int tiles_in_payload = (payload_len/8)/_ctx._tileSize;
 
