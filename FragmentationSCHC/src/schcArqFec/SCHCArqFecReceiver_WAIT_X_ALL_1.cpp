@@ -64,7 +64,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
         int residualCodingBits_size         = _ctx._lastTileSize * 8;
         SPDLOG_DEBUG("Last Tile size                 : {} bits", _ctx._lastTileSize * 8);
         SPDLOG_DEBUG("Residual coding bits + padding : {} bits", residualCodingBits_size);
-        SPDLOG_DEBUG("Last Tile received             : {:X}", spdlog::to_hex(_ctx._lastTile));
+        SPDLOG_DEBUG("Last Tile received             : {::#x}", _ctx._lastTile);
 
 
         //getBitmapArrayFromEncodedMatrixMap();
@@ -218,9 +218,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
     for (size_t i = 0; i < _ctx._nsymbols; ++i) 
     {
-        // Si es 0, significa que la columna se perdió en la red
         if (_ctx._encodedMatrixMap[0][i] == 0) {
-            // Guardamos el ÍNDICE de la columna faltante
             erasure_locations.push_back(static_cast<uint8_t>(i));
         }
     }
@@ -234,7 +232,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
         return; 
     }
 
-    // Inicializar la instancia de Reed-Solomon en libcorrect (mismos parámetros que el TX)
     correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
     
     if (!rs) {
@@ -242,16 +239,13 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
         return;
     }
 
-    for (size_t i = 0; i < _ctx._tileSize; ++i) 
+    for (int i = 0; i < _ctx._tileSize; i++) 
     {
-        ssize_t result = correct_reed_solomon_decode_with_erasures(
-            rs,
-            _ctx._encodedMatrix[i].data(),
-            _ctx._nsymbols,          
-            erasure_locations.data(),
-            erasure_locations.size(),
-            _ctx._dataMatrix[i].data()
-        );
+        uint8_t* encoded_ptr = _ctx._encodedMatrix[i].data();
+        //std::vector<uint8_t> clean_output(95, 0);
+        SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
+
+        ssize_t result = correct_reed_solomon_decode_with_erasures(rs, _ctx._encodedMatrix[i].data(), _ctx._nsymbols, erasure_locations.data(), erasure_locations.size(), _ctx._dataMatrix[i].data());
 
         if (result < 0) {
             SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
