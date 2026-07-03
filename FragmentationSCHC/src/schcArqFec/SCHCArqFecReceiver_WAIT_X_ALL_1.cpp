@@ -209,11 +209,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::printMatrixHex(const std::vector<std::vect
 
 void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 {
-    //printMatrixHex(_ctx._dataMatrix);
-    //printMatrixHex(_ctx._encodedMatrix);
-    //printMatrixHex(_ctx._encodedMatrixMap);
-    printMatrixHex(_ctx._tilesArray);
-
     correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
     
     if (!rs) {
@@ -223,8 +218,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
     for (int i = 0; i < _ctx._tileSize; i++) 
     {
-        //SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
-
         std::vector<uint8_t> erasure_locations;
         erasure_locations.reserve(_ctx._nsymbols);
 
@@ -256,7 +249,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
         if (result < 0) {
             SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
-            //break;
+            break;
         } else {
             SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
 
@@ -266,8 +259,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
     }
     // Liberar recursos de la librería
     correct_reed_solomon_destroy(rs);
-
-    //printMatrixHex(_ctx._dataMatrix);
 
     return;
 }

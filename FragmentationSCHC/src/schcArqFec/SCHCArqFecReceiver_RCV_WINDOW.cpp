@@ -317,39 +317,6 @@ bool SCHCArqFecReceiver_RCV_WINDOW::checkEnoughSymbols()
 
 void SCHCArqFecReceiver_RCV_WINDOW::decodeCmatrix()
 {
-    printMatrixHex(_ctx._dataMatrix);
-    printMatrixHex(_ctx._encodedMatrix);
-    printMatrixHex(_ctx._encodedMatrixMap);
-
-    // Reservamos memoria estimada para evitar realocaciones dinámicas
-    std::vector<uint8_t> erasure_locations;
-    erasure_locations.reserve(_ctx._encodedMatrixMap[0].size());
-
-    for (size_t i = 0; i < _ctx._encodedMatrixMap[0].size(); ++i) 
-    {
-        // Si es 0, significa que la columna se perdió en la red
-        if (_ctx._encodedMatrixMap[0][i] == 0) {
-            // Guardamos el ÍNDICE de la columna faltante
-            erasure_locations.push_back(static_cast<uint8_t>(i));
-        }
-    }
-    size_t erasure_length = erasure_locations.size();
-
-    if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
-    {
-        SPDLOG_ERROR("Unable to decode C-matrix: {} columns were lost, but the limit is {}", 
-                    erasure_locations.size(), _ctx._rsymbols);
-        return; 
-    }
-
-
-    // Validar que la matriz codificada recibida sea válida
-    if (_ctx._encodedMatrix.empty() || _ctx._encodedMatrix[0].empty()) {
-        SPDLOG_ERROR("Encoded matrix is empty. Cannot decode.");
-        return;
-    }
-
-    // Inicializar la instancia de Reed-Solomon en libcorrect (mismos parámetros que el TX)
     correct_reed_solomon* rs = correct_reed_solomon_create(0x11d, 1, 1, _ctx._rsymbols);
     
     if (!rs) {
@@ -357,33 +324,51 @@ void SCHCArqFecReceiver_RCV_WINDOW::decodeCmatrix()
         return;
     }
 
-    for (size_t i = 0; i < _ctx._tileSize; ++i) 
+    for (int i = 0; i < _ctx._tileSize; i++) 
     {
-        const uint8_t* encoded_row_ptr = _ctx._encodedMatrix[i].data();
-        uint8_t* decoded_msg_out = _ctx._dataMatrix[i].data();
+        std::vector<uint8_t> erasure_locations;
+        erasure_locations.reserve(_ctx._nsymbols);
 
-        // LLAMADA CON ERASURES:
-        ssize_t result = correct_reed_solomon_decode_with_erasures(
-            rs,
-            encoded_row_ptr,
-            _ctx._nsymbols,          
-            erasure_locations.data(),
-            erasure_length,
-            decoded_msg_out
-        );
+        for (size_t col = 0; col < _ctx._nsymbols; ++col) 
+        {
+            // Cambiado [0] por [i] para leer el mapa real de esta fila
+            if (_ctx._encodedMatrixMap[i][col] == 0) { 
+                erasure_locations.push_back(static_cast<uint8_t>(col));
+            }
+        }
+
+        // Validación defensiva por cada fila antes de intentar decodificar
+        if (erasure_locations.size() > static_cast<size_t>(_ctx._rsymbols)) 
+        {
+            SPDLOG_ERROR("Unable to decode row {}: {} columns lost, limit is {}", 
+                        i, erasure_locations.size(), _ctx._rsymbols);
+            break; // Falla la ventana completa, activar ARQ
+        }
+
+        SPDLOG_DEBUG("Row {} -> erasure_locations: [{}]", i, fmt::join(erasure_locations, ", "));
+
+
+        uint8_t erasure_locations_buffer[erasure_locations.size()];
+        std::memcpy(erasure_locations_buffer, erasure_locations.data(), erasure_locations.size() * sizeof(uint8_t));
+        uint8_t dataMatrix[_ctx._ksymbols];
+
+
+        ssize_t result = correct_reed_solomon_decode_with_erasures(rs, _ctx._encodedMatrix[i].data(), _ctx._nsymbols, erasure_locations_buffer, erasure_locations.size(), dataMatrix);
 
         if (result < 0) {
             SPDLOG_ERROR("Total failure. More than {} symbols were lost in row {}", _ctx._rsymbols, i );
             break;
         } else {
             SPDLOG_DEBUG("Row {} reconstructed using deletion codes", i);
+
+            _ctx._dataMatrix[i].assign(dataMatrix, dataMatrix + _ctx._ksymbols);
+
         }
     }
     // Liberar recursos de la librería
     correct_reed_solomon_destroy(rs);
 
     return;
-
 }
 
 std::vector<uint8_t> SCHCArqFecReceiver_RCV_WINDOW::convertDmatrix_to_SCHCPacket()
