@@ -1,5 +1,6 @@
 #include "schcArqFec/SCHCArqFecReceiver_WAIT_X_ALL_1.hpp"
 #include <set>
+#include <spdlog/fmt/ranges.h>
 
 SCHCArqFecReceiver_WAIT_X_ALL_1::SCHCArqFecReceiver_WAIT_X_ALL_1(SCHCArqFecReceiver& ctx): _ctx(ctx)
 {
