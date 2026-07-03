@@ -222,8 +222,6 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::decodeCmatrix()
 
     for (int i = 0; i < _ctx._tileSize; i++) 
     {
-        uint8_t* encoded_ptr = _ctx._encodedMatrix[i].data();
-        //std::vector<uint8_t> clean_output(95, 0);
         SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
 
         std::vector<uint8_t> erasure_locations;

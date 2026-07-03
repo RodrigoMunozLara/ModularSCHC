@@ -34,14 +34,14 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         Residual coding bits are saved in   _ctx._residualBitsContainer 
     */
     generateDataMatrix(msg);
-    //printMatrixHex(_ctx._dataMatrix);
+    printMatrixHex(_ctx._dataMatrix);
 
 
     /* Creating C-Matrix:
         C-matrix is saved in    _ctx._encodedMatrix 
     */
     generateEncodedMatrix(_ctx._dataMatrix);
-    //printMatrixHex(_ctx._encodedMatrix);
+    printMatrixHex(_ctx._encodedMatrix);
 
     /* Creating encoded SCHC packet (e-SCHC packet)
         e-SCHC packet = S parameter (1 byte) + C-matrix + Residual coding bits
@@ -314,19 +314,22 @@ bool SCHCArqFecSender_INIT::generateEncodedMatrix(const std::vector<std::vector<
         return false;
     }
 
+
     for (size_t i = 0; i < _ctx._tileSize; ++i) 
     {
-        // LLAMADA A LIBCORRECT:
-        // Esta función lee 'data_length' bytes de msg_in, realiza la codificación,
-        // escribe los datos originales al principio de row_ptr y añade los bytes de FEC
-        // al final de row_ptr de forma contigua, llenando los '_nsymbols' completos.
+        uint8_t encodedMatrix_buffer[_ctx._nsymbols];
+        
         correct_reed_solomon_encode(
             rs, 
             _ctx._dataMatrix[i].data(), 
             _ctx._ksymbols, 
-            _ctx._encodedMatrix[i].data()
+            encodedMatrix_buffer
         );
 
+        _ctx._encodedMatrix[i].assign(encodedMatrix_buffer, encodedMatrix_buffer + _ctx._nsymbols);
+
+        //SPDLOG_DEBUG("_dataMatrix[{}]: {::#x}", i, _ctx._dataMatrix[i]);
+        //SPDLOG_DEBUG("_encodedMatrix[{}]: {::#x}", i, _ctx._encodedMatrix[i]);
     }   
 
     correct_reed_solomon_destroy(rs);
