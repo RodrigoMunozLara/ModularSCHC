@@ -40,7 +40,11 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 _ctx._counter++;
                 return;
         }
-        // _ctx._counter++;
+        else
+        {
+            _ctx._counter++;
+        }
+        
 
         /* Decoding el SCHC fragment */
         decoder.decode_message(_ctx._protoType, _ctx._ruleID, msg);
