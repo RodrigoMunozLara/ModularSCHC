@@ -115,7 +115,7 @@ void SCHCArqFecReceiver::execute(const std::vector<uint8_t>& msg)
         }
         else if (_nextStateStr == SCHCArqFecReceiverStates::STATE_END)
         {
-            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_END");
+            SPDLOG_DEBUG("Changing STATE to STATE_END");
             _currentState = std::make_unique<SCHCArqFecReceiver_END>(*this);
             _currentStateStr = SCHCArqFecReceiverStates::STATE_END;
         }

@@ -87,7 +87,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
             _ctx._last_window    = w;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
 
 
-        /* Se recibe el primer SCHC fragment con el parametro S en el primer byte*/
+        /* Se recibe el primer SCHC fragment con el parametro k en el primer byte*/
         payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
         
         /* Creacion de buffer para almacenar el schc payload del SCHC fragment */

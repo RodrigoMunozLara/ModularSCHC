@@ -93,7 +93,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
             storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);         
         }
 
-        printMatrixHex(_ctx._encodedMatrix);
+        //printMatrixHex(_ctx._encodedMatrix);
         //printMatrixHex(_ctx._encodedMatrixMap);
 
         /* Se almacena el puntero al siguiente tile esperado */
