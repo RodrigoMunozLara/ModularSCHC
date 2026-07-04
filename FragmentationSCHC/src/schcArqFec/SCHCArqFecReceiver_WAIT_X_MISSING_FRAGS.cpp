@@ -118,24 +118,51 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
         SPDLOG_DEBUG("Check Enough Symbols: {}", checkEnoughSymbols());
         if(checkEnoughSymbols())
         {
-            /* Enviando ACK para confirmar el parametro S*/
-            SPDLOG_DEBUG("Sending SCHC ACK");
-            SCHCGWMessage    encoder;
-            uint8_t c                   = 1;
-            uint8_t w                   = 3;
-            std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+            /* Decode CMatrix */
+            decodeCmatrix();
 
-            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+            /* Convert D-matrix in a SCHC packet*/
+            std::vector<uint8_t> schc_packet = convertDmatrix_to_SCHCPacket();
+            schc_packet.insert(schc_packet.end(), _ctx._lastTile.begin(), _ctx._lastTile.end());
 
-            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-            SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
-            //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
+            uint32_t calculated_rcs = calculate_crc32(schc_packet);
+            SPDLOG_DEBUG("Received RCS  : {}",_ctx._rcs);
+            SPDLOG_DEBUG("Calculated RCS: {}",calculated_rcs);
+
+            if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
+            {
+                SPDLOG_DEBUG("Integrity check: success");
+                 /* Enviando ACK para confirmar el parametro S*/
+                SPDLOG_DEBUG("Sending SCHC ACK");
+                SCHCGWMessage    encoder;
+                uint8_t c                   = 1;
+                uint8_t w                   = 3;
+                std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+
+                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
+                SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
+                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
-            SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
-            _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
-            _ctx.executeAgain();
-            return;
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
+                _ctx.executeAgain();
+                return;                
+            }
+            else
+            {
+                SPDLOG_DEBUG("Integrity check: failed");
+                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
+                _ctx.executeAgain();               
+            }
+
+
+
+
+
         }
     }
     else if (msg_type == SCHCMsgType::SCHC_ACK_REQ_MSG)

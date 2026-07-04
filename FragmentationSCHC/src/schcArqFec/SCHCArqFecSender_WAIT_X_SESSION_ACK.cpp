@@ -56,7 +56,7 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
             _ctx._win_with_errors   = decoder.get_w_vector();
 
             decoder.print_msg(SCHCMsgType::SCHC_COMPOUND_ACK, msg, _ctx._bitmapArray);
-            SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_RESEND_MISSING_FRAG");
+            SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_RESEND_MISSING_FRAG");
             _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES;
             _ctx.executeAgain();
             return;

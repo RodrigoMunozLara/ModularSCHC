@@ -95,7 +95,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
 
         /* Numero de tiles que se pueden enviar un un payload */
-        int payload_available_in_bytes = _ctx._current_L2_MTU - 1; // MTU = SCHC header (1 byte) + SCHC payload
+        int payload_available_in_bytes = _ctx._current_L2_MTU - 2; // MTU = SCHC header (1 byte) + k parameter (1 byte) + SCHC payload
         int payload_available_in_tiles = payload_available_in_bytes/_ctx._tileSize;
 
         int n_tiles_to_send     = 0;    // numero de tiles a enviar
@@ -115,6 +115,9 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
             /* buffer que almacena todos los tiles que se van a enviar */           
             std::vector<uint8_t>   schc_payload = extractTiles(currentTile_ptr, n_tiles_to_send);
+
+            /* Agregar el parametro k al comienzo del SCHC payload. Utiliza 1 byte*/
+            schc_payload.insert(schc_payload.begin(), _ctx._ksymbols);
 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
