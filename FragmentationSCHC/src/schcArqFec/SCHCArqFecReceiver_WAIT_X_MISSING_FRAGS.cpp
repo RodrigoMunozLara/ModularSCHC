@@ -83,8 +83,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
             }
             else
             {
-                _ctx._bitmapArray[w][bitmap_ptr + i] = 1;
-                
+                _ctx._bitmapArray[w][bitmap_ptr + i] = 1;         
             }
 
             /* Storing tiles in C-matrix */
@@ -94,7 +93,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
             storeTileinCmatrix(_ctx._tilesArray[tile_ptr + i], tmp_window, tmp_fcn);         
         }
 
-        //printMatrixHex(_ctx._encodedMatrix);
+        printMatrixHex(_ctx._encodedMatrix);
         //printMatrixHex(_ctx._encodedMatrixMap);
 
         /* Se almacena el puntero al siguiente tile esperado */
@@ -261,14 +260,16 @@ int SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::get_bitmap_ptr(uint8_t fcn)
 
 void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::storeTileinCmatrix(std::vector<uint8_t> tile, int w, int fcn)
 {
-    int col = _ctx._windowSize * (w+1) - fcn;  
-    int row = 1;
+    int col = _ctx._windowSize * (w+1) - fcn - 1;  
 
     for(int j=0; j<_ctx._tileSize; j++)
     {
         _ctx._encodedMatrix[j][col] = tile[j];
         _ctx._encodedMatrixMap[j][col] = 1;
     }
+
+    //printMatrixHex(_ctx._encodedMatrix);
+    //printMatrixHex(_ctx._encodedMatrixMap);
 
 }
 
