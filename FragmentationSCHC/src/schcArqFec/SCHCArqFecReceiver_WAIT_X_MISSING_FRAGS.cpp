@@ -306,7 +306,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::decodeCmatrix()
             break; // Falla la ventana completa, activar ARQ
         }
 
-        SPDLOG_DEBUG("Row {} -> erasure_locations: [{}]", i, fmt::join(erasure_locations, ", "));
+        //SPDLOG_DEBUG("Row {} -> erasure_locations: [{}]", i, fmt::join(erasure_locations, ", "));
 
 
         uint8_t erasure_locations_buffer[erasure_locations.size()];
