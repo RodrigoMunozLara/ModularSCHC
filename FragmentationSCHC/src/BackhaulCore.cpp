@@ -96,7 +96,7 @@ void BackhaulCore::start()
         // name of the interface to which the socket will be associated
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
-        sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+        sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
         if (sockfd < 0) 
         {
             SPDLOG_ERROR("Failed to create raw socket: {}", strerror(errno));
@@ -119,7 +119,7 @@ void BackhaulCore::start()
         struct sockaddr_ll saddr;
         std::memset(&saddr, 0, sizeof(saddr));
         saddr.sll_family = AF_PACKET;
-        saddr.sll_protocol = htons(ETH_P_IP);
+        saddr.sll_protocol = htons(ETH_P_IPV6);
         saddr.sll_ifindex = ifr.ifr_ifindex;
 
         if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) 
