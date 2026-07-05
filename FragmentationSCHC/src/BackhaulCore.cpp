@@ -91,11 +91,15 @@ void BackhaulCore::start()
     }
     else if(_appConfig.backhaul.tunnel_6to4.compare("true") == 0)
     {
+        // Crea un descriptor de archivo para notificar y despertar de forma 
+        // no bloqueante al bucle de eventos desde otros hilos.
         stopfd = eventfd(0, EFD_NONBLOCK);
 
-        // name of the interface to which the socket will be associated
+        // nombre de la interfaz a la que se asociará el socket
         const char* iface = _appConfig.backhaul.interface_name.c_str();
 
+        // Crea un socket crudo a nivel de capa de enlace (L2) preparado para 
+        // inyectar o capturar paquetes IPv6 nativos directamente en la interfaz.
         sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
         if (sockfd < 0) 
         {
@@ -103,6 +107,8 @@ void BackhaulCore::start()
             return;
         }
 
+        // Consulta al sistema operativo el índice numérico interno de la interfaz 
+        // de red basándose en su nombre textual.
         memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
         if (ioctl(sockfd, SIOCGIFINDEX, &ifr) < 0)
@@ -116,12 +122,16 @@ void BackhaulCore::start()
             SPDLOG_DEBUG("Obtained interface index. Interface name: '{}' with index: '{}'", iface, ifr.ifr_ifindex);
         }
 
+        // Configura la estructura de dirección de capa de enlace especificando la 
+        // familia de sockets, el protocolo IPv6 y el índice de la interfaz de red destino.
         struct sockaddr_ll saddr;
         std::memset(&saddr, 0, sizeof(saddr));
         saddr.sll_family = AF_PACKET;
         saddr.sll_protocol = htons(ETH_P_IPV6);
         saddr.sll_ifindex = ifr.ifr_ifindex;
 
+        // Enlaza el socket crudo a la interfaz de red específica para restringir 
+        // el tráfico y permitir la inyección directa de paquetes a través de ella.
         if (bind(sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0) 
         {
             SPDLOG_ERROR("Failed to associate socket with interface");
@@ -237,30 +247,46 @@ void BackhaulCore::runRx()
                     break;
                 }
 
-                // Minimum: Ethernet (14) + IPv4 (20)
-                if (len < 14 + 20) continue;
+                // 1. Validamos que tenga al menos el tamaño mínimo de una cabecera IPv6 (40 bytes)
+                if (len < 40) continue;
 
-                uint16_t eth_proto = ntohs(saddr.sll_protocol);
-                if (eth_proto != ETH_P_IP) continue;
+                // 2. Opcional: Validar que el paquete comience con la versión 6 (primer nibble igual a 6)
+                uint8_t ip_version = (buffer[0] >> 4);
+                if (ip_version != 6) continue;
+
+                // 3. Extraemos el paquete IPv6 puro directamente desde el inicio del buffer
+                std::vector<uint8_t> ipv6_data(buffer.begin(), buffer.begin() + len);
+
+                // 4. Se lo entregamos al manejador SCHC listo para descomprimir/notificar
+                handleRxFrame(ipv6_data);
+                
 
 
-                struct iphdr* ip4 = reinterpret_cast<struct iphdr*>(buffer.data() + 14);
-                if (ip4->protocol == 41) 
-                {
-                    int ip4_hdr_len         = ip4->ihl * 4;
-                    int total_headers_len   = 14 + ip4_hdr_len;
 
-                    if (len > total_headers_len)
-                    {
-                        // Extraemos el paquete IPv6 a un nuevo vector
-                        std::vector<uint8_t> ipv6_data(buffer.begin() + total_headers_len, buffer.begin() + len);
+                // // Minimum: Ethernet (14) + IPv4 (20)
+                // if (len < 14 + 20) continue;
 
-                        if (ipv6_data.size() >= 40)
-                        {
-                            handleRxFrame(ipv6_data);
-                        }
-                    }
-                }
+                // uint16_t eth_proto = ntohs(saddr.sll_protocol);
+                // if (eth_proto != ETH_P_IP) continue;
+
+
+                // struct iphdr* ip4 = reinterpret_cast<struct iphdr*>(buffer.data() + 14);
+                // if (ip4->protocol == 41) 
+                // {
+                //     int ip4_hdr_len         = ip4->ihl * 4;
+                //     int total_headers_len   = 14 + ip4_hdr_len;
+
+                //     if (len > total_headers_len)
+                //     {
+                //         // Extraemos el paquete IPv6 a un nuevo vector
+                //         std::vector<uint8_t> ipv6_data(buffer.begin() + total_headers_len, buffer.begin() + len);
+
+                //         if (ipv6_data.size() >= 40)
+                //         {
+                //             handleRxFrame(ipv6_data);
+                //         }
+                //     }
+                // }
 
 
             }
