@@ -102,7 +102,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
 
         /* ARQ-FEC parameters inictialization*/
-        _S                      = _tileSize;
+        _mbits                  = 8;
     }
 
 }
