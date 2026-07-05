@@ -108,10 +108,12 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
                 _ctx._schcCore.handleRxFrame(schc_packet);
 
 
-
+                /* State change and timer activation to wait for the last messages 
+                that are delayed from the transmitter */
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
-                _ctx.executeAgain();
+                _ctx.executeTimer(_ctx._inactivityTimer);
+                //_ctx.executeAgain();
                 return;
             }
         }

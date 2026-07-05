@@ -13,7 +13,7 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
         _dTag                   = -1;
         _windowSize             = 63;
         _tileSize               = 10;
-        _inactivityTimer        = 5;    /* seconds */
+        _inactivityTimer        = 10;    /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
         _nTotalTiles            = _windowSize * pow(2,_m);
@@ -47,7 +47,7 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
         _dTag                   = -1;
         _windowSize             = 63;
         _tileSize               = 10;
-        _inactivityTimer        = 5;    /* seconds */
+        _inactivityTimer        = 10;    /* seconds */
         _maxAckReq              = 8;
         _m                      = 2;
         _nTotalTiles            = _windowSize * pow(2,_m);

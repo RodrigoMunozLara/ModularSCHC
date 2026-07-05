@@ -191,10 +191,12 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-
-                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_END");
+                /* State change and timer activation to wait for the last messages 
+                that are delayed from the transmitter */
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
-                _ctx.executeAgain();
+                _ctx.executeTimer(_ctx._inactivityTimer);
+                //_ctx.executeAgain();
                 return;
             }
         }
@@ -224,7 +226,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             SPDLOG_INFO("|<-- ACK, C=0 -------| {}", encoder.get_compound_bitmap_str());
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-            SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_ALL1 --> STATE_RX_WAIT_X_MISSING_FRAG");
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_X_MISSING_FRAG");
             _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_WAIT_X_MISSING_FRAG;
             return;
         }

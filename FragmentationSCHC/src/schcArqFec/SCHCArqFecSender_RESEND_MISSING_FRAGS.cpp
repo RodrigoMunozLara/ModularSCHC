@@ -38,7 +38,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
 
-                SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_END");
+                SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
                 _ctx.executeAgain();
                 return;

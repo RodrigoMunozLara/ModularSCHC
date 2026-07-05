@@ -157,7 +157,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
-                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_x_MISSING_FRAGS --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_END;
             }
             else            // * Integrity check: failure
@@ -524,7 +524,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", w, c, get_bitmap_array_str(w));
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_WAIT_x_MISSING_FRAGS");
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_x_MISSING_FRAGS --> STATE_RX_WAIT_x_MISSING_FRAGS");
                 _ctx._nextStateStr = SCHCAckOnErrorReceiverStates::STATE_WAIT_X_MISSING_FRAG;
                 return;
             }

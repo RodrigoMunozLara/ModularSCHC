@@ -183,7 +183,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::timerExpired()
     else
     {
         SPDLOG_DEBUG("The maximum number of SCHC ACK REQ retransmissions has been reached.");
-        SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_ERROR");
+        SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_ACK --> STATE_TX_ERROR");
         _ctx._nextStateStr = SCHCAckOnErrorSenderStates::STATE_ERROR;
         _ctx.executeAgain();
         return;

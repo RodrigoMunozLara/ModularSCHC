@@ -145,15 +145,19 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
-                SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                /* State change and timer activation to wait for the last messages 
+                that are delayed from the transmitter */
+                SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_MISSING_FRAGS --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
-                _ctx.executeAgain();
+                _ctx.executeTimer(_ctx._inactivityTimer);
+                //_ctx.executeAgain();
+
                 return;                
             }
             else
             {
                 SPDLOG_DEBUG("Integrity check: failed");
-                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_MISSING_FRAGS --> STATE_RX_END");
                 _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
                 _ctx.executeAgain();               
             }
@@ -182,7 +186,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
             SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
-            SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
+            SPDLOG_DEBUG("Changing STATE: From STATE_RX_WAIT_X_MISSING_FRAGS --> STATE_RX_END");
             _ctx._nextStateStr = SCHCArqFecReceiverStates::STATE_END;
             _ctx.executeAgain();
             return;
