@@ -105,6 +105,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
 
                 /* ToDo: Enqueue schc_packet in Backhaul Core*/
+                SPDLOG_DEBUG("Sending IPv6 packet to IPv6 network");
                 _ctx._schcCore.handleRxFrame(schc_packet);
 
 

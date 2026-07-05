@@ -191,6 +191,10 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
+                /* ToDo: Enqueue schc_packet in Backhaul Core*/
+                SPDLOG_DEBUG("Sending IPv6 packet to IPv6 network");
+                _ctx._schcCore.handleRxFrame(schc_packet);
+
                 /* State change and timer activation to wait for the last messages 
                 that are delayed from the transmitter */
                 SPDLOG_DEBUG("Changing STATE: From STATE_RX_RCV_WINDOW --> STATE_RX_END");
