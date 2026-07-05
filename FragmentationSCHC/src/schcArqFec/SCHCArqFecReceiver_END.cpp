@@ -25,7 +25,7 @@ void SCHCArqFecReceiver_END::execute(const std::vector<uint8_t>& msg)
     msg_type = decoder.get_msg_type(_ctx._protoType, _ctx._ruleID, msg);
 
 
-    if(!(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG))
+    if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
     {
         SPDLOG_DEBUG("Receiving a late SCHC regular fragment message. Discarting Message...");
     }
