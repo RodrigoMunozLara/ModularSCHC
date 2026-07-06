@@ -93,7 +93,32 @@ void SCHCLoRaWAN_NS_MQTT_Stack::receive_handler(const std::vector<uint8_t>& fram
 
 uint32_t SCHCLoRaWAN_NS_MQTT_Stack::getMtu()
 {
-    return 0;
+    int fOpt = 0;   
+    bool consider_Fopt = true;
+    bool consider_Dwell = true;
+
+    if(consider_Fopt)
+    {
+        fOpt = 15;  // 15 bytes is the max
+    }
+    
+    if(consider_Dwell)
+    {
+        if(_dr==0 || _dr==1) return 0;
+        else if(_dr==2) return 11 - fOpt;
+        else if(_dr==3) return 53 - fOpt;
+        else if(_dr==4) return 125 - fOpt;
+        else if(_dr==4) return 242 - fOpt;
+    }
+    else
+    {
+        if(_dr==0 || _dr==1 || _dr==2) return 51 - fOpt;
+        else if(_dr==3) return 115 - fOpt;
+        else if(_dr==4 || _dr==5) return 222 - fOpt;
+    }
+
+
+    return -1;
 }
 
 void SCHCLoRaWAN_NS_MQTT_Stack::init()
@@ -134,6 +159,16 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
     SPDLOG_DEBUG("Starting mosquitto library client.");
     mosquitto_loop_start(_mosq); // Create an internal thread and return immediately.
     SPDLOG_DEBUG("Mosquitto client library started.");
+
+
+    if(_appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
+    SPDLOG_DEBUG("Downlink Data Rate (DR): {}", _dr);
+
 }
 
 void SCHCLoRaWAN_NS_MQTT_Stack::onConnectWrapper(mosquitto *mosq, void *obj, int rc)
