@@ -4,7 +4,8 @@
   },
   "logging": {
     "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
-    "log_level": "DEBUG"
+    "log_level": "DEBUG",
+    "log_file": "log_fer0__dr4.txt"
   },
   "backhaul_core": {
     "_comment": "IPv6 socket configuration",

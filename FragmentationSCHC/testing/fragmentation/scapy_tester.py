@@ -17,11 +17,12 @@ pkt = eth / ipv6 / icmp
 pkt.show()
 
 N = 4  
-waitTime = 15000  # Tiempo en segundos entre cada paquete (500 ms)
+waitTime = 60  # Tiempo en segundos entre cada paquete
 
 print(f"Enviando {N} paquetes con una pausa de {waitTime}s...")
 for i in range(N):
     sendp(pkt, iface="lo")  # Cambia "eth0" por tu interfaz
+    print(f"Esperando {waitTime}s...")
     time.sleep(waitTime)
 
 print("¡Envíos completados!")

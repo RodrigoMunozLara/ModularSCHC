@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Definimos las rutas de destino claramente
-set(BIN_OUT_DIR "${PROJECT_SOURCE_DIR}/binaries")
 set(NODE_DIR "${BIN_OUT_DIR}/schc_node")
 set(GATEWAY_DIR "${BIN_OUT_DIR}/schc_gateway")
 
