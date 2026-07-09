@@ -1,4 +1,5 @@
 from scapy.all import *
+import time
 
 # Capa de enlace (Ethernet)
 eth = Ether(src="00:15:5d:02:6e:40", dst="00:00:00:00:00:00")
@@ -15,4 +16,12 @@ pkt = eth / ipv6 / icmp
 
 pkt.show()
 
-sendp(pkt, iface="lo")  # Cambia "eth0" por tu interfaz
+N = 4  
+waitTime = 15000  # Tiempo en segundos entre cada paquete (500 ms)
+
+print(f"Enviando {N} paquetes con una pausa de {waitTime}s...")
+for i in range(N):
+    sendp(pkt, iface="lo")  # Cambia "eth0" por tu interfaz
+    time.sleep(waitTime)
+
+print("¡Envíos completados!")

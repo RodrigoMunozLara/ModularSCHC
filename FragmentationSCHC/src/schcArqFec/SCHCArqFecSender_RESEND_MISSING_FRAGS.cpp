@@ -55,6 +55,17 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                     }
                 }
 
+                std::ostringstream ssTypes;
+                std::vector<int> types = _ctx._schcSession._msgTimesType_vector;
+                for (size_t i = 0; i < types.size(); ++i) 
+                {
+                    ssTypes << types[i];
+                    if (i < types.size() - 1) 
+                    {
+                        ssTypes << ", ";
+                    }
+                }
+
                 int _dr;
                 if(_ctx._appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
                 else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
@@ -69,14 +80,24 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                                             std::to_string(_dr) + 
                                             ", " +
                                             ss.str();
+
+                std::string resultado2 = std::to_string(_ctx._schcCore._packetCounter) + 
+                            ", " + 
+                            std::to_string(_ctx._appConfig.schc.error_prob) + 
+                            ", " + 
+                            std::to_string(_dr) + 
+                            ", " +
+                            ssTypes.str();
                 auto file_log = get_file_logger();
                 if (file_log) 
                 {
                     file_log->info(resultado);
+                    file_log->info(resultado2);
                 }
 
                 /* ******** Print results in logfile ************************* */
 
+                
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
                 _ctx.executeAgain();
