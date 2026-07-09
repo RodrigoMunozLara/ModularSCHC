@@ -145,8 +145,8 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
                 /* ToDo: Enqueue schc_packet in Backhaul Core*/
-                SPDLOG_DEBUG("Sending IPv6 packet to IPv6 network");
-                _ctx._schcCore.handleRxFrame(schc_packet);
+                //SPDLOG_DEBUG("Sending IPv6 packet to IPv6 network");
+                //_ctx._schcCore.handleRxFrame(schc_packet);
 
                 /* State change and timer activation to wait for the last messages 
                 that are delayed from the transmitter */

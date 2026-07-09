@@ -1,7 +1,8 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_RESEND_MISSING_FRAGS.hpp"
 #include <schcAckOnError/SCHCNodeMessage.hpp>
-
+#include "SCHCSession.hpp"
+#include "LogHelper.hpp"
 
 SCHCArqFecSender_RESEND_MISSING_FRAGS::SCHCArqFecSender_RESEND_MISSING_FRAGS(SCHCArqFecSender& ctx): _ctx(ctx)
 {
@@ -25,6 +26,10 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(2);
+
             SPDLOG_DEBUG("Stoping the Retransmission timer...");
             _ctx._timer.stop();
 
@@ -37,6 +42,33 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             {
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
+
+                /* ******** Print results in logfile ************************* */
+                std::ostringstream ss;
+                std::vector<long long> numeros = _ctx._schcSession._msgTimes_vector;
+                for (size_t i = 0; i < numeros.size(); ++i) 
+                {
+                    ss << numeros[i];
+                    if (i < numeros.size() - 1) 
+                    {
+                        ss << ", ";
+                    }
+                }
+
+                std::string resultado = std::to_string(_ctx._schcCore._packetCounter) + 
+                                            ", " + 
+                                            std::to_string(_ctx._appConfig.schc.error_prob) + 
+                                            ", " + 
+                                            _ctx._appConfig.lorawan_node.data_rate + 
+                                            ", " +
+                                            ss.str();
+                auto file_log = get_file_logger();
+                if (file_log) 
+                {
+                    file_log->info(resultado);
+                }
+
+                /* ******** Print results in logfile ************************* */
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
@@ -122,6 +154,10 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
 
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(1);
+
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
 
@@ -163,6 +199,10 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
                 /* Imprime los mensajes para visualizacion ordenada */
                 encoder.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+                _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+                _ctx._schcSession._msgTimesType_vector.push_back(4);
 
                 /* Envía el mensaje a la capa 2*/
                 _ctx._stack->send_frame(_ctx._ruleID, schc_message);

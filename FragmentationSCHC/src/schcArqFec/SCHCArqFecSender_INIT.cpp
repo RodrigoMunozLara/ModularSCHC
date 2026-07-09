@@ -2,6 +2,7 @@
 #include "schcArqFec/SCHCArqFecSender_INIT.hpp"
 #include <schcAckOnError/SCHCNodeMessage.hpp>
 #include <spdlog/fmt/ranges.h>
+#include "SCHCSession.hpp"
 
 SCHCArqFecSender_INIT::SCHCArqFecSender_INIT(SCHCArqFecSender& ctx): _ctx(ctx)
 {
@@ -57,6 +58,8 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
 
 
     SPDLOG_DEBUG("*** D matrix created ***");
+    SPDLOG_DEBUG("Overhead:                     {}", _ctx._appConfig.schc.overhead);
+    SPDLOG_DEBUG("Error Probability:            {}", _ctx._appConfig.schc.error_prob);
     SPDLOG_DEBUG("Packet size (L):              {} bits", msg.size() * 8);
     SPDLOG_DEBUG("D matrix size:                {} bits", _ctx._tileSize * _ctx._ksymbols * _ctx._mbits);
     SPDLOG_DEBUG("D matrix row (S):             {}", _ctx._tileSize);
@@ -136,6 +139,10 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
 
         /* Imprime los mensajes para visualizacion ordenada */
         encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, _ctx._first_fragment_msg);
+
+        _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+        _ctx._schcSession._msgTimes_vector.push_back(0);
+        _ctx._schcSession._msgTimesType_vector.push_back(1);
 
         /* Envía el mensaje a la capa 2*/
         _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);

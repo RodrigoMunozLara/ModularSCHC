@@ -213,6 +213,8 @@ void SCHCCore::runTx()
 
                     it->second->enqueueEvent(std::move(evMsg));
                     _uplinkSessionCounter++;
+                    _packetCounter++;
+                    SPDLOG_INFO("Processing package: {}", _packetCounter);
                 } 
                 else 
                 {

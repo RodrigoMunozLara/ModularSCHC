@@ -73,4 +73,6 @@ class SCHCCore : public ICore
 
     public:
         std::unique_ptr<ISCHCStack> _stack;
+
+        int                         _packetCounter = 0;
 };

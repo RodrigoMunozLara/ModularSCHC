@@ -1,6 +1,7 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_SEND.hpp"
 #include <schcAckOnError/SCHCNodeMessage.hpp>
+#include "SCHCSession.hpp"
 
 
 SCHCArqFecSender_SEND::SCHCArqFecSender_SEND(SCHCArqFecSender& ctx): _ctx(ctx)
@@ -23,7 +24,11 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
         
         if(msg_type == SCHCMsgType::SCHC_ACK_MSG)
         {
-            SPDLOG_DEBUG("Receiving a SCHC ACK msg");
+            SPDLOG_DEBUG("Receiving a SCHC ACK");
+
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(2);
 
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
@@ -39,6 +44,10 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
 
                 /* Imprime los mensajes para visualizacion ordenada */
                 encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+                _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+                _ctx._schcSession._msgTimesType_vector.push_back(3);
 
                 /* Envía el mensaje a la capa 2*/
                 _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
@@ -96,6 +105,10 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
 
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(1);
+
             /* Envía el mensaje a la capa 2*/
             _ctx._stack->send_frame(_ctx._ruleID, schc_message);
 
@@ -137,6 +150,10 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message); 
 
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(1);
+
             /* Envía el mensaje a la capa 2*/
             _ctx._stack->send_frame(_ctx._ruleID, schc_message);
             
@@ -151,6 +168,10 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
 
                 /* Imprime los mensajes para visualizacion ordenada */
                 encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+                _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+                _ctx._schcSession._msgTimesType_vector.push_back(3);
 
                 /* Envía el mensaje a la capa 2*/
                 _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
@@ -178,6 +199,10 @@ void SCHCArqFecSender_SEND::timerExpired()
 
     /* Imprime los mensajes para visualizacion ordenada */
     encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, _ctx._first_fragment_msg);
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+    _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+    _ctx._schcSession._msgTimesType_vector.push_back(1);
 
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);

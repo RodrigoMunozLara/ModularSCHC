@@ -50,5 +50,9 @@ class SCHCSession
         std::condition_variable eventCv;
 
         std::string _dev_id;
+    public:
+        std::chrono::steady_clock::time_point   _startTime;
+        std::vector<long long>                  _msgTimes_vector;
+        std::vector<int>                        _msgTimesType_vector;
 
 };

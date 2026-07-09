@@ -1,4 +1,6 @@
 #include "schcArqFec/SCHCArqFecSender_WAIT_X_SESSION_ACK.hpp"
+#include "SCHCSession.hpp"
+#include "LogHelper.hpp"
 
 SCHCArqFecSender_WAIT_X_SESSION_ACK::SCHCArqFecSender_WAIT_X_SESSION_ACK(SCHCArqFecSender& ctx): _ctx(ctx)
 {
@@ -22,6 +24,10 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+            _ctx._schcSession._msgTimesType_vector.push_back(2);
+
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
             uint8_t w = decoder.get_w();
@@ -29,6 +35,33 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
             if(c == 1 && w == 3)
             {
+                /* ******** Print results in logfile ************************* */
+                std::ostringstream ss;
+                std::vector<long long> numeros = _ctx._schcSession._msgTimes_vector;
+                for (size_t i = 0; i < numeros.size(); ++i) 
+                {
+                    ss << numeros[i];
+                    if (i < numeros.size() - 1) 
+                    {
+                        ss << ", ";
+                    }
+                }
+
+                std::string resultado = std::to_string(_ctx._schcCore._packetCounter) + 
+                                            ", " + 
+                                            std::to_string(_ctx._appConfig.schc.error_prob) + 
+                                            ", " + 
+                                            _ctx._appConfig.lorawan_node.data_rate + 
+                                            ", " +
+                                            ss.str();
+                auto file_log = get_file_logger();
+                if (file_log) 
+                {
+                    file_log->info(resultado);
+                }
+
+                /* ******** Print results in logfile ************************* */
+
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
 
@@ -84,6 +117,10 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
 
     /* Imprime los mensajes para visualizacion ordenada */
     encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+    _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+    _ctx._schcSession._msgTimesType_vector.push_back(3);
 
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
