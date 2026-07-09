@@ -47,11 +47,18 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                     }
                 }
 
+                int _dr;
+                if(_ctx._appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
+                else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
+                else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
+                else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
+                else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
+                else if (_ctx._appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
                 std::string resultado = std::to_string(_ctx._schcCore._packetCounter) + 
                                             ", " + 
                                             std::to_string(_ctx._appConfig.schc.error_prob) + 
                                             ", " + 
-                                            _ctx._appConfig.lorawan_node.data_rate + 
+                                            std::to_string(_dr) + 
                                             ", " +
                                             ss.str();
                 auto file_log = get_file_logger();
