@@ -27,23 +27,28 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
     if(msg_type == SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG)
     {
         /* Codigo para poder eliminar mensajes de entrada */
-        // random_device rd;
-        // mt19937 gen(rd());
-        // uniform_int_distribution<int> dist(0, 100);
-        // int random_number = dist(gen);
-        //if(random_number < _error_prob)
-        //if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4 || _ctx._counter == 6 || _ctx._counter == 7 )
-        if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4  || _ctx._counter == 5 )
-        {
-                //SPDLOG_WARN("\033[31mMessage discarded due to error probability\033[0m");   
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(0, 100);
+        int random_number = dist(gen);
+        SPDLOG_INFO("\033[31mRandom number: {}\033[0m", random_number);
+        SPDLOG_INFO("\033[31mProbability:   {}\033[0m",_ctx._appConfig.schc.error_prob*100);
+        if(random_number < _ctx._appConfig.schc.error_prob*100)
+        // if(_ctx._counter == 1)
+        { 
                 SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
-                _ctx._counter++;
                 return;
         }
-        else
-        {
-            _ctx._counter++;
-        }
+        // if(_ctx._counter == 2 || _ctx._counter == 3 || _ctx._counter == 4  || _ctx._counter == 5 )
+        // {
+        //         SPDLOG_INFO("\033[31mMessage discarded due to error probability\033[0m");   
+        //         _ctx._counter++;
+        //         return;
+        // }
+        // else
+        // {
+        //     _ctx._counter++;
+        // }
         
 
         /* Decoding el SCHC fragment */
