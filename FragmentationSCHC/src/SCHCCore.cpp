@@ -517,7 +517,7 @@ void SCHCCore::enqueueFromStack(std::unique_ptr<StackMessage> msg)
     }
 
     protoCv.notify_one();
-    SPDLOG_DEBUG("Message enqueued in protoQueue");
+    SPDLOG_DEBUG("Message enqueued in protoQueue of the SCHCCore");
 
 }
 

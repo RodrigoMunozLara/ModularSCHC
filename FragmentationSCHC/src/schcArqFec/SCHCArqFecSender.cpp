@@ -135,7 +135,7 @@ void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
         }
         else if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
         {
-            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_x_ACK");
+            SPDLOG_DEBUG("Changing STATE to STATE_SEND");
             _currentState = std::make_unique<SCHCArqFecSender_SEND>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_SEND;
         }
@@ -176,7 +176,7 @@ void SCHCArqFecSender::timerExpired()
         }
         else if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
         {
-            SPDLOG_DEBUG("Changing STATE to STATE_WAIT_x_ACK");
+            SPDLOG_DEBUG("Changing STATE to STATE_SEND");
             _currentState = std::make_unique<SCHCArqFecSender_SEND>(*this);
             _currentStateStr = SCHCArqFecSenderStates::STATE_SEND;
         }

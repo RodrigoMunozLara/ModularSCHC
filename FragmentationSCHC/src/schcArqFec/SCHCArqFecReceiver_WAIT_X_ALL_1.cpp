@@ -87,10 +87,9 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
             if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
             {
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize*8);
 
-                            /* Enviando ACK para confirmar la sesion */
+                /* Enviando ACK para confirmar la sesion */
                 SPDLOG_DEBUG("Sending SCHC ACK");
                 SCHCGWMessage    encoder;
                 uint8_t c                   = 1;
@@ -99,9 +98,7 @@ void SCHCArqFecReceiver_WAIT_X_ALL_1::execute(const std::vector<uint8_t>& msg)
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
 
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
-                //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
 
                 /* ToDo: Enqueue schc_packet in Backhaul Core*/

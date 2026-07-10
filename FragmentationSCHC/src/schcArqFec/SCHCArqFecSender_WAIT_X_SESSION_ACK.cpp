@@ -35,7 +35,11 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
             if(c == 1 && w == 3)
             {
+                SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
+                _ctx._timer.stop();
+                
                 /* ******** Print results in logfile ************************* */
+                SPDLOG_DEBUG("Printing results in logfile...");
                 std::ostringstream ss;
                 std::vector<long long> numeros = _ctx._schcSession._msgTimes_vector;
                 for (size_t i = 0; i < numeros.size(); ++i) 
@@ -88,9 +92,6 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                 }
 
                 /* ******** Print results in logfile ************************* */
-
-                SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
-                _ctx._timer.stop();
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_END");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
@@ -152,7 +153,8 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
 
-    _ctx.executeAgain();
+    SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
+    _ctx.executeTimer(_ctx._retransTimer);
 }
 
 void SCHCArqFecSender_WAIT_X_SESSION_ACK::release()

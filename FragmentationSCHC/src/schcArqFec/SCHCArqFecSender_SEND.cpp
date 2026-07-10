@@ -55,6 +55,8 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
+
+                SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
                 _ctx.executeTimer(_ctx._retransTimer);
                 return;
                 
@@ -181,6 +183,8 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
 
             SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_WAIT_x_SESSION_ACK");
             _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
+
+            SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
             _ctx.executeTimer(_ctx._retransTimer); 
             return;
         } 

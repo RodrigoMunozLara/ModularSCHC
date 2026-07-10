@@ -243,7 +243,7 @@ uint32_t SCHCLoRaWANStack::getMtu()
         else if(_dr==2) return 11 - fOpt;
         else if(_dr==3) return 53 - fOpt;
         else if(_dr==4) return 125 - fOpt;
-        else if(_dr==4) return 242 - fOpt;
+        else if(_dr==5) return 242 - fOpt;
     }
     else
     {

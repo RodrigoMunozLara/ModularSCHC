@@ -29,6 +29,21 @@ void SCHCArqFecReceiver_END::execute(const std::vector<uint8_t>& msg)
     {
         SPDLOG_DEBUG("Receiving a late SCHC regular fragment message. Discarting Message...");
     }
+    else if(msg_type == SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG)
+    {
+        SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits", w, fcn, _ctx._lastTileSize*8);
+
+        /* Enviando ACK para confirmar la sesion */
+        SPDLOG_DEBUG("Sending SCHC ACK");
+        SCHCGWMessage    encoder;
+        uint8_t c                   = 1;
+        uint8_t w                   = 3;
+        std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
+
+        _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+
+        SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);        
+    }
 
     // SPDLOG_DEBUG("Setting the session as terminable");
     // _ctx._schcSession.setDead();

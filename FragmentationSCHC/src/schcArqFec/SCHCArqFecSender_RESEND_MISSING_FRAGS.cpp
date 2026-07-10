@@ -44,6 +44,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 _ctx._timer.stop();
 
                 /* ******** Print results in logfile ************************* */
+                SPDLOG_DEBUG("Printing results in logfile...");
                 std::ostringstream ss;
                 std::vector<long long> numeros = _ctx._schcSession._msgTimes_vector;
                 for (size_t i = 0; i < numeros.size(); ++i) 
@@ -239,6 +240,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
 
+                SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
                 _ctx.executeTimer(_ctx._retransTimer);
                 return;
             }

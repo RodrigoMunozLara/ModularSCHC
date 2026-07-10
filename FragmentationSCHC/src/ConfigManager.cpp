@@ -17,7 +17,6 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
 
     // Logging
     config.logging.log_level = j["logging"]["log_level"].get<std::string>();
-    config.logging.log_file = j["logging"]["log_file"].get<std::string>();
 
     // Backhaul Core
     config.backhaul.interface_name = j["backhaul_core"]["interface"].get<std::string>();

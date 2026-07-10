@@ -9,7 +9,6 @@ struct GeneralConfig {
 
 struct LoggingConfig {
     std::string log_level;
-    std::string log_file;
 };
 
 struct BackhaulCoreConfig {

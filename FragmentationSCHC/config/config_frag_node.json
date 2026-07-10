@@ -4,8 +4,7 @@
   },
   "logging": {
     "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
-    "log_level": "DEBUG",
-    "log_file": "log_fer0__dr4.txt"
+    "log_level": "DEBUG"
   },
   "backhaul_core": {
     "_comment": "IPv6 socket configuration",
@@ -19,7 +18,7 @@
     "schc_type": "schc_node",
     "schc_l2_protocol": "lorawan_at",
     "schc_ack_mechanism": "arq_fec",
-    "error_prob": "0.2",
+    "error_prob": "0.15",
     "overhead": "0.4"
   },
   "mqtt": {
