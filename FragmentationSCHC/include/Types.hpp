@@ -75,6 +75,7 @@ enum class SCHCAckMechanism{
 };
 
 enum class SCHCAckOnErrorSenderStates{
+    STATE_NONE = 0, // Actúa como tu null
     STATE_INIT,
     STATE_SEND,
     STATE_WAIT_x_ACK,
@@ -84,6 +85,7 @@ enum class SCHCAckOnErrorSenderStates{
 };
 
 enum class SCHCAckOnErrorReceiverStates{
+    STATE_NONE = 0, // Actúa como tu null
     STATE_INIT,
     STATE_RCV_WINDOW,
     STATE_WAIT_X_MISSING_FRAG,
@@ -93,6 +95,7 @@ enum class SCHCAckOnErrorReceiverStates{
 };
 
 enum class SCHCArqFecSenderStates{
+    STATE_NONE = 0, // Actúa como tu null
     STATE_INIT,
     STATE_SEND,
     STATE_WAIT_x_SESSION_ACK,
@@ -102,6 +105,7 @@ enum class SCHCArqFecSenderStates{
 };
 
 enum class SCHCArqFecReceiverStates{
+    STATE_NONE = 0, // Actúa como tu null
     STATE_INIT,
     STATE_RCV_WINDOW,
     STATE_WAIT_X_MISSING_FRAG,

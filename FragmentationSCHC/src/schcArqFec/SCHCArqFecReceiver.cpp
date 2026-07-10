@@ -30,6 +30,8 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
 
         SPDLOG_DEBUG("Changing STATE to STATE_INIT");
         _currentState = std::make_unique<SCHCArqFecReceiver_INIT>(*this);
+        _currentStateStr = SCHCArqFecReceiverStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecReceiverStates::STATE_INIT;
 
         _enable_to_process_msg = false;
 
@@ -64,6 +66,8 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
 
         SPDLOG_DEBUG("Changing STATE to STATE_INIT");
         _currentState = std::make_unique<SCHCArqFecReceiver_INIT>(*this);
+        _currentStateStr = SCHCArqFecReceiverStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecReceiverStates::STATE_INIT;
 
         _enable_to_process_msg = false;
 
@@ -133,6 +137,10 @@ void SCHCArqFecReceiver::execute(const std::vector<uint8_t>& msg)
         // }
         
     }
+    else
+    {
+        SPDLOG_DEBUG("Maintaining the STATE");
+    }
 }
 
 void SCHCArqFecReceiver::timerExpired()
@@ -178,6 +186,10 @@ void SCHCArqFecReceiver::timerExpired()
         //     _currentStateStr = SCHCAckOnErrorReceiverStates::STATE_ERROR;
         // }
         
+    }
+    else
+    {
+        SPDLOG_DEBUG("Maintaining the STATE");
     }
 }
 

@@ -34,6 +34,9 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
 
         SPDLOG_DEBUG("Changing STATE to STATE_INIT");
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
+        _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecSenderStates::STATE_INIT;
+        
 
         /* ARQ-FEC parameters inictialization*/
         _mbits                  = 8;
@@ -68,6 +71,8 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
 
         SPDLOG_DEBUG("Changing STATE to STATE_INIT");
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
+        _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecSenderStates::STATE_INIT;
 
         /* ARQ-FEC parameters inictialization*/
         _S                      = _tileSize;
@@ -100,6 +105,8 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
 
         SPDLOG_DEBUG("Changing STATE to STATE_INIT");
         _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
+        _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecSenderStates::STATE_INIT;
 
         /* ARQ-FEC parameters inictialization*/
         _mbits                  = 8;
@@ -127,13 +134,7 @@ void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
 
     if(_currentStateStr != _nextStateStr)
     {
-        if(_nextStateStr == SCHCArqFecSenderStates::STATE_INIT)
-        {
-            SPDLOG_DEBUG("Changing STATE to STATE_INIT");
-            _currentState = std::make_unique<SCHCArqFecSender_INIT>(*this);
-            _currentStateStr = SCHCArqFecSenderStates::STATE_INIT;
-        }
-        else if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
+        if (_nextStateStr == SCHCArqFecSenderStates::STATE_SEND)
         {
             SPDLOG_DEBUG("Changing STATE to STATE_SEND");
             _currentState = std::make_unique<SCHCArqFecSender_SEND>(*this);
@@ -158,6 +159,10 @@ void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
             _currentStateStr = SCHCArqFecSenderStates::STATE_RESEND_MISSING_TILES;
         }
         
+    }
+    else
+    {
+        SPDLOG_DEBUG("Maintaining the STATE");
     }
 
 }
@@ -200,7 +205,10 @@ void SCHCArqFecSender::timerExpired()
         }
         
     }
-
+    else
+    {
+        SPDLOG_DEBUG("Maintaining the STATE");
+    }
 }
 
 void SCHCArqFecSender::release()
