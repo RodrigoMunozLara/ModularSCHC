@@ -188,13 +188,13 @@ void SCHCCore::runTx()
         {
             SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned UPLINK session");
             /* Obtaining a unsigned session*/
-            if (_uplinkSessionCounter <= _uplinkSessionCounterMax)
+            if (_uplinkSessionCounter < _uplinkSessionCounterMax)
             {
                 /* Create a new uplink session to process the message from Orchestator */
                 /* The currentId is the Dtag in a SCHC session. 
                 If the SCHC session does not have Dtag (like in LoRaWAN), the currentID is the RuleID*/
 
-                uint8_t currentId = 20 + _uplinkSessionCounter;
+                uint8_t currentId = 1 + _uplinkSessionCounter;
 
                 auto session = std::make_unique<SCHCSession>(currentId, SCHCFragDir::UPLINK_DIR, _appConfig, *this);
 
@@ -230,13 +230,13 @@ void SCHCCore::runTx()
         {
             SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned DOWNLINK session");
             /* Obtaining a unsigned session*/
-            if (_downlinkSessionCounter <= _downlinkSessionCounterMax)
+            if (_downlinkSessionCounter < _downlinkSessionCounterMax)
             {
                 /* Create a new downlink session to process the message from Orchestator */
                 /* The currentId is the Dtag in a SCHC session. 
                 If the SCHC session does not have Dtag (like in LoRaWAN), the currentID is the RuleID*/
 
-                uint8_t currentId = 21 + _downlinkSessionCounter;
+                uint8_t currentId = 1 + _downlinkSessionCounter;
 
                 auto session = std::make_unique<SCHCSession>(currentId, SCHCFragDir::DOWNLINK_DIR, _appConfig, *this);
 

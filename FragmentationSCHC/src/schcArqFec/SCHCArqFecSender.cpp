@@ -15,7 +15,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _maxAckReq              = 8;
+        _maxAckReq              = 2;
         _m                      = 2;
 
         if(appConfig.schc.schc_ack_mechanism.compare("ack_end_win") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_WIN;
@@ -52,7 +52,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _maxAckReq              = 8;
+        _maxAckReq              = 2;
         _m                      = 2;
 
         if(appConfig.schc.schc_ack_mechanism.compare("ack_end_win") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_WIN;
@@ -86,7 +86,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _windowSize             = 63;
         _tileSize               = 10;
         _retransTimer           = 5;    /* seconds */
-        _maxAckReq              = 8;
+        _maxAckReq              = 2;
         _m                      = 2;
 
         if(appConfig.schc.schc_ack_mechanism.compare("ack_end_win") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_WIN;

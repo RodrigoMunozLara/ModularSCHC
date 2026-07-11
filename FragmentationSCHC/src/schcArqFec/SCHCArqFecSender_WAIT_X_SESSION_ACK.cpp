@@ -153,8 +153,26 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
     /* Envía el mensaje a la capa 2*/
     _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
 
-    SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
-    _ctx.executeTimer(_ctx._retransTimer);
+    if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
+    {
+        SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+        SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+        SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
+        _ctx.executeTimer(_ctx._retransTimer);
+        _ctx._rtxAttemptsCounter++; 
+        return;
+    }
+    else
+    {
+        SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+        SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+        SPDLOG_DEBUG("Maximum number of retransmissions reached");
+        SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_END");
+        _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
+        _ctx.executeAgain();
+        return;       
+    }
+
 }
 
 void SCHCArqFecSender_WAIT_X_SESSION_ACK::release()
