@@ -194,7 +194,7 @@ void SCHCCore::runTx()
                 /* The currentId is the Dtag in a SCHC session. 
                 If the SCHC session does not have Dtag (like in LoRaWAN), the currentID is the RuleID*/
 
-                uint8_t currentId = 1 + _uplinkSessionCounter;
+                uint8_t currentId = 20 + _uplinkSessionCounter;
 
                 auto session = std::make_unique<SCHCSession>(currentId, SCHCFragDir::UPLINK_DIR, _appConfig, *this);
 
@@ -236,7 +236,7 @@ void SCHCCore::runTx()
                 /* The currentId is the Dtag in a SCHC session. 
                 If the SCHC session does not have Dtag (like in LoRaWAN), the currentID is the RuleID*/
 
-                uint8_t currentId = 1 + _downlinkSessionCounter;
+                uint8_t currentId = 21 + _downlinkSessionCounter;
 
                 auto session = std::make_unique<SCHCSession>(currentId, SCHCFragDir::DOWNLINK_DIR, _appConfig, *this);
 
