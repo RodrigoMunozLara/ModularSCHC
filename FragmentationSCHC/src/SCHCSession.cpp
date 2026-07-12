@@ -11,6 +11,32 @@ SCHCSession::~SCHCSession()
 {
     SPDLOG_INFO("Executing SCHCSession destructor() in session {}", _id);
     SPDLOG_INFO("\033[31mSession completed\033[0m");
+    if((_dir == SCHCFragDir::UPLINK_DIR) && (_appConfig.schc.schc_type.compare("schc_node") == 0))
+    {
+        SPDLOG_INFO("\033[31m************************* Message transmited to LPWAN ***********************************\033[0m");
+        SPDLOG_DEBUG("");
+        SPDLOG_DEBUG("");
+    }
+    else if((_dir == SCHCFragDir::DOWNLINK_DIR) && (_appConfig.schc.schc_type.compare("schc_node") == 0))
+    {
+        SPDLOG_INFO("\033[31m************************* Message transmited to Backhaul*************************************\033[0m");
+        SPDLOG_DEBUG("");
+        SPDLOG_DEBUG("");        
+    }
+    else if((_dir == SCHCFragDir::UPLINK_DIR) && (_appConfig.schc.schc_type.compare("schc_gateway") == 0))
+    {
+        SPDLOG_INFO("\033[31m************************* Message transmited to Backhaul*************************************\033[0m");
+        SPDLOG_DEBUG("");
+        SPDLOG_DEBUG("");        
+    }
+    else if((_dir == SCHCFragDir::DOWNLINK_DIR) && (_appConfig.schc.schc_type.compare("schc_gateway") == 0))
+    {
+        SPDLOG_INFO("\033[31m************************* Message transmited to LPWAN*************************************\033[0m");
+        SPDLOG_DEBUG("");
+        SPDLOG_DEBUG("");        
+    }
+
+
 }
 
 void SCHCSession::init()

@@ -310,6 +310,7 @@ void BackhaulCore::handleRxFrame(const std::vector<uint8_t>& frame)
     msg->meta.payloadSize = frame.size();
     msg->payload = frame;
 
+    SPDLOG_INFO("\033[31m************************* Message received from backhaul *************************\033[0m");
     SPDLOG_DEBUG("Message in hex: {:Xp}", spdlog::to_hex(frame));
     SPDLOG_DEBUG("Message size: {}", msg->meta.payloadSize);
 

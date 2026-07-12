@@ -224,6 +224,10 @@ void SCHCCore::runTx()
             else
             {
                 SPDLOG_WARN("No free SCHC uplinkSessions available");
+                SPDLOG_INFO("\033[31m************************* Message not transmited ********************************************\033[0m");
+                SPDLOG_DEBUG("");
+                SPDLOG_DEBUG("");
+                continue;
             }
         }
         else if (_appConfig.schc.schc_type.compare("schc_gateway") == 0)
@@ -264,6 +268,10 @@ void SCHCCore::runTx()
             else
             {
                 SPDLOG_WARN("No free SCHC downlinkSessions available");
+                SPDLOG_INFO("\033[31m************************* Message not transmited ********************************************\033[0m");
+                SPDLOG_DEBUG("");
+                SPDLOG_DEBUG("");
+                continue;
             }
         }
         
