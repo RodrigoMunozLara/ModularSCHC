@@ -32,6 +32,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
             SPDLOG_DEBUG("Stoping the Retransmission timer...");
             _ctx._timer.stop();
+            _ctx._rtxAttemptsCounter = 0;
 
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
@@ -42,6 +43,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             {
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
+                _ctx._rtxAttemptsCounter = 0;
 
                 /* ******** Print results in logfile ************************* */
                 SPDLOG_DEBUG("Printing results in logfile...");

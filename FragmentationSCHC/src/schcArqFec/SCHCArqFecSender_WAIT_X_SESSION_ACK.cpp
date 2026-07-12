@@ -37,6 +37,7 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
             {
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
+                _ctx._rtxAttemptsCounter = 0;
                 
                 /* ******** Print results in logfile ************************* */
                 SPDLOG_DEBUG("Printing results in logfile...");
@@ -111,6 +112,7 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
             SPDLOG_DEBUG("Stoping the Retransmission timer...");
             _ctx._timer.stop();
+            _ctx._rtxAttemptsCounter = 0;
 
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ACK_COMPOUND, &(_ctx._bitmapArray));
             uint8_t c               = decoder.get_c();

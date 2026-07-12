@@ -57,12 +57,6 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         fcn             = decoder.get_fcn();
         w               = decoder.get_w();
 
-        if(fcn == _ctx._windowSize - 1)
-        {
-            SPDLOG_DEBUG("Discarding message. Previously received message");
-            return;
-        }
-
         if(w > _ctx._last_window)
             _ctx._last_window    = w;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
 
@@ -181,7 +175,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             if(_ctx._rcs == calculated_rcs)  // * Integrity check: success
             {
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
-                SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", w, fcn, _ctx._lastTileSize*8);
+                SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - Integrity check: success", _ctx._last_window, fcn, _ctx._lastTileSize*8);
 
                             /* Enviando ACK para confirmar la sesion */
                 SPDLOG_DEBUG("Sending SCHC ACK");
@@ -211,7 +205,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         }
         else
         {
-            SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - There are not enough symbols", w, fcn, _ctx._lastTileSize*8);
+            SPDLOG_INFO("|--- W={:<1}, FCN={:<2}+RCS ->| {:>2} bits - There are not enough symbols", _ctx._last_window, fcn, _ctx._lastTileSize*8);
 
             SPDLOG_DEBUG("Sending SCHC Compound ACK");
 

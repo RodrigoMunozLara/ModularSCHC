@@ -24,6 +24,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
 
         SPDLOG_DEBUG("Stoping the Retransmission timer...");
         _ctx._timer.stop();
+        _ctx._rtxAttemptsCounter = 0;
 
         //_retrans_ack_req_flag = false;
 
@@ -124,6 +125,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
 
         SPDLOG_DEBUG("Stoping the Retransmission timer...");
         _ctx._timer.stop();
+        _ctx._rtxAttemptsCounter = 0;
 
         decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg, SCHCAckMechanism::ACK_COMPOUND, &(_ctx._bitmapArray));
         uint8_t c               = decoder.get_c();

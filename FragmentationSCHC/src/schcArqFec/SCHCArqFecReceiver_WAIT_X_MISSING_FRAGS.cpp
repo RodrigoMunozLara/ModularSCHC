@@ -57,12 +57,6 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
         fcn             = decoder.get_fcn();
         w               = decoder.get_w();
 
-        if(fcn == _ctx._windowSize - 1)
-        {
-            SPDLOG_DEBUG("Discarding message. Previously received message");
-            return;
-        }
-
         if(w > _ctx._last_window)
             _ctx._last_window    = w;    // aseguro que el ultimo fragmento recibido va a marcar cual es la ultima ventana recibida
 
