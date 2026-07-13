@@ -144,20 +144,24 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
 void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
 {
-    SCHCNodeMessage encoder;        // encoder 
-
+    SCHCNodeMessage encoder;
+        
     /* Crea un mensaje SCHC en formato hexadecimal */
-    std::vector<uint8_t> schc_all_1_message = encoder.create_all_1_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._rcs, _ctx._lastTile);
+    std::vector<uint8_t>   schc_message = encoder.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow);
 
     /* Imprime los mensajes para visualizacion ordenada */
-    encoder.print_msg(SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG, schc_all_1_message); 
+    encoder.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
 
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
     _ctx._schcSession._msgTimes_vector.push_back(elapsed);
-    _ctx._schcSession._msgTimesType_vector.push_back(3);
+    _ctx._schcSession._msgTimesType_vector.push_back(4);
 
     /* Envía el mensaje a la capa 2*/
-    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
+    _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+
+    SPDLOG_DEBUG("There are no more windows with missing tiles.");
+    SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
+    _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
 
     if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
     {
@@ -166,14 +170,13 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
         SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
         _ctx.executeTimer(_ctx._retransTimer);
         _ctx._rtxAttemptsCounter++; 
-        return;
     }
     else
     {
         SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
         SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
         SPDLOG_DEBUG("Maximum number of retransmissions reached");
-        SPDLOG_DEBUG("Changing STATE: From STATE_TX_WAIT_x_SESSION_ACK --> STATE_TX_END");
+        SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
         _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
         _ctx.executeAgain();
         return;       

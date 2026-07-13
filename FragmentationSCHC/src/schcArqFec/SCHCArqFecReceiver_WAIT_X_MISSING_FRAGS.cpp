@@ -225,8 +225,7 @@ void SCHCArqFecReceiver_WAIT_X_MISSING_FRAGS::execute(const std::vector<uint8_t>
             return;            
         }
 
-    }
-    
+    }  
     else
     {
         SPDLOG_WARN("Only regular SCHC fragments are permitted.");
