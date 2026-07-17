@@ -19,6 +19,15 @@ SCHCLoRaWAN_NS_MQTT_Stack::SCHCLoRaWAN_NS_MQTT_Stack(AppConfig &appConfig, SCHCC
 
 SCHCLoRaWAN_NS_MQTT_Stack::~SCHCLoRaWAN_NS_MQTT_Stack()
 {
+    // 1. Apagamos la bandera del scheduler loop para romper el 'while (_running)'
+    _running = false;
+
+    // 2. Esperamos de forma segura a que el hilo del scheduler finalice su ejecución
+    if (_scheduler_thread.joinable()) {
+        _scheduler_thread.join();
+    }
+    SPDLOG_DEBUG("Scheduler thread stopped successfully.");
+    
     SPDLOG_DEBUG("Disconnection of the mqtt broker");
     // 1. Disconnect from the server (sends the DISCONNECT packet)
     mosquitto_disconnect(_mosq);
