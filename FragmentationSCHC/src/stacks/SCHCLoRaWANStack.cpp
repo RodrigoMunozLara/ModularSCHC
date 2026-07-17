@@ -7,6 +7,8 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
 {
     SPDLOG_DEBUG("Executing SCHCLoRaWANStack constructor()");
 
+    _keep_reading = true;
+
 
     /* ***** Configuring serial connection **** */
     std::string _port = _appConfig.lorawan_node.serial_port;
@@ -110,7 +112,8 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
         SPDLOG_DEBUG("{} {}", _njs_1, resp);
     }    
 
-
+    // Iniciamos el hilo lector al final del constructor, una vez configurado el puerto
+    _serial_reader_thread = std::thread(&SCHCLoRaWANStack::serial_reader_loop, this);
 
 }
 
@@ -120,6 +123,13 @@ SCHCLoRaWANStack::~SCHCLoRaWANStack()
     std::string resp = send_command("AT+JOIN=0");  /* Join LoRaWAN Network: AT+JOIN: join network*/
     SPDLOG_DEBUG("AT+JOIN=0 {}", resp);
     if (_fd != -1) close(_fd);
+
+    // 1. Detener el hilo de lectura primero
+    _keep_reading = false;
+    if (_serial_reader_thread.joinable()) {
+        _serial_reader_thread.join();
+    }
+
 }
 
 std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff, std::optional<std::string> devId)
@@ -275,6 +285,9 @@ void SCHCLoRaWANStack::init()
     else if(_dr==4) resp = send_command("AT+DR=4");
     else if(_dr==5) resp = send_command("AT+DR=5");
     SPDLOG_DEBUG("AT+DR:{} {}", _dr, resp);
+
+    resp = send_command("AT+CLASS=C");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
+    SPDLOG_DEBUG("AT+CLASS=C {}", resp);
 }
 
 std::string SCHCLoRaWANStack::send_command(const std::string &command, int timeoutMs)
@@ -466,4 +479,69 @@ std::vector<uint8_t> SCHCLoRaWANStack::convertUnicastToBytes(const std::string& 
     }
 
     return bytes;
+}
+
+void SCHCLoRaWANStack::serial_reader_loop()
+{
+    SPDLOG_DEBUG("Starting background serial reader thread for Class C.");
+    std::string accumulator = "";
+    char readBuffer[256];
+
+    while (_keep_reading) 
+    {
+        // Intentamos bloquear el mutex sin quedarnos atascados eternamente (non-blocking lock)
+        std::unique_lock<std::mutex> lock(_mtx, std::try_to_lock);
+
+        // Si _mtx está bloqueado, significa que send_frame() o send_command() están transmitiendo.
+        // En ese caso, no leemos del puerto serial y le damos el control total a esas funciones.
+        if (!lock.owns_lock()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            SPDLOG_DEBUG("bloqueo fallido");
+            continue;
+        }
+
+        // Si tenemos el lock del puerto serial, realizamos una lectura no bloqueante (VMIN=0)
+        int bytesRead = read(_fd, readBuffer, sizeof(readBuffer) - 1);
+        if (bytesRead > 0) 
+        {
+            SPDLOG_DEBUG("bytesRead > 0");
+            readBuffer[bytesRead] = '\0';
+            accumulator += readBuffer;
+
+            // Limpiamos saltos de línea molestos
+            accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
+
+            // En Clase C de RUI3, los eventos espontáneos de downlink llegan como "+EVT:RX_"
+            size_t rxDonePos = accumulator.find("+EVT:RX_C");
+            if (rxDonePos != std::string::npos) 
+            {
+                // Esperamos un momento breve para garantizar que el buffer terminó de llegar completo
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                
+                // Leemos lo que falte
+                int finalBytes = read(_fd, readBuffer, sizeof(readBuffer) - 1);
+                if (finalBytes > 0) {
+                    readBuffer[finalBytes] = '\0';
+                    accumulator += readBuffer;
+                    accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
+                }
+
+                SPDLOG_INFO("[CLASS-C] Downlink detected: {}", accumulator);
+
+                // Procesamos el downlink asíncrono y lo enviamos al handler de SCHC
+                std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
+                for (const auto& resp : responses_vector) {
+                    receive_handler(resp);
+                }
+
+                accumulator.clear(); // Limpiamos acumulador tras procesar
+            }
+        }
+
+        // Liberamos explícitamente el lock antes de dormir el hilo
+        lock.unlock(); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(20)); // Evita consumo de CPU al 100%
+
+    }
+    SPDLOG_DEBUG("Background serial reader thread stopped.");
 }

@@ -13,8 +13,6 @@ SCHCLoRaWAN_NS_MQTT_Stack::SCHCLoRaWAN_NS_MQTT_Stack(AppConfig &appConfig, SCHCC
     SPDLOG_DEBUG("Using MQTT parameter - username: {}", _username);
     SPDLOG_DEBUG("Using MQTT parameter - topic: {}", _topic_1);    
 
-
-
 }
 
 SCHCLoRaWAN_NS_MQTT_Stack::~SCHCLoRaWAN_NS_MQTT_Stack()
@@ -177,6 +175,10 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
     else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
     else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
     SPDLOG_DEBUG("Downlink Data Rate (DR): {}", _dr);
+
+    _running = true;
+    _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
+    SPDLOG_INFO("Scheduler thread started successfully.");
 
 }
 

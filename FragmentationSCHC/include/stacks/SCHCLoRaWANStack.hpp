@@ -17,6 +17,9 @@
 #include <iomanip>
 #include <unordered_set>
 
+#include <thread>
+#include <atomic>
+
 // forward declaration
 class SCHCCore;
 
@@ -50,5 +53,12 @@ class SCHCLoRaWANStack: public ISCHCStack
         std::mutex  _mtx; // To protect the multi-threaded port
 
         bool    _isFirstMsg = true;
+    
+    private:
+        std::thread _serial_reader_thread;  // Hilo de escucha asíncrona
+        std::atomic<bool> _keep_reading;    // Control seguro de vida del hilo
+
+        // Método que correrá en segundo plano leyendo el puerto serial
+        void serial_reader_loop();
 
 };
