@@ -328,7 +328,21 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
             return; 
         }
 
-        _schcCore.enqueueFromStack(std::move(msgStack));
+        //_schcCore.enqueueFromStack(std::move(msgStack));
+
+        {
+            std::lock_guard<std::mutex> lock(_delay_mutex);
+            
+            // El mensaje se programará para entregarse en 30 segundos a partir de ahora
+            auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+            
+            _delay_queue.push({std::move(msgStack), delivery_time});
+            SPDLOG_INFO("[SAT-SIM] Mensaje encolado. Se entregará al Core en 30 segundos.");
+        }
+
+
+
+
     }
     else
     {
@@ -396,4 +410,31 @@ std::string SCHCLoRaWAN_NS_MQTT_Stack::base64_encode(const std::vector<uint8_t>&
     }
 
     return encoded;
+}
+
+void SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop() {
+    while (_running) {
+        std::unique_lock<std::mutex> lock(_delay_mutex);
+        
+        if (!_delay_queue.empty()) {
+            auto& next_item = _delay_queue.front();
+            auto now = std::chrono::steady_clock::now();
+            
+            if (now >= next_item.target_time) {
+                // El tiempo se cumplió. Lo sacamos de la cola de retraso y lo entregamos al Core
+                auto msg_to_deliver = std::move(next_item.msg);
+                _delay_queue.pop();
+                
+                // Desbloqueamos el mutex antes de meterlo al Core para no trabar onMessage
+                lock.unlock(); 
+                
+                SPDLOG_INFO("[SAT-SIM] Entregando mensaje programado al SCHC Core.");
+                _schcCore.enqueueFromStack(std::move(msg_to_deliver));
+                continue; // Evitamos el sleep para procesar el siguiente mensaje si ya venció
+            }
+        }
+        
+        lock.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Evita consumo de CPU al 100%
+    }
 }
