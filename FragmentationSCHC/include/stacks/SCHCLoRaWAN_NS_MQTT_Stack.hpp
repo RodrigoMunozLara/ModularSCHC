@@ -11,6 +11,11 @@
 using json = nlohmann::json;
 #include <atomic>
 
+#include <queue>       // <--- ESTE FALTA (Define std::queue)
+#include <mutex>       // Para proteger la cola entre hilos (std::mutex, std::lock_guard)
+#include <thread>      // Para el hilo del scheduler (std::thread)
+#include <chrono>      // Para manejar los tiempos de simulación (std::chrono)
+
 // forward declaration
 class SCHCCore;
 
@@ -51,5 +56,20 @@ class SCHCLoRaWAN_NS_MQTT_Stack: public ISCHCStack
         std::string         _topic_1;
 
         std::atomic<bool>   _connected{false};
+
+
+    /* ************ Para simular satelite LEO ************* */ 
+    private:
+        struct DelayedUplink {
+            std::unique_ptr<StackMessage> msg;
+            std::chrono::steady_clock::time_point target_time; // Cuándo debe entregarse
+        };
+
+        std::queue<DelayedUplink> _delay_queue;
+        std::mutex _delay_mutex;
+        std::thread _scheduler_thread;
+        bool _running = true;
+
+        void scheduler_loop(); // Método que corre en segundo plano
 
 };
