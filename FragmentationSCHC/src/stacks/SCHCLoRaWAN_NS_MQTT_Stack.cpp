@@ -17,10 +17,9 @@ SCHCLoRaWAN_NS_MQTT_Stack::SCHCLoRaWAN_NS_MQTT_Stack(AppConfig &appConfig, SCHCC
 
 SCHCLoRaWAN_NS_MQTT_Stack::~SCHCLoRaWAN_NS_MQTT_Stack()
 {
-    // 1. Apagamos la bandera del scheduler loop para romper el 'while (_running)'
-    _running = false;
+    _running.store(false);
+    _cv.notify_all(); // CRUCIAL: Despierta al scheduler si estaba dormido en el '.wait()' para que pueda morir
 
-    // 2. Esperamos de forma segura a que el hilo del scheduler finalice su ejecución
     if (_scheduler_thread.joinable()) {
         _scheduler_thread.join();
     }
@@ -180,12 +179,12 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
 
     if(_appConfig.lorawan_node.node_class.compare("A") == 0)
     {
-        _running = false;
+        _running.store(false);
     }
     else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
     {
         SPDLOG_DEBUG("[SAT-SIM] Running Scheduler Loop");
-        _running = true;
+        _running.store(true);
         _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
         SPDLOG_DEBUG("[SAT-SIM] Scheduler thread started successfully.");
     }
@@ -352,18 +351,20 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
 
         if(_appConfig.lorawan_node.node_class.compare("A") == 0)
         {
-            
             _schcCore.enqueueFromStack(std::move(msgStack));
         }
         else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
         {
             SPDLOG_DEBUG("[SAT-SIM] Satellite simulation mode activated");
-            std::lock_guard<std::mutex> lock(_delay_mutex);
-            
-            // El mensaje se programará para entregarse en 30 segundos a partir de ahora
-            auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(30);
-            
-            _delay_queue.push({std::move(msgStack), delivery_time});
+
+            {
+                std::lock_guard<std::mutex> lock(_delay_mutex);
+                auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(45);
+                _delay_queue.push({std::move(msgStack), delivery_time});
+            }
+            _cv.notify_one();
+
+
             SPDLOG_DEBUG("[SAT-SIM] Message queued. Will be delivered to the Core in 30 seconds");
         }
         else
@@ -442,28 +443,28 @@ std::string SCHCLoRaWAN_NS_MQTT_Stack::base64_encode(const std::vector<uint8_t>&
 }
 
 void SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop() {
-    while (_running) {
+    while (_running.load()) {
         std::unique_lock<std::mutex> lock(_delay_mutex);
         
-        if (!_delay_queue.empty()) {
-            auto& next_item = _delay_queue.front();
-            auto now = std::chrono::steady_clock::now();
-            
-            if (now >= next_item.target_time) {
-                // El tiempo se cumplió. Lo sacamos de la cola de retraso y lo entregamos al Core
-                auto msg_to_deliver = std::move(next_item.msg);
-                _delay_queue.pop();
-                
-                // Desbloqueamos el mutex antes de meterlo al Core para no trabar onMessage
-                lock.unlock(); 
-                
-                SPDLOG_INFO("[SAT-SIM] Entregando mensaje programado al SCHC Core.");
-                _schcCore.enqueueFromStack(std::move(msg_to_deliver));
-                continue; // Evitamos el sleep para procesar el siguiente mensaje si ya venció
-            }
-        }
+        // Esperar hasta que la cola no esté vacía O el programa se detenga
+        _cv.wait(lock, [this]() { return !_delay_queue.empty() || !_running; });
         
-        lock.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Evita consumo de CPU al 100%
+        if (!_running) break; // Salida limpia si estamos destruyendo la clase
+
+        auto& next_item = _delay_queue.front();
+        auto now = std::chrono::steady_clock::now();
+        
+        if (now >= next_item.target_time) {
+            auto msg_to_deliver = std::move(next_item.msg);
+            _delay_queue.pop();
+            
+            lock.unlock(); 
+            _schcCore.enqueueFromStack(std::move(msg_to_deliver));
+        } else {
+            // Si el elemento del frente aún no vence, dormimos exactamente el tiempo restante
+            auto wait_duration = next_item.target_time - now;
+            lock.unlock(); // Soltamos el mutex antes de dormir al hilo
+            std::this_thread::sleep_for(wait_duration);
+        }
     }
 }

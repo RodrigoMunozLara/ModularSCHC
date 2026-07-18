@@ -9,12 +9,13 @@
 #include <mosquitto.h>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
-#include <atomic>
 
 #include <queue>       // <--- ESTE FALTA (Define std::queue)
 #include <mutex>       // Para proteger la cola entre hilos (std::mutex, std::lock_guard)
 #include <thread>      // Para el hilo del scheduler (std::thread)
 #include <chrono>      // Para manejar los tiempos de simulación (std::chrono)
+#include <atomic>              // Para std::atomic
+#include <condition_variable>  // Para std::condition_variable
 
 // forward declaration
 class SCHCCore;
@@ -65,10 +66,11 @@ class SCHCLoRaWAN_NS_MQTT_Stack: public ISCHCStack
             std::chrono::steady_clock::time_point target_time; // Cuándo debe entregarse
         };
 
-        std::queue<DelayedUplink> _delay_queue;
-        std::mutex _delay_mutex;
-        std::thread _scheduler_thread;
-        bool _running = true;
+        std::queue<DelayedUplink>   _delay_queue;
+        std::mutex                  _delay_mutex;
+        std::condition_variable     _cv;
+        std::thread                 _scheduler_thread;
+        std::atomic<bool>           _running{false};
 
         void scheduler_loop(); // Método que corre en segundo plano
 
