@@ -187,7 +187,7 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
         SPDLOG_DEBUG("[SAT-SIM] Running Scheduler Loop");
         _running = true;
         _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
-        SPDLOG_DEBUG("[SAT-SIM]  Scheduler thread started successfully.");
+        SPDLOG_DEBUG("[SAT-SIM] Scheduler thread started successfully.");
     }
 
 }

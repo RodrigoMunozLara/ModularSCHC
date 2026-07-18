@@ -106,7 +106,8 @@ void SCHCSession::init()
 
     running.store(true);
 
-    if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    if(_appConfig.lorawan_node.node_class.compare("C") == 0 &&
+        _appConfig.schc.schc_type.compare("schc_node") == 0)
     {
         read_sat_pass();
     }
@@ -226,12 +227,13 @@ void SCHCSession::release()
 
 int SCHCSession::read_sat_pass()
 {
-std::string filename = "satellite_passes.csv";
+    SPDLOG_ERROR("[SAT-SIM] Reading Satellite Pass file...");
+    std::string filename = "satellite_passes.csv";
     std::ifstream file(filename);
 
     if (!file.is_open()) {
-        SPDLOG_ERROR("Error opening the file containing satellite timing data: {}", filename );
-        SPDLOG_ERROR("Current path: {}", std::filesystem::current_path().string() );
+        SPDLOG_ERROR("[SAT-SIM] Error opening the file containing satellite timing data: {}", filename );
+        SPDLOG_ERROR("[SAT-SIM] Current path: {}", std::filesystem::current_path().string() );
         return 1;
     }
 
