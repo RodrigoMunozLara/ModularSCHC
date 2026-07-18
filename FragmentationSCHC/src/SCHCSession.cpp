@@ -106,8 +106,11 @@ void SCHCSession::init()
 
     running.store(true);
 
-    read_sat_pass();
-
+    if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    {
+        read_sat_pass();
+    }
+    
     SPDLOG_DEBUG("Starting threads...");
     processThread = std::thread(&SCHCSession::processEventLoop, this);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
