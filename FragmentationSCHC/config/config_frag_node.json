@@ -33,7 +33,8 @@
     "deveui": "AC1F09FFFE0CEFD0",
     "appeui" : "0000000000000001",
     "appkey" : "1F0B7A29E13C0D1D6E7CA1913DF81464",
-    "data_rate": "DR4"
+    "data_rate": "DR4",
+    "class": "A"
   },
   "myriota_node": {
     "serial_port":"/dev/ttyACM0"

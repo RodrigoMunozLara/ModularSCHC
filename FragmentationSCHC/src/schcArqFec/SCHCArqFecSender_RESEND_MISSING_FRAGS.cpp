@@ -26,7 +26,12 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+
+            _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+            int win_elapsed = _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
+            SPDLOG_DEBUG("Elapsed: {}", elapsed);
+            //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
             _ctx._schcSession._msgTimes_vector.push_back(elapsed);
             _ctx._schcSession._msgTimesType_vector.push_back(2);
 
@@ -185,7 +190,10 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._win_elapsed = _ctx._schcSession._win_elapsed + _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + _ctx._schcSession._win_elapsed;
+            SPDLOG_DEBUG("Elapsed: {}", elapsed);
+            //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
             _ctx._schcSession._msgTimes_vector.push_back(elapsed);
             _ctx._schcSession._msgTimesType_vector.push_back(1);
 
@@ -231,7 +239,10 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 /* Imprime los mensajes para visualizacion ordenada */
                 encoder.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
 
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+                _ctx._schcSession._win_elapsed = _ctx._schcSession._win_elapsed + _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + _ctx._schcSession._win_elapsed;
+                SPDLOG_DEBUG("Elapsed: {}", elapsed);
+                //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
                 _ctx._schcSession._msgTimes_vector.push_back(elapsed);
                 _ctx._schcSession._msgTimesType_vector.push_back(4);
 
@@ -242,24 +253,26 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
 
-                if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
-                {
-                    SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
-                    SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
-                    SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
-                    _ctx.executeTimer(_ctx._retransTimer);
-                    _ctx._rtxAttemptsCounter++; 
-                }
-                else
-                {
-                    SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
-                    SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
-                    SPDLOG_DEBUG("Maximum number of retransmissions reached");
-                    SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
-                    _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
-                    _ctx.executeAgain();
-                    return;       
-                }
+                _ctx._schcSession._sat_win_ptr++;
+
+                // if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
+                // {
+                //     SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+                //     SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+                //     SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
+                //     _ctx.executeTimer(_ctx._retransTimer);
+                //     _ctx._rtxAttemptsCounter++; 
+                // }
+                // else
+                // {
+                //     SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+                //     SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+                //     SPDLOG_DEBUG("Maximum number of retransmissions reached");
+                //     SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
+                //     _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
+                //     _ctx.executeAgain();
+                //     return;       
+                // }
 
 
 
@@ -273,11 +286,7 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             }
         }
 
-
     }
-
-
-
 
 }
 

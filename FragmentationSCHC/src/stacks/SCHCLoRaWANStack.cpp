@@ -9,7 +9,6 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
 
     _keep_reading = true;
 
-
     /* ***** Configuring serial connection **** */
     std::string _port = _appConfig.lorawan_node.serial_port;
     _fd = open(_port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
@@ -52,7 +51,10 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
 
     /* ***** Configuring LoRaWAN device ***** */
     
-
+    // Iniciamos el hilo lector al final del constructor, una vez configurado el puerto
+    _serial_reader_thread = std::thread(&SCHCLoRaWANStack::serial_reader_loop, this);
+    SPDLOG_DEBUG("Waiting 2000 ms.....");
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     std::string resp = send_command("AT+VER=?");
     SPDLOG_DEBUG("AT+VER=? {}", resp);
@@ -104,118 +106,121 @@ SCHCLoRaWANStack::SCHCLoRaWANStack(AppConfig& appConfig, SCHCCore& schcCore): _a
     std::string _njs = "AT+NJS=?";
     resp = send_command(_njs);
     SPDLOG_DEBUG("{} {}", _njs, resp);
-    size_t foundPos = resp.find("AT+NJS=0");
-    if (foundPos != std::string::npos)
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    SPDLOG_DEBUG("Waiting 3000 ms.....");
+    if (!_joined)
     {
         std::string _njs_1 = "AT+JOIN=1";
         resp = send_command(_njs_1);  /* Join LoRaWAN Network: AT+JOIN: join network*/
         SPDLOG_DEBUG("{} {}", _njs_1, resp);
-    }    
+    } 
 
-    // Iniciamos el hilo lector al final del constructor, una vez configurado el puerto
-    _serial_reader_thread = std::thread(&SCHCLoRaWANStack::serial_reader_loop, this);
+
 
 }
 
 SCHCLoRaWANStack::~SCHCLoRaWANStack()
 {
-    SPDLOG_DEBUG("Executing SCHCLoRaWANStack destructor()");
-    std::string resp = send_command("AT+JOIN=0");  /* Join LoRaWAN Network: AT+JOIN: join network*/
-    SPDLOG_DEBUG("AT+JOIN=0 {}", resp);
-    if (_fd != -1) close(_fd);
-
-    // 1. Detener el hilo de lectura primero
+SPDLOG_DEBUG("Executing SCHCLoRaWANStack destructor()");
+    
+    // Primero avisamos al hilo que debe terminar
     _keep_reading = false;
+    
+    // Esperamos de forma segura a que el hilo muera
     if (_serial_reader_thread.joinable()) {
         _serial_reader_thread.join();
     }
 
+    // Ya sin hilos secundarios vivos, enviamos el comando de salida y cerramos
+    std::string resp = send_command("AT+JOIN=0");  
+    SPDLOG_DEBUG("AT+JOIN=0 {}", resp);
+    
+    if (_fd != -1) {
+        close(_fd);
+        _fd = -1;
+    }
+}
+
+void SCHCLoRaWANStack::init()
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(6000));
+    if(_appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
+    else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
+
+        /* Data rate: AT+DR: get or set the data rate */
+    std::string resp;
+    if(_dr==0) resp = send_command("AT+DR=0");
+    else if(_dr==1) resp = send_command("AT+DR=1");
+    else if(_dr==2) resp = send_command("AT+DR=2");
+    else if(_dr==3) resp = send_command("AT+DR=3");
+    else if(_dr==4) resp = send_command("AT+DR=4");
+    else if(_dr==5) resp = send_command("AT+DR=5");
+    SPDLOG_DEBUG("AT+DR:{} {}", _dr, resp);
+
+
+    if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    {
+        resp = send_command("AT+CLASS=C");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
+        SPDLOG_DEBUG("AT+CLASS=C {}", resp);
+    }
+
+    resp = send_command("AT+CFM=0"); /* Confirm Mode: AT+CFM: get or set the confirmation mode (0 = OFF, 1 = ON)*/
+    SPDLOG_DEBUG("AT+CFM=0 {}", resp);
 }
 
 std::string SCHCLoRaWANStack::send_frame(int ruleid, std::vector<uint8_t>& buff, std::optional<std::string> devId)
 {
-    /*Creating the AT command*/
+/* Creating the AT command */
     std::stringstream ss;
     ss << "AT+SEND=" << ruleid << ":" << toHexString(buff);
     std::string command = ss.str();
-    SPDLOG_DEBUG("AT command: {}", command);
+    SPDLOG_DEBUG("{}", command);
 
+    int timeoutMs = 3000;
+    std::string res = send_command(command);
+    std::this_thread::sleep_for(std::chrono::milliseconds(timeoutMs));
+
+    return res;
+}
+
+std::string SCHCLoRaWANStack::send_command(const std::string &command, int timeoutMs)
+{
+    // Evitamos que dos hilos escriban al mismo tiempo en el puerto serie
+    std::unique_lock<std::mutex> writeLock(_serial_write_mtx);
+    
+    // Preparamos el entorno para esperar la respuesta
     {
-        std::lock_guard<std::mutex> lock(_mtx);
-
-        /* Clean serial port */
-        tcflush(_fd, TCIFLUSH);
-
-        /* Prepare the command to write it in the serial port */
-        std::string fullCmd = command + "\r\n";
-
-        /* Write the command in the serial port */
-        if (write(_fd, fullCmd.c_str(), fullCmd.length()) < 0) return "ERROR_WRITE";
-
-        /* Initialise the variables to read messages coming from the serial port */
-        std::string accumulator = "";
-        auto startTime = std::chrono::steady_clock::now();
-        char readBuffer[256];
-        int timeoutMs = 3000;
-        //int timeoutMs = 0;
-
-        while (true) 
-        {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - startTime).count();
-
-            if (elapsed >= timeoutMs)
-            {
-                accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
-                
-                size_t txDonePos = accumulator.find("+EVT:TX_DONE");
-                size_t rxDonePos = accumulator.find("+EVT:RX_");
-                bool txDoneFlag = false;
-                bool rxDoneFlag = false;
-                if(txDonePos != std::string::npos) txDoneFlag = true;
-                if (rxDonePos != std::string::npos) rxDoneFlag = true;
-                
-
-                if (txDoneFlag && !rxDoneFlag) 
-                {
-                    SPDLOG_DEBUG("AT response: {}",accumulator);
-                    if(_isFirstMsg) 
-                    {
-                        _isFirstMsg = false;
-                    }
-                    return accumulator;
-                }
-                else if (txDoneFlag && rxDoneFlag)
-                {
-                    SPDLOG_DEBUG("AT response: {}",accumulator);
-
-                    /* We extract only the fport:payload from the response. */
-                    std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
-                    for (size_t i = 0; i < responses_vector.size(); ++i)
-                    {
-                        receive_handler(responses_vector[i]);
-                    }
-            
-
-
-                    return accumulator;
-                }
-            }
-
-            /* Reding the serial port */
-            int bytesRead = read(_fd, readBuffer, sizeof(readBuffer) - 1);
-            if (bytesRead > 0) 
-            {
-                readBuffer[bytesRead] = '\0';
-                accumulator += readBuffer;
-            }
-            // No satures el CPU
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
+        std::unique_lock<std::mutex> cmdLock(_cmd_mtx);
+        _cmd_ready = false;
+        _cmd_response.clear();
     }
 
-  
+    std::string fullCmd = command + "\r\n";
+    //SPDLOG_DEBUG("Writing AT Command: {}", command);
+    
+    if (write(_fd, fullCmd.c_str(), fullCmd.length()) < 0) {
+        return "ERROR_WRITE";
+    }
+    
+    // Ya escribimos, podemos soltar el lock de escritura por si otro hilo quiere encolar comandos
+    writeLock.unlock(); 
 
+    // Esperamos a que el hilo lector capture la respuesta en el buffer
+    std::unique_lock<std::mutex> cmdLock(_cmd_mtx);
+    bool success = _cmd_cv.wait_for(cmdLock, std::chrono::milliseconds(timeoutMs), [this]() {
+        return _cmd_ready;
+    });
+
+    if (!success) {
+        SPDLOG_WARN("Timeout waiting for command response: {}", command);
+        return "TIMEOUT_DATA";
+    }
+
+    return _cmd_response;
 }
 
 void SCHCLoRaWANStack::receive_handler(const std::vector<uint8_t>& frame)
@@ -266,88 +271,6 @@ uint32_t SCHCLoRaWANStack::getMtu()
     return -1;
 }
 
-void SCHCLoRaWANStack::init()
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(6000));
-    if(_appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
-
-        /* Data rate: AT+DR: get or set the data rate */
-    std::string resp;
-    if(_dr==0) resp = send_command("AT+DR=0");
-    else if(_dr==1) resp = send_command("AT+DR=1");
-    else if(_dr==2) resp = send_command("AT+DR=2");
-    else if(_dr==3) resp = send_command("AT+DR=3");
-    else if(_dr==4) resp = send_command("AT+DR=4");
-    else if(_dr==5) resp = send_command("AT+DR=5");
-    SPDLOG_DEBUG("AT+DR:{} {}", _dr, resp);
-
-    resp = send_command("AT+CLASS=C");   /* LoRa Class: AT+CLASS: get or set the device class (A = class A, B = class B, C = class C)*/
-    SPDLOG_DEBUG("AT+CLASS=C {}", resp);
-}
-
-std::string SCHCLoRaWANStack::send_command(const std::string &command, int timeoutMs)
-{
-std::lock_guard<std::mutex> lock(_mtx);
-    
-    static const std::vector<std::string> RUI3_STATUS_CODES = {
-        "OK", "AT_ERROR", "AT_PARAM_ERROR", "AT_BUSY_ERROR",
-        "AT_TEST_PARAM_OVERFLOW", "AT_NO_CLASSB_ENABLE",
-        "AT_NO_NETWORK_JOINED", "AT_RX_ERROR"
-    };
-
-    tcflush(_fd, TCIFLUSH);
-    std::string fullCmd = command + "\r\n";
-    if (write(_fd, fullCmd.c_str(), fullCmd.length()) < 0) return "ERROR_WRITE";
-
-    std::string accumulator = "";
-    auto startTime = std::chrono::steady_clock::now();
-    char readBuffer[256];
-
-    while (true) 
-    {
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startTime).count();
-
-        if (elapsed >= timeoutMs) {
-            // Si salimos por aquí, mostramos exactamente qué caracteres llegaron (incluyendo ocultos)
-            std::string escapeDebug = accumulator;
-            // Reemplazo simple para depurar caracteres de control
-            return "TIMEOUT_DATA: " + accumulator;
-        }
-
-        int bytesRead = read(_fd, readBuffer, sizeof(readBuffer) - 1);
-        if (bytesRead > 0) {
-            readBuffer[bytesRead] = '\0';
-            accumulator += readBuffer;
-            accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
-
-            // --- MEJORA: Búsqueda línea por línea ---
-            // Buscamos cada Status Code de forma individual en el acumulador
-            for (const auto& status : RUI3_STATUS_CODES) {
-                size_t pos = accumulator.find(status);
-                
-                // Si encontramos el status (ej. "OK")
-                if (pos != std::string::npos) {
-                   
-                    // Esperamos un micro-segundo para asegurar que el \r\n final llegó
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    
-                    //SPDLOG_DEBUG("RUI3 Status Detected: {}", status);
-                    return accumulator;
-                }
-            }
-        }
-        // No satures el CPU
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-
-}
-
 std::string SCHCLoRaWANStack::toHexString(const std::vector<uint8_t> &data)
 {
     std::stringstream ss;
@@ -362,95 +285,6 @@ std::string SCHCLoRaWANStack::toHexString(const std::vector<uint8_t> &data)
     return ss.str();
 }
 
-std::vector<uint8_t> SCHCLoRaWANStack::parseATresponse(const std::string& input) 
-{
-    /* From the AT response (example: +EVT:RX_1:-65:14:UNICAST:20:20), extract the fPort and payload in vector format with hexadecimal numbers. */
-
-    std::string target = "UNICAST:";
-    size_t pos              = input.find(target);
-    std::string result   = input.substr(pos + target.length());
-
-    std::vector<uint8_t> bytes;
-    
-    // 1. Searching the ':' separator 
-    size_t colonPos = result.find(':');
-    if (colonPos == std::string::npos) return bytes;
-
-    // 2. We process the part before the “:” (always 2 digits = 1 byte). This part is the ruleID
-    std::string firstPart = result.substr(0, colonPos);
-    if (!firstPart.empty()) 
-    {
-        //bytes.push_back(static_cast<uint8_t>(std::stoul(firstPart, nullptr, 16)));
-        bytes.push_back(static_cast<uint8_t>(std::stoi(firstPart)));
-    }
-
-    // 3. We process the part after the “:” (N digits = N/2 bytes). This part is the payload
-    std::string secondPart = result.substr(colonPos + 1);
-    
-    // We reserve memory in advance to avoid reallocations.
-    bytes.reserve(1 + (secondPart.length() / 2));
-
-    for (size_t i = 0; i < secondPart.length(); i += 2) 
-    {
-        // We take chunks of 2 characters (e.g. ‘aa’, then ‘c3’...)
-        std::string byteString = secondPart.substr(i, 2);
-        bytes.push_back(static_cast<uint8_t>(std::stoul(byteString, nullptr, 16)));
-    }
-
-    return bytes;
-
-
-}
-
-// Función principal que procesa el string completo del módem
-std::vector<std::vector<uint8_t>> SCHCLoRaWANStack::processModemString(const std::string& rawInput) {
-    // Reutilizamos el parser que busca los bloques "UNICAST:"
-    // (Asumiendo la función parseUnicastEvents que definimos antes)
-    std::vector<std::string> unicastBlocks = parseUnicastEvents(rawInput);
-    
-    std::vector<std::vector<uint8_t>> allPackets;
-    allPackets.reserve(unicastBlocks.size());
-
-    for (const auto& block : unicastBlocks) {
-        allPackets.push_back(convertUnicastToBytes(block));
-    }
-
-    return allPackets;
-}
-
-std::vector<std::string> SCHCLoRaWANStack::parseUnicastEvents(const std::string& input) {
-    std::vector<std::string> results;
-    std::string_view str(input);
-    
-    // Configuramos los nuevos "marcadores"
-    const std::string_view start_tag = "UNICAST:";
-    const std::string_view end_tag = "+EVT:TX";
-
-    size_t pos = str.find(start_tag);
-
-    while (pos != std::string_view::npos) {
-        // Buscamos si hay un cierre de evento TX más adelante
-        size_t next_tx = str.find(end_tag, pos + start_tag.length());
-        
-        std::string_view fragment;
-        if (next_tx != std::string_view::npos) {
-            // Cortamos desde UNICAST: hasta justo antes del +EVT:TX
-            fragment = str.substr(pos, next_tx - pos);
-        } else {
-            // Si no hay más TX, tomamos todo hasta el final
-            fragment = str.substr(pos);
-        }
-
-        results.emplace_back(fragment);
-
-        // Buscamos el siguiente bloque UNICAST:
-        pos = str.find(start_tag, pos + fragment.length());
-    }
-
-    return results;
-}
-
-// Función auxiliar basada en tu lógica para convertir UNICAST:... a bytes
 std::vector<uint8_t> SCHCLoRaWANStack::convertUnicastToBytes(const std::string& input) {
     std::string target = "UNICAST:";
     size_t pos = input.find(target);
@@ -483,65 +317,116 @@ std::vector<uint8_t> SCHCLoRaWANStack::convertUnicastToBytes(const std::string& 
 
 void SCHCLoRaWANStack::serial_reader_loop()
 {
-    SPDLOG_DEBUG("Starting background serial reader thread for Class C.");
+    SPDLOG_DEBUG("Starting background thread to read serial port");
     std::string accumulator = "";
     char readBuffer[256];
 
     while (_keep_reading) 
     {
-        // Intentamos bloquear el mutex sin quedarnos atascados eternamente (non-blocking lock)
-        std::unique_lock<std::mutex> lock(_mtx, std::try_to_lock);
-
-        // Si _mtx está bloqueado, significa que send_frame() o send_command() están transmitiendo.
-        // En ese caso, no leemos del puerto serial y le damos el control total a esas funciones.
-        if (!lock.owns_lock()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            SPDLOG_DEBUG("bloqueo fallido");
-            continue;
-        }
-
-        // Si tenemos el lock del puerto serial, realizamos una lectura no bloqueante (VMIN=0)
+        // Lectura bloqueante o con timeout corto (VTIME=1), sin mutex que lo detenga
         int bytesRead = read(_fd, readBuffer, sizeof(readBuffer) - 1);
         if (bytesRead > 0) 
         {
-            SPDLOG_DEBUG("bytesRead > 0");
             readBuffer[bytesRead] = '\0';
             accumulator += readBuffer;
+            //print_buffer_hex(readBuffer);
 
-            // Limpiamos saltos de línea molestos
-            accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
-
-            // En Clase C de RUI3, los eventos espontáneos de downlink llegan como "+EVT:RX_"
-            size_t rxDonePos = accumulator.find("+EVT:RX_C");
-            if (rxDonePos != std::string::npos) 
+            // https://docs.rakwireless.com/product-categories/software-apis-and-libraries/rui3/at-command-manual/#rui3-at-command-format
+            // La documentacion de RAK indica que la salida de los comandos AT tiene la forma:
+            // AT+XXX=<value><CR><LF>
+            // <CR><LF><Status<CR><LF>
+            //
+            // En realidad son:
+            // AT+XXX=<value><LF><LF>
+            // <LF><LF><Status<LF><LF>
+            //
+            // <CR>: \r
+            // <LF>: \n
+            // Procesar hasta que encuentra (\n\n).  
+            size_t pos;
+            while ((pos = accumulator.find("\n\n")) != std::string::npos) 
             {
-                // Esperamos un momento breve para garantizar que el buffer terminó de llegar completo
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                
-                // Leemos lo que falte
-                int finalBytes = read(_fd, readBuffer, sizeof(readBuffer) - 1);
-                if (finalBytes > 0) {
-                    readBuffer[finalBytes] = '\0';
-                    accumulator += readBuffer;
-                    accumulator.erase(std::remove(accumulator.begin(), accumulator.end(), 10), accumulator.end());
+                std::string line = accumulator.substr(0, pos);
+                accumulator.erase(0, pos + 2); // Remover del acumulador la data que se va a procesar mas abajo
+
+                if (line.empty()) continue; // El comando recibido tiene la forma <LF><LF><Status<LF><LF>. Retiro los dos <LF><LF> del comienzo
+
+                // Caso 1: Se recibe algun status 
+                if (line.find("OK") != std::string::npos || line.find("AT_ERROR") != std::string::npos ||
+                    line.find("AT_PARAM_ERROR") != std::string::npos || line.find("AT_BUSY_ERROR") != std::string::npos ||
+                    line.find("AT_TEST_PARAM_OVERFLOW") != std::string::npos || line.find("AT_NO_CLASSB_ENABLE") != std::string::npos ||
+                    line.find("AT_NO_NETWORK_JOINED") != std::string::npos || line.find("AT_RX_ERROR") != std::string::npos) 
+                {
+                    std::unique_lock<std::mutex> lock(_cmd_mtx);
+                    _cmd_response = line;
+                    _cmd_ready = true;
+                    _cmd_cv.notify_one(); // Despierta a send_command de inmediato
                 }
-
-                SPDLOG_INFO("[CLASS-C] Downlink detected: {}", accumulator);
-
-                // Procesamos el downlink asíncrono y lo enviamos al handler de SCHC
-                std::vector<std::vector<uint8_t>> responses_vector = processModemString(accumulator);
-                for (const auto& resp : responses_vector) {
-                    receive_handler(resp);
+                // CASO 2: Es un downlink asíncronico de clase C
+                // ejemplo: +EVT:RX_C:-12:3:UNICAST:1:22334455
+                else if (line.find("+EVT:RX_C") != std::string::npos && line.find("UNICAST:") != std::string::npos) 
+                {
+                    SPDLOG_INFO("Receiving asynchronous message: {}", line);
+                    std::vector<uint8_t> message = convertUnicastToBytes(line);
+                    receive_handler(message);
                 }
+                // CASO 3: Es un downlink sincronico de clase A
+                // ejemplo: +EVT:RX_1:-13:15:UNICAST:30:11223344
+                else if ((line.find("+EVT:RX_1") != std::string::npos || line.find("+EVT:RX_2") != std::string::npos) && line.find("UNICAST:") != std::string::npos) 
+                {
+                    SPDLOG_INFO("Receiving synchronous message: {}", line);
+                    std::vector<uint8_t> message = convertUnicastToBytes(line);
+                    receive_handler(message);
+                }
+                else if (line.find("+EVT:TX_DONE") != std::string::npos)
+                {
+                    SPDLOG_DEBUG("Transmission completed: {}", line);                    
+                }
+                else if (line.find("AT+NJS=0") != std::string::npos)
+                {
+                    SPDLOG_DEBUG("Device is not joined");
+                    _joined = false;
 
-                accumulator.clear(); // Limpiamos acumulador tras procesar
+                }
+                else if (line.find("AT+NJS=1") != std::string::npos)
+                {
+                    SPDLOG_DEBUG("Device is joined");
+                    _joined = true;
+                }
             }
         }
-
-        // Liberamos explícitamente el lock antes de dormir el hilo
-        lock.unlock(); 
-        std::this_thread::sleep_for(std::chrono::milliseconds(20)); // Evita consumo de CPU al 100%
-
+        // Un pequeño respiro si el puerto está configurado como puramente no bloqueante
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     SPDLOG_DEBUG("Background serial reader thread stopped.");
+}
+
+void SCHCLoRaWANStack::print_buffer_hex(const std::string& buffer) {
+    std::cout << "--- Contenido del Buffer (Tamaño: " << buffer.size() << " bytes) ---\n";
+    
+    for (size_t i = 0; i < buffer.size(); ++i) {
+        unsigned char c = buffer[i];
+        
+        // Imprimir índice de posición
+        std::cout << "[" << std::setw(3) << std::setfill('0') << i << "] ";
+        
+        // Mostrar representación del carácter si es imprimible, o un marcador especial si es de control
+        if (std::isprint(c)) {
+            std::cout << "Char: '" << c << "'   ";
+        } else if (c == '\r') {
+            std::cout << "Char: '\\r'  ";
+        } else if (c == '\n') {
+            std::cout << "Char: '\\n'  ";
+        } else if (c == '\0') {
+            std::cout << "Char: '\\0'  ";
+        } else {
+            std::cout << "Char: '.'   "; // Carácter no imprimible genérico
+        }
+        
+        // Mostrar valores numéricos en Decimal y Hexadecimal
+        std::cout << " | Dec: " << std::setw(3) << std::setfill(' ') << static_cast<int>(c)
+                  << " | Hex: 0x" << std::hex << std::setw(2) << std::setfill('0') 
+                  << static_cast<int>(c) << std::dec << "\n";
+    }
+    std::cout << "------------------------------------------------\n";
 }

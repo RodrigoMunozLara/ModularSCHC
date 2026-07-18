@@ -24,10 +24,6 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
-            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
-            _ctx._schcSession._msgTimesType_vector.push_back(2);
-
             decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg, SCHCAckMechanism::ARQ_FEC, &(_ctx._bitmapArray));
             uint8_t c = decoder.get_c();
             uint8_t w = decoder.get_w();
@@ -35,6 +31,14 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
 
             if(c == 1 && w == 3)
             {
+                _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+                int win_elapsed = _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
+                SPDLOG_DEBUG("Elapsed: {}", elapsed);
+                //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+                _ctx._schcSession._msgTimes_vector.push_back(elapsed);
+                _ctx._schcSession._msgTimesType_vector.push_back(2);
+
                 SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
                 _ctx._timer.stop();
                 _ctx._rtxAttemptsCounter = 0;
@@ -102,7 +106,7 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
             }
             else
             {
-                SPDLOG_ERROR("The SCHC ACK message must have the following parameters (C=1 and W=3)");    
+                SPDLOG_ERROR("Receiving a SCHC ACK message with parameters (C=1 and W=3). Ignoring message");    
                 return; 
             }
         }
@@ -118,7 +122,11 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
             uint8_t c               = decoder.get_c();
             _ctx._win_with_errors   = decoder.get_w_vector();
 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
+            _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+            int win_elapsed = _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
+            SPDLOG_DEBUG("Elapsed: {}", elapsed);
+            //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
             _ctx._schcSession._msgTimes_vector.push_back(elapsed);
             _ctx._schcSession._msgTimesType_vector.push_back(2);
 
@@ -163,24 +171,24 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
     SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
     _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
 
-    if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
-    {
-        SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
-        SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
-        SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
-        _ctx.executeTimer(_ctx._retransTimer);
-        _ctx._rtxAttemptsCounter++; 
-    }
-    else
-    {
-        SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
-        SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
-        SPDLOG_DEBUG("Maximum number of retransmissions reached");
-        SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
-        _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
-        _ctx.executeAgain();
-        return;       
-    }
+    // if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
+    // {
+    //     SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+    //     SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+    //     SPDLOG_DEBUG("Setting retransmission timer to {} seconds", _ctx._retransTimer);
+    //     _ctx.executeTimer(_ctx._retransTimer);
+    //     _ctx._rtxAttemptsCounter++; 
+    // }
+    // else
+    // {
+    //     SPDLOG_DEBUG("_rtxAttemptsCounter: {}", _ctx._rtxAttemptsCounter);
+    //     SPDLOG_DEBUG("_maxAckReq:          {}", _ctx._maxAckReq);
+    //     SPDLOG_DEBUG("Maximum number of retransmissions reached");
+    //     SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_END");
+    //     _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_END;
+    //     _ctx.executeAgain();
+    //     return;       
+    // }
 
 }
 

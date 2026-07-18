@@ -176,9 +176,19 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
     else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
     SPDLOG_DEBUG("Downlink Data Rate (DR): {}", _dr);
 
-    _running = true;
-    _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
-    SPDLOG_INFO("Scheduler thread started successfully.");
+
+
+    if(_appConfig.lorawan_node.node_class.compare("A") == 0)
+    {
+        _running = false;
+    }
+    else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    {
+        SPDLOG_DEBUG("[SAT-SIM] Running Scheduler Loop");
+        _running = true;
+        _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
+        SPDLOG_DEBUG("[SAT-SIM]  Scheduler thread started successfully.");
+    }
 
 }
 
@@ -339,20 +349,28 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
             return; 
         }
 
-        //_schcCore.enqueueFromStack(std::move(msgStack));
 
+        if(_appConfig.lorawan_node.node_class.compare("A") == 0)
         {
+            
+            _schcCore.enqueueFromStack(std::move(msgStack));
+        }
+        else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+        {
+            SPDLOG_DEBUG("[SAT-SIM] Satellite simulation mode activated");
             std::lock_guard<std::mutex> lock(_delay_mutex);
             
             // El mensaje se programará para entregarse en 30 segundos a partir de ahora
             auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(30);
             
             _delay_queue.push({std::move(msgStack), delivery_time});
-            SPDLOG_INFO("[SAT-SIM] Mensaje encolado. Se entregará al Core en 30 segundos.");
+            SPDLOG_DEBUG("[SAT-SIM] Message queued. Will be delivered to the Core in 30 seconds");
         }
+        else
+        {
+            SPDLOG_DEBUG("Only Class A and C are supported. Check the lorawan_node.class option in the configuration");
 
-
-
+        }
 
     }
     else

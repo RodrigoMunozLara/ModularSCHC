@@ -38,6 +38,7 @@ struct LoRaWAN_Node_Config {
     std::string deveui;
     std::string appeui;
     std::string appkey;
+    std::string node_class;
 };
 
 struct Myriota_Node_Config {

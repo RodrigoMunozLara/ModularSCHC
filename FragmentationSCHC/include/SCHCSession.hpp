@@ -13,6 +13,8 @@
 #include <atomic>
 #include "spdlog/spdlog.h"
 #include <spdlog/details/os.h>
+#include <iostream>
+#include <filesystem>
 
 // forward declaration
 class SCHCCore;
@@ -32,6 +34,7 @@ class SCHCSession
         void        setDead() {_isDead.store(true); }
         void        setDevId(std::string devId) {_dev_id = devId;}
         std::string getDevId() {return _dev_id;}
+        int         read_sat_pass();
     private:
         
         uint8_t         _id;   
@@ -54,5 +57,10 @@ class SCHCSession
         std::chrono::steady_clock::time_point   _startTime;
         std::vector<long long>                  _msgTimes_vector;
         std::vector<int>                        _msgTimesType_vector;
+        std::vector<int>                        _visibility_col;
+        std::vector<int>                        _revisit_col;
+        int                                     _sat_win_ptr = 0;
+        int                                     _win_elapsed = 0;
+        
 
 };

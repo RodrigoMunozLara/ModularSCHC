@@ -106,6 +106,8 @@ void SCHCSession::init()
 
     running.store(true);
 
+    read_sat_pass();
+
     SPDLOG_DEBUG("Starting threads...");
     processThread = std::thread(&SCHCSession::processEventLoop, this);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -217,4 +219,68 @@ void SCHCSession::release()
 
     SPDLOG_DEBUG("SCHCSession stopped");
     SPDLOG_DEBUG("Session resources released");
+}
+
+int SCHCSession::read_sat_pass()
+{
+std::string filename = "satellite_passes.csv";
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        SPDLOG_ERROR("Error opening the file containing satellite timing data: {}", filename );
+        SPDLOG_ERROR("Current path: {}", std::filesystem::current_path().string() );
+        return 1;
+    }
+
+
+    std::string line;
+    
+    // Leer y omitir la primera línea (encabezado)
+    if (std::getline(file, line)) {
+        // Encabezado ignorado
+    }
+
+    // Leer el archivo línea por línea
+    while (std::getline(file, line)) {
+        if (line.empty()) continue; // Omitir líneas vacías
+
+        std::stringstream ss(line);
+        std::string field;
+        
+        std::string time_str;
+        std::string duration_str;
+        std::string max_elev_str;
+        std::string visibility_str;
+        std::string revisit_str;
+
+        // Extraer cada columna separada por coma
+        std::getline(ss, time_str, ',');
+        std::getline(ss, duration_str, ',');
+        std::getline(ss, max_elev_str, ',');
+        std::getline(ss, visibility_str, ',');
+        std::getline(ss, revisit_str, ',');
+
+        // Convertir las cadenas de las últimas dos columnas a enteros y guardarlas
+        try {
+            int visibility = std::stoi(visibility_str);
+            int revisit = std::stoi(revisit_str);
+
+            _visibility_col.push_back(visibility);
+            _revisit_col.push_back(revisit);
+        } catch (const std::invalid_argument& e) {
+            SPDLOG_ERROR("Error converting numeric data in the row: {}", line );
+        }
+    }
+
+    file.close();
+
+    // Ejemplo para verificar que se leyeron correctamente
+    std::cout << "Data read successfully. Total rows:" << _visibility_col.size() << "\n\n";
+    // std::cout << "Visibility (s) | Revisit (s)\n";
+    // std::cout << "-----------------------------\n";
+    // for (size_t i = 0; i < _visibility_col.size(); ++i) {
+    //     std::cout << _visibility_col[i] << "            | " << _revisit_col[i] << "\n";
+    // }
+
+    return 0;    
 }
