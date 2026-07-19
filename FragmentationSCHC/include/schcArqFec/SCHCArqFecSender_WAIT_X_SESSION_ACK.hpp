@@ -22,6 +22,8 @@ class SCHCArqFecSender_WAIT_X_SESSION_ACK: public ISCHCState
         void execute(const std::vector<uint8_t>& msg = {}) override;
         void timerExpired() override;
         void release() override;
+        void save_time_ack();
+        void save_time_ack_req();
     
     private:
 

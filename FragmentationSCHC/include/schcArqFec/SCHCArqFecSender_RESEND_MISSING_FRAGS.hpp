@@ -20,6 +20,9 @@ class SCHCArqFecSender_RESEND_MISSING_FRAGS: public ISCHCState
         void execute(const std::vector<uint8_t>& msg = {}) override;
         void timerExpired() override;
         void release() override;
+        void save_time();
+        void save_time_ack();
+        void save_time_ack_req();
     
     private:
         std::vector<uint8_t>    extractTiles(uint8_t firstTileID, uint8_t nTiles);

@@ -61,6 +61,7 @@ class SCHCSession
         std::vector<int>                        _revisit_col;
         int                                     _sat_win_ptr = 0;
         int                                     _win_elapsed = 0;
+        long long                               _acumulative_win = 0;
         
 
 };

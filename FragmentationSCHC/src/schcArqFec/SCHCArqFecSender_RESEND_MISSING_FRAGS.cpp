@@ -26,15 +26,9 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
         {
             SPDLOG_DEBUG("Receiving a SCHC ACK");
 
-
-            _ctx._schcSession._startTime = std::chrono::steady_clock::now();
-            int win_elapsed = _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
-            SPDLOG_DEBUG("Elapsed: {}", elapsed);
-            //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count();
-            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
-            _ctx._schcSession._msgTimesType_vector.push_back(2);
-
+            /* [SAT-SIM] Almaceno el tiempo del ACK  */
+            save_time_ack();
+            
             SPDLOG_DEBUG("Stoping the Retransmission timer...");
             _ctx._timer.stop();
             _ctx._rtxAttemptsCounter = 0;
@@ -46,10 +40,6 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
 
             if(c == 1 && w == 3)
             {
-                SPDLOG_DEBUG("Stoping the Rtx All-1 timer...");
-                _ctx._timer.stop();
-                _ctx._rtxAttemptsCounter = 0;
-
                 /* ******** Print results in logfile ************************* */
                 SPDLOG_DEBUG("Printing results in logfile...");
                 std::ostringstream ss;
@@ -190,12 +180,8 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_regular_fragment(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window, currentFcn, schc_payload);
 
-            _ctx._schcSession._win_elapsed = _ctx._schcSession._win_elapsed + _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + _ctx._schcSession._win_elapsed;
-            SPDLOG_DEBUG("Elapsed: {}", elapsed);
-            //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
-            _ctx._schcSession._msgTimes_vector.push_back(elapsed);
-            _ctx._schcSession._msgTimesType_vector.push_back(1);
+            /* Grabamos los tiempos para post procesamiento*/
+            save_time();
 
             /* Imprime los mensajes para visualizacion ordenada */
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
@@ -239,12 +225,8 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 /* Imprime los mensajes para visualizacion ordenada */
                 encoder.print_msg(SCHCMsgType::SCHC_ACK_REQ_MSG, schc_message); 
 
-                _ctx._schcSession._win_elapsed = _ctx._schcSession._win_elapsed + _ctx._schcSession._visibility_col[_ctx._schcSession._sat_win_ptr]*1000 + _ctx._schcSession._revisit_col[_ctx._schcSession._sat_win_ptr]*1000;
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + _ctx._schcSession._win_elapsed;
-                SPDLOG_DEBUG("Elapsed: {}", elapsed);
-                //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime).count() + win_elapsed;
-                _ctx._schcSession._msgTimes_vector.push_back(elapsed);
-                _ctx._schcSession._msgTimesType_vector.push_back(4);
+                /* [SAT-SIM] Almaceno el tiempo del ACK REQ para post-procesamiento */
+                save_time_ack_req();
 
                 /* Envía el mensaje a la capa 2*/
                 _ctx._stack->send_frame(_ctx._ruleID, schc_message);
@@ -252,8 +234,6 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 SPDLOG_DEBUG("There are no more windows with missing tiles.");
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
-
-                _ctx._schcSession._sat_win_ptr++;
 
                 // if(_ctx._rtxAttemptsCounter < _ctx._maxAckReq)
                 // {
@@ -328,3 +308,68 @@ uint8_t SCHCArqFecSender_RESEND_MISSING_FRAGS::get_current_fcn(int bitmap_ptr)
     return (_ctx._windowSize - 1) - bitmap_ptr;
 }
 
+void SCHCArqFecSender_RESEND_MISSING_FRAGS::save_time()
+{
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime);
+    int sat_ptr                     = _ctx._schcSession._sat_win_ptr;                   // puntero a la ventana de visibilidad actual en el vector de visibilidad
+    int current_visibility_win      = _ctx._schcSession._visibility_col[sat_ptr]*1000;
+
+    if(elapsed < std::chrono::milliseconds(current_visibility_win))
+    {
+        auto elapsed_sim = elapsed + std::chrono::milliseconds(_ctx._schcSession._acumulative_win);
+
+        _ctx._schcSession._msgTimes_vector.push_back(elapsed_sim.count());
+        _ctx._schcSession._msgTimesType_vector.push_back(1);
+        SPDLOG_DEBUG("[SAT-SIM] Sending msg in visibility win {}", sat_ptr + 1);
+        SPDLOG_DEBUG("[SAT-SIM] Elapsed: {} ms", elapsed_sim.count());
+    }
+    else
+    {
+        _ctx._schcSession._acumulative_win  = _ctx._schcSession._acumulative_win + 
+                                                _ctx._schcSession._visibility_col[sat_ptr]*1000 + 
+                                                _ctx._schcSession._revisit_col[sat_ptr]*1000;
+
+        _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+
+        auto elapsed_sim = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime) + 
+                        std::chrono::milliseconds(_ctx._schcSession._acumulative_win);
+
+        _ctx._schcSession._msgTimes_vector.push_back(elapsed_sim.count());
+        _ctx._schcSession._msgTimesType_vector.push_back(1);
+        SPDLOG_DEBUG("[SAT-SIM] Sending msg in visibility win {}", sat_ptr + 2);
+        SPDLOG_DEBUG("[SAT-SIM] Elapsed: {} ms", elapsed_sim.count());                
+        _ctx._schcSession._sat_win_ptr++;
+    }
+    SPDLOG_DEBUG("[SAT-SIM] Acumulative Win: {} ms", _ctx._schcSession._acumulative_win);
+}
+
+void SCHCArqFecSender_RESEND_MISSING_FRAGS::save_time_ack()
+{
+    int sat_ptr                         = _ctx._schcSession._sat_win_ptr;       // puntero a la ventana de visibilidad actual en el vector de visibilidad
+    _ctx._schcSession._acumulative_win  = _ctx._schcSession._acumulative_win + 
+                            _ctx._schcSession._visibility_col[sat_ptr]*1000 + 
+                            _ctx._schcSession._revisit_col[sat_ptr]*1000;
+
+    _ctx._schcSession._startTime = std::chrono::steady_clock::now();
+    auto elapsed_sim = std::chrono::milliseconds(_ctx._schcSession._acumulative_win);
+    _ctx._schcSession._msgTimes_vector.push_back(elapsed_sim.count());
+    _ctx._schcSession._msgTimesType_vector.push_back(2);
+    SPDLOG_DEBUG("[SAT-SIM] Sending msg in visibility win {}", sat_ptr + 2);
+    SPDLOG_DEBUG("[SAT-SIM] Elapsed: {} ms", elapsed_sim.count());    
+    SPDLOG_DEBUG("[SAT-SIM] Acumulative Win: {} ms", _ctx._schcSession._acumulative_win);           
+    _ctx._schcSession._sat_win_ptr++;
+}
+
+void SCHCArqFecSender_RESEND_MISSING_FRAGS::save_time_ack_req()
+{
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - _ctx._schcSession._startTime);
+    int sat_ptr                     = _ctx._schcSession._sat_win_ptr;                   // puntero a la ventana de visibilidad actual en el vector de visibilidad
+
+    auto elapsed_sim = elapsed + std::chrono::milliseconds(_ctx._schcSession._acumulative_win);
+
+    _ctx._schcSession._msgTimes_vector.push_back(elapsed_sim.count());
+    _ctx._schcSession._msgTimesType_vector.push_back(4);
+    SPDLOG_DEBUG("[SAT-SIM] Sending msg in visibility win {}", sat_ptr + 1);
+    SPDLOG_DEBUG("[SAT-SIM] Elapsed: {} ms", elapsed_sim.count());
+    SPDLOG_DEBUG("[SAT-SIM] Acumulative Win: {} ms", _ctx._schcSession._acumulative_win);
+}
