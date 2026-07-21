@@ -73,6 +73,8 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                                             ", " + 
                                             std::to_string(_ctx._appConfig.schc.error_prob) + 
                                             ", " + 
+                                            std::to_string(numeros.back()) + 
+                                            ", " +
                                             std::to_string(_dr) + 
                                             ", " +
                                             ss.str();
@@ -80,6 +82,8 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::execute(const std::vector<uint8_t>& ms
                 std::string resultado2 = std::to_string(_ctx._schcCore._packetCounter) + 
                             ", " + 
                             std::to_string(_ctx._appConfig.schc.error_prob) + 
+                            ", " + 
+                            std::to_string(numeros.back()) + 
                             ", " + 
                             std::to_string(_dr) + 
                             ", " +

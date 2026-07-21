@@ -254,8 +254,7 @@ uint32_t SCHCLoRaWANStack::getMtu()
     
     if(consider_Dwell)
     {
-        if(_dr==0 || _dr==1) return 0;
-        else if(_dr==2) return 11 - fOpt;
+        if(_dr==0 || _dr==1 || _dr==2) return 0;
         else if(_dr==3) return 53 - fOpt;
         else if(_dr==4) return 125 - fOpt;
         else if(_dr==5) return 242 - fOpt;
