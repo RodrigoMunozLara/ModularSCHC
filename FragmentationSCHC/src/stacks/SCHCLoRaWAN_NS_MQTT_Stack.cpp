@@ -356,7 +356,7 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
         else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
         {
             SPDLOG_DEBUG("[SAT-SIM] Satellite simulation mode activated");
-            int delay = 45; // seconds
+            int delay = 150; // seconds
             {
                 std::lock_guard<std::mutex> lock(_delay_mutex);
                 auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(delay);
