@@ -243,6 +243,10 @@ void SCHCLoRaWANStack::receive_handler(const std::vector<uint8_t>& frame)
 
 uint32_t SCHCLoRaWANStack::getMtu()
 {
+    // https://resources.lora-alliance.org/technical-specifications/rp2-1-0-3-lorawan-regional-parameters
+    // Table 46: AU915-928 maximum repeater payload size
+    // UplinkDwelTime = 1
+    // FOpt = 15 bytes
     int fOpt = 0;   
     bool consider_Fopt = true;
     bool consider_Dwell = true;
@@ -263,7 +267,7 @@ uint32_t SCHCLoRaWANStack::getMtu()
     {
         if(_dr==0 || _dr==1 || _dr==2) return 51 - fOpt;
         else if(_dr==3) return 115 - fOpt;
-        else if(_dr==4 || _dr==5) return 222 - fOpt;
+        else if(_dr==4 || _dr==5) return 242 - fOpt;
     }
 
 

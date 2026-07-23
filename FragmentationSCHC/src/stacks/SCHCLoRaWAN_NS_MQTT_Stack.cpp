@@ -166,13 +166,19 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
     mosquitto_loop_start(_mosq); // Create an internal thread and return immediately.
     SPDLOG_DEBUG("Mosquitto client library started.");
 
-
-    if(_appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
-    else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
+    if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    {
+        _dr = 8;
+    }
+    else
+    {
+        if(_appConfig.lorawan_node.data_rate.compare("DR0") == 0) _dr = 0;
+        else if (_appConfig.lorawan_node.data_rate.compare("DR1") == 0) _dr = 1;
+        else if (_appConfig.lorawan_node.data_rate.compare("DR2") == 0) _dr = 2;
+        else if (_appConfig.lorawan_node.data_rate.compare("DR3") == 0) _dr = 3;
+        else if (_appConfig.lorawan_node.data_rate.compare("DR4") == 0) _dr = 4;
+        else if (_appConfig.lorawan_node.data_rate.compare("DR5") == 0) _dr = 5;
+    }
     SPDLOG_DEBUG("Downlink Data Rate (DR): {}", _dr);
 
 
