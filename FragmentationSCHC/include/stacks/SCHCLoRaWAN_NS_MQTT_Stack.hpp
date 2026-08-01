@@ -73,5 +73,6 @@ class SCHCLoRaWAN_NS_MQTT_Stack: public ISCHCStack
         std::atomic<bool>           _running{false};
 
         void scheduler_loop(); // Método que corre en segundo plano
+        void clear_delay_queue();
 
 };

@@ -1,28 +1,25 @@
 from scapy.all import *
-import time
 
-# Capa de enlace (Ethernet)
 eth = Ether(src="00:15:5d:02:6e:40", dst="00:00:00:00:00:00")
-
-# Capa de red (IPv6)
-#ipv6 = IPv6(src="2001:db8::1", dst="fc00:1::1")
-#ipv6 = IPv6(src="2001:470:1f2b:12e::6", dst="2001:470:1f2a:12e::1")
 ipv6 = IPv6(src="2001:470:1f2b:12e::6", dst="2001:4860:4860::8888")
-# Capa de transporte (ICMPv6 Echo Request)
 icmp = ICMPv6EchoRequest(data='A'*903)
-
-# Combinar todas las capas
 pkt = eth / ipv6 / icmp
 
 pkt.show()
+sendp(pkt, iface="lo")
 
-N = 4  
-waitTime = 60  # Tiempo en segundos entre cada paquete
-
-print(f"Enviando {N} paquetes con una pausa de {waitTime}s...")
-for i in range(N):
-    sendp(pkt, iface="lo")  # Cambia "eth0" por tu interfaz
-    print(f"Esperando {waitTime}s...")
-    time.sleep(waitTime)
-
-print("¡Envíos completados!")
+# waitTime = 360  # Tiempo en segundos entre cada paquete
+# N = 5
+# ahora = datetime.now()
+# formateado = ahora.strftime("Hora de Inicio: %d/%m/%Y %H:%M:%S")
+# print(formateado)
+# print(f"Enviando {N} paquetes...")
+# for i in range(N):
+#     print(f"Enviando paquete {i+1} mas una pausa de {waitTime}s...")
+#     sendp(pkt, iface="lo")  # Cambia "eth0" por tu interfaz
+#     print(f"Esperando {waitTime}s...")
+#     time.sleep(waitTime)
+# print("¡Envíos completados!")
+# ahora = datetime.now()
+# formateado = ahora.strftime("Hora de Termino: %d/%m/%Y %H:%M:%S")
+# print(formateado)

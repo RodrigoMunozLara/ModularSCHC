@@ -18,6 +18,9 @@ SCHCLoRaWAN_NS_MQTT_Stack::SCHCLoRaWAN_NS_MQTT_Stack(AppConfig &appConfig, SCHCC
 SCHCLoRaWAN_NS_MQTT_Stack::~SCHCLoRaWAN_NS_MQTT_Stack()
 {
     _running.store(false);
+    
+    clear_delay_queue();
+
     _cv.notify_all(); // CRUCIAL: Despierta al scheduler si estaba dormido en el '.wait()' para que pueda morir
 
     if (_scheduler_thread.joinable()) {
@@ -38,6 +41,8 @@ SCHCLoRaWAN_NS_MQTT_Stack::~SCHCLoRaWAN_NS_MQTT_Stack()
     
     // 4. Global cleanup (only if you are no longer going to use Mosquitto in the programme)
     mosquitto_lib_cleanup();
+
+    
 
 }
 
@@ -362,7 +367,7 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
         else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
         {
             SPDLOG_DEBUG("[SAT-SIM] Satellite simulation mode activated");
-            int delay = 150; // seconds
+            int delay = 45; // seconds
             {
                 std::lock_guard<std::mutex> lock(_delay_mutex);
                 auto delivery_time = std::chrono::steady_clock::now() + std::chrono::seconds(delay);
@@ -473,4 +478,22 @@ void SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop() {
             std::this_thread::sleep_for(wait_duration);
         }
     }
+}
+
+void SCHCLoRaWAN_NS_MQTT_Stack::clear_delay_queue() 
+{
+    std::size_t cleared_count = 0;
+    {
+        std::lock_guard<std::mutex> lock(_delay_mutex);
+        cleared_count = _delay_queue.size();
+        
+        // Vacía la cola asignando una cola vacía por movimiento (eficiente O(1))
+        std::queue<DelayedUplink> empty_queue;
+        std::swap(_delay_queue, empty_queue);
+    }
+
+    // Despierta al scheduler loop si estaba durmiendo a la espera del frente de la cola
+    _cv.notify_all();
+
+    SPDLOG_INFO("[SAT-SIM] Queue cleared successfully. Removed {} pending messages.", cleared_count);
 }
