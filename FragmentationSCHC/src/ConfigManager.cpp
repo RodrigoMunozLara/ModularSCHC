@@ -13,43 +13,44 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     inFile >> j;
 
     // General
-    config.general.cores = j["general"]["cores"].get<std::vector<std::string>>();
+    config.general.cores            = j["general"]["cores"].get<std::vector<std::string>>();
 
     // Logging
-    config.logging.log_level = j["logging"]["log_level"].get<std::string>();
+    config.logging.log_level        = j["logging"]["log_level"].get<std::string>();
 
     // Backhaul Core
-    config.backhaul.interface_name = j["backhaul_core"]["interface"].get<std::string>();
-    config.backhaul.tunnel_6to4 = j["backhaul_core"]["6to4_tunnel"].get<std::string>();
+    config.backhaul.interface_name  = j["backhaul_core"]["interface"].get<std::string>();
+    config.backhaul.tunnel_6to4     = j["backhaul_core"]["6to4_tunnel"].get<std::string>();
 
     // SCHC Core
-    config.schc.schc_l2_protocol = j["schc_core"]["schc_l2_protocol"].get<std::string>();
-    config.schc.schc_type = j["schc_core"]["schc_type"].get<std::string>();
-    config.schc.schc_ack_mechanism = j["schc_core"]["schc_ack_mechanism"].get<std::string>();
-    config.schc.error_prob = std::stod(j["schc_core"]["error_prob"].get<std::string>());
-    config.schc.overhead = std::stod(j["schc_core"]["overhead"].get<std::string>());
+    config.schc.schc_l2_protocol    = j["schc_core"]["schc_l2_protocol"].get<std::string>();
+    config.schc.schc_type           = j["schc_core"]["schc_type"].get<std::string>();
+    config.schc.schc_ack_mechanism  = j["schc_core"]["schc_ack_mechanism"].get<std::string>();
+    config.schc.error_prob          = std::stod(j["schc_core"]["error_prob"].get<std::string>());
+    config.schc.overhead            = std::stod(j["schc_core"]["overhead"].get<std::string>());
+    config.schc.satellite_emulation = j["schc_core"]["satellite_emulation"].get<std::string>();
 
     // MQTT
-    config.mqtt.host = j["mqtt"]["host"].get<std::string>();
-    config.mqtt.port = std::stoi(j["mqtt"]["port"].get<std::string>());
-    config.mqtt.username = j["mqtt"]["username"].get<std::string>();
-    config.mqtt.password = j["mqtt"]["password"].get<std::string>();
-    config.mqtt.devices = j["mqtt"]["devices"].get<std::vector<std::string>>();
+    config.mqtt.host                = j["mqtt"]["host"].get<std::string>();
+    config.mqtt.port                = std::stoi(j["mqtt"]["port"].get<std::string>());
+    config.mqtt.username            = j["mqtt"]["username"].get<std::string>();
+    config.mqtt.password            = j["mqtt"]["password"].get<std::string>();
+    config.mqtt.devices             = j["mqtt"]["devices"].get<std::vector<std::string>>();
 
     // LoRaWAN Node
     config.lorawan_node.serial_port = j["lorawan_node"]["serial_port"].get<std::string>();
-    config.lorawan_node.deveui = j["lorawan_node"]["deveui"].get<std::string>();
-    config.lorawan_node.appeui = j["lorawan_node"]["appeui"].get<std::string>();
-    config.lorawan_node.appkey = j["lorawan_node"]["appkey"].get<std::string>();
-    config.lorawan_node.data_rate = j["lorawan_node"]["data_rate"].get<std::string>();
-    config.lorawan_node.node_class = j["lorawan_node"]["class"].get<std::string>();
+    config.lorawan_node.deveui      = j["lorawan_node"]["deveui"].get<std::string>();
+    config.lorawan_node.appeui      = j["lorawan_node"]["appeui"].get<std::string>();
+    config.lorawan_node.appkey      = j["lorawan_node"]["appkey"].get<std::string>();
+    config.lorawan_node.data_rate   = j["lorawan_node"]["data_rate"].get<std::string>();
+    config.lorawan_node.node_class  = j["lorawan_node"]["class"].get<std::string>();
 
     // Myriota Node
     config.myriota_node.serial_port = j["myriota_node"]["serial_port"].get<std::string>();
 
     // Myriota HTTP
-    config.myriota_http.port = std::stoi(j["myriota_http"]["port"].get<std::string>());
-    config.myriota_http.ngrok_user = j["myriota_http"]["ngrok_user"].get<std::string>();
+    config.myriota_http.port        = std::stoi(j["myriota_http"]["port"].get<std::string>());
+    config.myriota_http.ngrok_user  = j["myriota_http"]["ngrok_user"].get<std::string>();
 
     return true;
 }

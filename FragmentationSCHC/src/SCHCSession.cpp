@@ -106,8 +106,8 @@ void SCHCSession::init()
 
     running.store(true);
 
-    if(_appConfig.lorawan_node.node_class.compare("C") == 0 &&
-        _appConfig.schc.schc_type.compare("schc_node") == 0)
+    if( _appConfig.schc.schc_type.compare("schc_node") == 0 &&
+        _appConfig.schc.satellite_emulation.compare("true") == 0)
     {
         read_sat_pass();
     }

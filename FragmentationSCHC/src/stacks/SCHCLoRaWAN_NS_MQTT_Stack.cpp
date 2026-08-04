@@ -187,19 +187,17 @@ void SCHCLoRaWAN_NS_MQTT_Stack::init()
     SPDLOG_DEBUG("Downlink Data Rate (DR): {}", _dr);
 
 
-
-    if(_appConfig.lorawan_node.node_class.compare("A") == 0)
-    {
-        _running.store(false);
-    }
-    else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+    if(_appConfig.schc.satellite_emulation.compare("true") == 0)
     {
         SPDLOG_DEBUG("[SAT-SIM] Running Scheduler Loop");
         _running.store(true);
         _scheduler_thread = std::thread(&SCHCLoRaWAN_NS_MQTT_Stack::scheduler_loop, this);
         SPDLOG_DEBUG("[SAT-SIM] Scheduler thread started successfully.");
     }
-
+    else
+    {
+        _running.store(false);
+    }
 }
 
 void SCHCLoRaWAN_NS_MQTT_Stack::onConnectWrapper(mosquitto *mosq, void *obj, int rc)
@@ -359,12 +357,7 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
             return; 
         }
 
-
-        if(_appConfig.lorawan_node.node_class.compare("A") == 0)
-        {
-            _schcCore.enqueueFromStack(std::move(msgStack));
-        }
-        else if(_appConfig.lorawan_node.node_class.compare("C") == 0)
+        if(_appConfig.schc.satellite_emulation.compare("true") == 0)
         {
             SPDLOG_DEBUG("[SAT-SIM] Satellite simulation mode activated");
             int delay = 45; // seconds
@@ -377,11 +370,15 @@ void SCHCLoRaWAN_NS_MQTT_Stack::onMessage(mosquitto *mosq, void *obj, const mosq
 
 
             SPDLOG_DEBUG("[SAT-SIM] Message queued. Will be delivered to the Core in {} seconds", delay);
+
+        }
+        else if (_appConfig.schc.satellite_emulation.compare("false") == 0)
+        {
+            _schcCore.enqueueFromStack(std::move(msgStack));
         }
         else
         {
             SPDLOG_DEBUG("Only Class A and C are supported. Check the lorawan_node.class option in the configuration");
-
         }
 
     }

@@ -1,0 +1,48 @@
+{
+  "general": {
+    "cores": ["schc_core","backhaul_core"]
+  },
+  "logging": {
+    "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
+    "log_level": "DEBUG",
+    "log_file": "log.txt"
+  },
+  "backhaul_core": {
+    "_comment": "IPv6 socket configuration",
+    "6to4_tunnel": "true",
+    "interface": "he-ipv6"
+  },
+  "schc_core": {
+    "_comment_1": ["schc_type: schc_node, schc_gateway"],
+    "_comment_2": ["schc_l2_protocol: lorawan_at, lorawan_ns_mqtt, lorawan_ns_http, myriota_at, myriota_ns_http"],
+    "_comment_3": ["schc_ack_mechanism: ack_end_win, ack_end_session, compound_ack, arq_fec"],
+    "schc_type": "schc_gateway",
+    "schc_l2_protocol": "lorawan_ns_mqtt",
+    "schc_ack_mechanism": "arq_fec",
+    "error_prob": "0.5",
+    "overhead": "0.3",
+    "satellite_emulation": "false"
+  },
+  "mqtt": {
+    "host": "nam1.cloud.thethings.network",
+    "port": "1883",
+    "username": "rmunoz-schc@ttn",
+    "password": "NNSXS.3D4H7AG7HBU7ADODLF6LEKINF43XPNX3E7GFPYQ.HAQYDGYFWG3A4QONTPKUG2TPQK2CVUCPS6442RFCUISBMGVHWLLA",
+    "devices":["AC1F09FFFE0CEFD0"]
+  },
+  "lorawan_node": {
+    "serial_port":"/dev/ttyACM0",
+    "deveui": "AC1F09FFFE0CEFD0",
+    "appeui" : "0000000000000001",
+    "appkey" : "1F0B7A29E13C0D1D6E7CA1913DF81464",
+    "data_rate": "DR5",
+    "class": "C"
+  },
+  "myriota_node": {
+    "serial_port":"/dev/ttyACM0"
+  },
+  "myriota_http": {
+    "port":"18080",
+    "ngrok_user":"rodrigo"
+  }
+}

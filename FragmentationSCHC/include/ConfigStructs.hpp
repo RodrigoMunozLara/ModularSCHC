@@ -21,7 +21,8 @@ struct SCHCCoreConfig {
     std::string schc_type;
     std::string schc_ack_mechanism;
     double error_prob;
-    double overhead;    
+    double overhead;
+    std::string satellite_emulation;
 };
 
 struct MQTTConfig {
