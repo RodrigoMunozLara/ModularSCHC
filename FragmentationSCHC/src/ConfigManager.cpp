@@ -57,7 +57,7 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     {
         config.end_devices = j["end_devices"].get<std::map<std::string, std::string>>();
         std::cout << "--- Registered end devices ---" << std::endl;
-        for (const auto& [dev_eui, ipv6] : config.end_devices) 
+        for (const auto& [ipv6, dev_eui] : config.end_devices) 
         {
             std::cout << "DevEUI: " << dev_eui << " => IPv6: " << ipv6 << std::endl;
         }
