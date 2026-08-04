@@ -4,8 +4,7 @@
   },
   "logging": {
     "_comment": "log_level: TRACE, DEBUG, INFO, WARN, ERROR, CRITICAL, OFF",
-    "log_level": "DEBUG",
-    "log_file": "log_fer0__dr4.txt"
+    "log_level": "DEBUG"
   },
   "backhaul_core": {
     "_comment": "IPv6 socket configuration",
@@ -19,8 +18,9 @@
     "schc_type": "schc_node",
     "schc_l2_protocol": "lorawan_at",
     "schc_ack_mechanism": "arq_fec",
-    "error_prob": "0.2",
-    "overhead": "0.4"
+    "error_prob": "0.5",
+    "overhead": "0.3",
+    "satellite_emulation": "false"
   },
   "mqtt": {
     "host": "nam1.cloud.thethings.network",
@@ -34,7 +34,8 @@
     "deveui": "AC1F09FFFE0CEFD0",
     "appeui" : "0000000000000001",
     "appkey" : "1F0B7A29E13C0D1D6E7CA1913DF81464",
-    "data_rate": "DR4"
+    "data_rate": "DR5",
+    "class": "C"
   },
   "myriota_node": {
     "serial_port":"/dev/ttyACM0"
@@ -42,5 +43,8 @@
   "myriota_http": {
     "port":"18080",
     "ngrok_user":"rodrigo"
+  },
+  "end_devices":{
+    "2001:470:1f2b:12e::6": "AC1F09FFFE0CEFD0"
   }
 }

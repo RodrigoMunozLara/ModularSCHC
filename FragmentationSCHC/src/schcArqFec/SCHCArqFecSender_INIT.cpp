@@ -145,7 +145,16 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
         _ctx._schcSession._msgTimesType_vector.push_back(1);
 
         /* Envía el mensaje a la capa 2*/
-        _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
+        if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+        {
+
+            _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg, _ctx._dev_id);
+        }
+        else
+        {
+            _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
+        }
+        
 
         
         _ctx._currentTile_ptr    = _ctx._currentTile_ptr + n_tiles_to_send;

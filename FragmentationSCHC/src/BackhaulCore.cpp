@@ -318,7 +318,8 @@ void BackhaulCore::handleRxFrame(const std::vector<uint8_t>& frame)
     IPv6Addresses addrs = getIPv6Addresses(frame);
     SPDLOG_DEBUG("IPv6 src: {}", addrs.src);
     SPDLOG_DEBUG("IPv6 dst: {}", addrs.dst);
-
+    msg->meta.source_address = addrs.src;
+    msg->meta.destination_address = addrs.dst;
 
 
     // Forward immediately to the Orchestrator

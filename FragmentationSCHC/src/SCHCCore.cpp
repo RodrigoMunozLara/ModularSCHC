@@ -147,7 +147,8 @@ void SCHCCore::stop()
 
 void SCHCCore::runTx()
 {
-    /*
+    /*  Remove message from txQueue. txQueue is used to receive message from Backhaul. Example: IPv6 packet
+    *
     * - Remove message from txQueue
     * - Obtain an UPLINK or DOWNLINK unassigned session
     * - Start compress process
@@ -183,6 +184,7 @@ void SCHCCore::runTx()
         if (!msg) {
             continue;
         }
+
 
         if(_appConfig.schc.schc_type.compare("schc_node") == 0)
         {
@@ -233,6 +235,21 @@ void SCHCCore::runTx()
         else if (_appConfig.schc.schc_type.compare("schc_gateway") == 0)
         {
             SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned DOWNLINK session");
+
+            /* We check if there is a node registered with that IPv6 address in the configuration file.*/
+            std::string dest_address = msg->meta.destination_address;
+            auto itera = _appConfig.end_devices.find(dest_address);  
+            std::string deviceId;
+            if (itera != _appConfig.end_devices.end()) {
+                deviceId = _appConfig.end_devices[dest_address];
+                SPDLOG_DEBUG("DevEUI - IPv6 association exist! : {} - {}", deviceId, dest_address);
+            }
+            else 
+            {
+                SPDLOG_ERROR("The DevEUI does not exist in the configuration. Discarting Message");
+                continue;
+            }
+
             /* Obtaining a unsigned session*/
             if (_downlinkSessionCounter < _downlinkSessionCounterMax)
             {
@@ -249,8 +266,9 @@ void SCHCCore::runTx()
 
                 if (inserted) 
                 {
-                    it->second->init(); 
-                    
+                    it->second->init();
+                    it->second->setDevId(deviceId);
+                      
                     SPDLOG_DEBUG("DOWNLINK Session with id '{}' started", currentId);
 
                     auto evMsg = std::make_unique<EventMessage>();
@@ -285,8 +303,8 @@ void SCHCCore::runTx()
 
 void SCHCCore::runRx()
 {
-    /*
-    * - Remove message from protoQueue. protoQueue is used to receive message from Protocol Stack
+    /* Remove message from protoQueue. protoQueue is used to receive message from Protocol Stack. Example: SCHC messages
+    *  
     * - Obtain an unassigned UPLINK or DOWNLINK session or obtain a session related to the received message.
     * - If you decide get an unassigned UPLINK or DOWNLINK session:
     *       - Check whether reassembly is necessary
@@ -531,6 +549,10 @@ void SCHCCore::enqueueFromStack(std::unique_ptr<StackMessage> msg)
 
 void SCHCCore::handleRxFrame(const std::vector<uint8_t>& frame)
 {
+    /* This function is called by the SCHC session after it has 
+    reconstructed the SCHC packet. It uses it to send the message 
+    to the backhaul network.*/
+
     auto msg = std::make_unique<RoutedMessage>();
 
     // Populate minimal routing metadata

@@ -23,8 +23,10 @@ enum class ProtocolType {
 };
 
 struct RoutedMetadata {
-    CoreId ingress;
+    CoreId      ingress;
     std::size_t payloadSize;
+    std::string source_address;
+    std::string destination_address;
 };
 
 struct RoutedMessage {

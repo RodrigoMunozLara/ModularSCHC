@@ -78,7 +78,7 @@ class SCHCArqFecSender: public ISCHCStateMachine
         uint32_t                            _current_L2_MTU;
 
         bool                                _send_schc_ack_req_flag;
-
+        std::string                         _dev_id;
 
 
 

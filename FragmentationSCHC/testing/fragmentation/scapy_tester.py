@@ -8,7 +8,7 @@ pkt = eth / ipv6 / icmp
 pkt.show()
 sendp(pkt, iface="lo")
 
-# waitTime = 360  # Tiempo en segundos entre cada paquete
+# waitTime = 150  # Tiempo en segundos entre cada paquete
 # N = 5
 # ahora = datetime.now()
 # formateado = ahora.strftime("Hora de Inicio: %d/%m/%Y %H:%M:%S")
