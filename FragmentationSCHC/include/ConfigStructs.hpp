@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 struct GeneralConfig {
     std::vector<std::string> cores;
@@ -52,12 +53,13 @@ struct Myriota_HTTP_Config {
 };
 
 struct AppConfig {
-    GeneralConfig general;
-    LoggingConfig logging;
-    LoRaWAN_Node_Config lorawan_node;
-    BackhaulCoreConfig backhaul;
-    MQTTConfig mqtt;
-    SCHCCoreConfig schc;
-    Myriota_Node_Config myriota_node;
-    Myriota_HTTP_Config myriota_http;
+    GeneralConfig                       general;
+    LoggingConfig                       logging;
+    LoRaWAN_Node_Config                 lorawan_node;
+    BackhaulCoreConfig                  backhaul;
+    MQTTConfig                          mqtt;
+    SCHCCoreConfig                      schc;
+    Myriota_Node_Config                 myriota_node;
+    Myriota_HTTP_Config                 myriota_http;
+    std::map<std::string, std::string>  end_devices;
 };

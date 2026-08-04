@@ -52,6 +52,22 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     config.myriota_http.port        = std::stoi(j["myriota_http"]["port"].get<std::string>());
     config.myriota_http.ngrok_user  = j["myriota_http"]["ngrok_user"].get<std::string>();
 
+    // Load association betweem ed devices and IPv6 address
+    if (j.contains("end_devices") && j["end_devices"].is_object())
+    {
+        config.end_devices = j["end_devices"].get<std::map<std::string, std::string>>();
+        std::cout << "--- Registered end devices ---" << std::endl;
+        for (const auto& [dev_eui, ipv6] : config.end_devices) 
+        {
+            std::cout << "DevEUI: " << dev_eui << " => IPv6: " << ipv6 << std::endl;
+        }
+    } else {
+        std::cerr << "Error: 'end_devices' section is missing or invalid in " << filePath << "\n";
+        return false;
+    }
+
+
+
     return true;
 }
 
@@ -91,4 +107,7 @@ spdlog::level::level_enum parseLogLevel(const std::string& levelStr)
 
     return spdlog::level::info; // Por defecto
 }
+
+
+
 
