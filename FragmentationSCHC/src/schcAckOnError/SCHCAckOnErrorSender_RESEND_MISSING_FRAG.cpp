@@ -20,7 +20,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
         return;
     }
 
-    SCHCNodeMessage encoder;           // encoder
+    SCHCMessage encoder;           // encoder
 
     // Buscar el primer cero y cuenta los ceros contiguos
     int adjacent_tiles      = 0;
@@ -139,7 +139,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
         //     if((_ctx._last_confirmed_window == _ctx._nWindows-1) && _ctx._bitmapArray[_ctx._currentWindow][_ctx._windowSize-1] == 0)
         //     {
         //         /* Sending a SCHC All-1 fragment */
-        //         SCHCNodeMessage    encoder_all_1;
+        //         SCHCMessage    encoder_all_1;
 
         //         /* Crea un mensaje SCHC en formato hexadecimal */
         //         std::vector<uint8_t> schc_all_1_message = encoder_all_1.create_all_1_fragment(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow, _ctx._rcs, _ctx._lastTile);
@@ -155,7 +155,7 @@ void SCHCAckOnErrorSender_RESEND_MISSING_FRAG::execute(const std::vector<uint8_t
 
         //     /* Se envía un SCHC ACK REQ para empujar el envio en el downlink
         //     del SCHC ACK enviado por el SCHC Gateway */
-        //     SCHCNodeMessage encoder_ack_req;
+        //     SCHCMessage encoder_ack_req;
 
         //     /* Crea un mensaje SCHC en formato hexadecimal */
         //     std::vector<uint8_t>   schc_message = encoder_ack_req.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._last_confirmed_window);

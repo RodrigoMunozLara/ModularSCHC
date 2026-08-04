@@ -1,7 +1,7 @@
 #pragma once
 
 #include "schcAckOnError/SCHCAckOnErrorSender.hpp"
-#include "schcAckOnError/SCHCNodeMessage.hpp"
+#include "SCHCMessage.hpp"
 
 #include "interfaces/ISCHCState.hpp"
 #include "interfaces/ISCHCStack.hpp"

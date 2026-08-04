@@ -21,7 +21,7 @@ void SCHCAckOnErrorSender_SEND::execute(const std::vector<uint8_t>& msg)
     int n_tiles_to_send     = 0;    // number of tiles to send
     int n_remaining_tiles   = 0;    // Number of remaining tiles to send (used in session confirmation mode)
    
-    SCHCNodeMessage encoder;        // encoder 
+    SCHCMessage encoder;        // encoder 
 
     if(_ctx._ackMechanism == SCHCAckMechanism::ACK_END_WIN)
     {
@@ -119,7 +119,7 @@ void SCHCAckOnErrorSender_SEND::execute(const std::vector<uint8_t>& msg)
             /* ******************* Enviando SCHC ACK REQ ***************************** */
             /* Se envía un SCHC ACK REQ para empujar el envio en el downlink
             del SCHC ACK enviado por el SCHC Gateway */
-            SCHCNodeMessage encoder;
+            SCHCMessage encoder;
                  
             /* Crea un mensaje SCHC en formato hexadecimal */
             std::vector<uint8_t>   schc_message = encoder.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow);

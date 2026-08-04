@@ -11,7 +11,7 @@ SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::~SCHCAckOnErrorReceiver_WAIT_X_MISSI
 
 void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8_t>& msg)
 {
-    SCHCGWMessage   decoder;
+    SCHCMessage   decoder;
     SCHCMsgType     msg_type;       // message type decoded. See message type in SCHC_GW_Macros.hpp
     uint8_t         w;              // w recibido en el mensaje
     uint8_t         dtag;           // dtag recibido en el mensajes
@@ -39,7 +39,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             SPDLOG_DEBUG("Receiving a SCHC Regular fragment");
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();
@@ -87,7 +87,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             if((c == 1) || valid_rcs)
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 int c                               = 1;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -123,7 +123,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
              se debe enviar un ACK */
 
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             w                   = decoder.get_w();
@@ -142,7 +142,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
                 uint8_t c                           = 1;
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -170,7 +170,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
 
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
                 uint8_t c                           = 0;
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -189,7 +189,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
         {
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
 
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             w = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -209,7 +209,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             if((c == 1) || valid_rcs)
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 int c                               = 1;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -239,7 +239,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             else
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
@@ -271,7 +271,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             SPDLOG_DEBUG("Receiving a SCHC Regular fragment");
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();
@@ -328,7 +328,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
                     /* valid_rcs = true --> siempre se responde con un SCHC ACK con c = 1*/
                     SPDLOG_DEBUG("Sending SCHC ACK");
-                    SCHCGWMessage    encoder;
+                    SCHCMessage    encoder;
                     int c                               = 1;
                     std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                     std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -353,7 +353,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                     if(c == 0)
                     {
                         SPDLOG_DEBUG("Sending SCHC ACK");
-                        SCHCGWMessage    encoder;
+                        SCHCMessage    encoder;
                         std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char    
                         std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);
                         _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
@@ -370,7 +370,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 Se envia un ACK para la última ventana */
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 int c                               = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
@@ -389,7 +389,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
 
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             uint8_t w_received = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -401,7 +401,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             if(rcs_result)  // * Integrity check: success
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 int c                               = 1;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
@@ -426,7 +426,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                     if(c == 0)
                     {
                         SPDLOG_DEBUG("Sending SCHC ACK");
-                        SCHCGWMessage    encoder;
+                        SCHCMessage    encoder;
                         std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char    
                         std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);
                         _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
@@ -443,7 +443,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 Se envia un ACK para la última ventana */
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 int c                               = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
@@ -462,7 +462,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
         else if(msg_type == SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG)
         {
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
@@ -484,7 +484,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
                 uint8_t c                           = get_c_from_bitmap(w);
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -512,7 +512,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
 
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
                 uint8_t c                           = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -548,7 +548,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();            
@@ -596,7 +596,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             if(rcs_result)
             {
                 SPDLOG_DEBUG("Sending SCHC Compound ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 std::vector<uint8_t>    windows_with_error;  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
@@ -618,7 +618,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
 
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
 
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             w = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -630,7 +630,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
             if(rcs_result)
             {
                 SPDLOG_DEBUG("Sending SCHC Compound ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 std::vector<uint8_t>    windows_with_error;  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
@@ -657,7 +657,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 }
                 windows_with_error.push_back(_ctx._last_window);
 
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
@@ -674,7 +674,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
         else if(msg_type == SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG)
         {
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
@@ -695,7 +695,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
                 uint8_t c                           = get_c_from_bitmap(w);                     // obtiene el valor de c en base al _bitmap_array
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -731,7 +731,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 windows_with_error.push_back(_ctx._last_window);
          
 
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);

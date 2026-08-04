@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SCHCGWMessage.hpp"
+#include "SCHCMessage.hpp"
 #include "interfaces/ISCHCState.hpp"
 #include "interfaces/ISCHCStack.hpp"
 #include "Types.hpp"

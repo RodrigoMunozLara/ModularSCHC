@@ -39,7 +39,7 @@ SCHCArqFecReceiver_INIT::~SCHCArqFecReceiver_INIT()
 
 void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
 {
-    SCHCGWMessage           decoder;
+    SCHCMessage           decoder;
     SCHCMsgType             msg_type;       // message type decoded. See message type in SCHC_GW_Macros.hpp
     uint8_t                 w;              // w recibido en el mensaje
     uint8_t                 dtag = 0;       // dtag no es usado en LoRaWAN
@@ -88,7 +88,7 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
         // }
 
         /* Decoding el SCHC fragment */
-        decoder.decode_message(_ctx._protoType, _ctx._ruleID, msg);
+        decoder.decodeMsg(_ctx._protoType, _ctx._ruleID, msg);
         fcn = decoder.get_fcn();
         w   = decoder.get_w();
 

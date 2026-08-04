@@ -3,7 +3,7 @@
 #include "interfaces/ISCHCState.hpp"
 #include "interfaces/ISCHCStack.hpp"
 #include "schcArqFec/SCHCArqFecSender.hpp"
-#include "schcAckOnError/SCHCNodeMessage.hpp"
+#include "SCHCMessage.hpp"
 #include <spdlog/spdlog.h>
 #include "spdlog/fmt/bin_to_hex.h"
 #include <memory>

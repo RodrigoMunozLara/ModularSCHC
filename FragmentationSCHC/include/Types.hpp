@@ -68,6 +68,7 @@ enum class SCHCFragMode {
 };
 
 enum class SCHCAckMechanism{
+    ACK_NONE = 0,   // Actúa como tu null
     ACK_END_WIN,
     ACK_END_SES,
     ACK_COMPOUND,

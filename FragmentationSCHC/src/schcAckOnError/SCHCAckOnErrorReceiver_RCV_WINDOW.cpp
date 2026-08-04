@@ -45,7 +45,7 @@ SCHCAckOnErrorReceiver_RCV_WINDOW::~SCHCAckOnErrorReceiver_RCV_WINDOW()
 void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 {
 
-    SCHCGWMessage           decoder;
+    SCHCMessage           decoder;
     SCHCMsgType             msg_type;       // message type decoded. See message type in SCHC_GW_Macros.hpp
     uint8_t                 w;              // w recibido en el mensaje
     uint8_t                 dtag = 0;       // dtag no es usado en LoRaWAN
@@ -93,7 +93,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();
@@ -141,7 +141,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             if((fcn - tiles_in_payload) <= 0)
             {
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage    encoder;
+                SCHCMessage    encoder;
                 uint8_t c                           = get_c_from_bitmap(w);    // Bien usado
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
@@ -174,7 +174,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
              se debe enviar un ACK */
 
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
             w                   = decoder.get_w();
@@ -194,7 +194,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage encoder;
+                SCHCMessage encoder;
                 uint8_t c                           = 1;                     // obtiene el valor de c en base al _bitmap_array
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);  
@@ -223,7 +223,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage         encoder;
+                SCHCMessage         encoder;
  
                 uint8_t c                           = 0;
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
@@ -254,7 +254,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             Motivo 2: Nunca se envió un ACK porque no detectó el fin de la ventana. */
 
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             w = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -262,7 +262,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");
 
             SPDLOG_DEBUG("Sending SCHC ACK");
-            SCHCGWMessage    encoder;
+            SCHCMessage    encoder;
             uint8_t c                           = _ctx._last_ack_sent_c;
             std::vector<uint8_t> buffer         = _ctx._last_ack_sent_buffer;  
 
@@ -303,7 +303,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             _ctx._counter++;
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();
@@ -362,7 +362,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             // return 0;
 
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
             _ctx._last_window   = decoder.get_w();
@@ -382,7 +382,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 _ctx._bitmapArray[w][_ctx._windowSize-1] = 1;
 
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage encoder;
+                SCHCMessage encoder;
                 uint8_t c                           = 1;                     // obtiene el valor de c en base al _bitmap_array
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);  
@@ -416,7 +416,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                     if(c == 0)
                     {
                         SPDLOG_DEBUG("Sending SCHC ACK");
-                        SCHCGWMessage encoder;
+                        SCHCMessage encoder;
                         _ctx._last_confirmed_window         = i;
                         std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char  
                         std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);  
@@ -441,7 +441,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 /* Si llegó a esta parte del codigo es porque ninguna ventana tiene errores. 
                 Por lo tanto la ventana con errores es la última.*/
                 SPDLOG_DEBUG("Sending SCHC ACK");
-                SCHCGWMessage encoder;
+                SCHCMessage encoder;
                 int c                               = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);  
@@ -463,7 +463,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
         {
 
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             uint8_t w_received          = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -483,7 +483,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 {
                     SPDLOG_DEBUG("Sending SCHC ACK");
 
-                    SCHCGWMessage    encoder;
+                    SCHCMessage    encoder;
                     _ctx._last_confirmed_window         = i;
                     std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char  
                     std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);  
@@ -509,7 +509,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             /* Si llegó a esta parte del codigo es porque ninguna ventana tiene errores. 
             Por lo tanto la ventana con errores es la última.*/
             SPDLOG_DEBUG("Sending SCHC ACK");
-            SCHCGWMessage    encoder;
+            SCHCMessage    encoder;
             uint8_t c                           = 0;
             std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char  
             std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector); 
@@ -556,7 +556,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             _ctx._counter++;
 
             /* Decoding el SCHC fragment */
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
             fcn             = decoder.get_fcn();
             w               = decoder.get_w();
@@ -613,7 +613,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             //return;
 
             SPDLOG_DEBUG("Receiving a SCHC All-1 message");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
             _ctx._lastTileSize  = decoder.get_schc_payload_len()/8;   // largo del payload SCHC. En bits
             _ctx._last_window   = decoder.get_w();
@@ -632,7 +632,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t][%-8!s][%-8!!] %v");    
 
                 SPDLOG_DEBUG("Sending SCHC Compound ACK");            
-                SCHCGWMessage encoder;
+                SCHCMessage encoder;
                 std::vector<uint8_t> windows_with_error;   // vector vacío  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
@@ -668,7 +668,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 }
                 windows_with_error.push_back(_ctx._last_window); // Dado que no hay como validar si la ultima ventana tiene error, se envia la ultima de todas formas
 
-                SCHCGWMessage encoder; 
+                SCHCMessage encoder; 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
@@ -690,7 +690,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
 
 
             SPDLOG_DEBUG("Receiving SCHC ACK REQ");
-            decoder.decode_message(ProtocolType::LORAWAN, _ctx._ruleID, msg);
+            decoder.decodeMsg(ProtocolType::LORAWAN, _ctx._ruleID, msg);
             uint8_t w_received          = decoder.get_w();
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -705,7 +705,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             if(rcs_result)    // * Integrity check: success
             {
                 SPDLOG_DEBUG("Sending SCHC Compound ACK");
-                SCHCGWMessage encoder;
+                SCHCMessage encoder;
                 std::vector<uint8_t> windows_with_error;   // vector vacío  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
@@ -734,7 +734,7 @@ void SCHCAckOnErrorReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 }
                 windows_with_error.push_back(_ctx._last_window);                       
 
-                SCHCGWMessage encoder; 
+                SCHCMessage encoder; 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
                 _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);

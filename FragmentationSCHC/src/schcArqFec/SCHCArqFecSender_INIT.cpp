@@ -1,6 +1,6 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_INIT.hpp"
-#include <schcAckOnError/SCHCNodeMessage.hpp>
+#include "SCHCMessage.hpp"
 #include <spdlog/fmt/ranges.h>
 #include "SCHCSession.hpp"
 
@@ -107,7 +107,7 @@ void SCHCArqFecSender_INIT::execute(const std::vector<uint8_t>& msg)
     int n_tiles_to_send     = 0;    // number of tiles to send
     int n_remaining_tiles   = 0;    // Number of remaining tiles to send (used in session confirmation mode)
 
-    SCHCNodeMessage encoder;        // encoder 
+    SCHCMessage encoder;        // encoder 
 
     /* Determine the number of tiles remaining to be sent.*/
     if(_ctx._currentWindow == (_ctx._nWindows - 1))

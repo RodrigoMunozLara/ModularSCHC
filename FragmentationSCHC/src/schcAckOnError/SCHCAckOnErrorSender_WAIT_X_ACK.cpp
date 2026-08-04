@@ -12,7 +12,7 @@ SCHCAckOnErrorSender_WAIT_X_ACK::~SCHCAckOnErrorSender_WAIT_X_ACK()
 
 void SCHCAckOnErrorSender_WAIT_X_ACK::execute(const std::vector<uint8_t>& msg)
 {
-    SCHCNodeMessage decoder;
+    SCHCMessage decoder;
     SPDLOG_DEBUG("Decoding Message...");
     SCHCMsgType msg_type = decoder.get_msg_type(ProtocolType::LORAWAN, _ctx._ruleID, msg);
 
@@ -167,7 +167,7 @@ void SCHCAckOnErrorSender_WAIT_X_ACK::timerExpired()
         /* ******************* SCHC ACK REQ ********************************* */
         /* Se envía un SCHC ACK REQ para empujar el envio en el downlink
         del SCHC ACK enviado por el SCHC Gateway */
-        SCHCNodeMessage encoder_2;
+        SCHCMessage encoder_2;
         auto schc_ack_req_msg       = encoder_2.create_ack_request(_ctx._ruleID, _ctx._dTag, _ctx._currentWindow);
 
         /* Imprime los mensajes para visualizacion ordenada */

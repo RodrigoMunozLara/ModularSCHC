@@ -1,6 +1,6 @@
 #include "schcArqFec/SCHCArqFecSender.hpp"
 #include "schcArqFec/SCHCArqFecSender_END.hpp"
-#include <schcAckOnError/SCHCNodeMessage.hpp>
+#include "SCHCMessage.hpp"
 #include "SCHCSession.hpp"
 
 

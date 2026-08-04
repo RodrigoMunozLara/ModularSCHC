@@ -16,7 +16,7 @@ void SCHCArqFecReceiver_END::execute(const std::vector<uint8_t>& msg)
 {
     if(!msg.empty())
     {
-        SCHCGWMessage           decoder;
+        SCHCMessage           decoder;
         SCHCMsgType             msg_type;       // message type decoded. See message type in SCHC_GW_Macros.hpp
         uint8_t                 w;              // w recibido en el mensaje
         uint8_t                 dtag = 0;       // dtag no es usado en LoRaWAN
@@ -37,7 +37,7 @@ void SCHCArqFecReceiver_END::execute(const std::vector<uint8_t>& msg)
 
             /* Enviando ACK para confirmar la sesion */
             SPDLOG_DEBUG("Sending SCHC ACK");
-            SCHCGWMessage    encoder;
+            SCHCMessage    encoder;
             uint8_t c                   = 1;
             uint8_t w                   = 3;
             std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
