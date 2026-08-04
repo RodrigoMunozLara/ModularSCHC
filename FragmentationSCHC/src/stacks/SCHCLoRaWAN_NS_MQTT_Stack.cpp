@@ -120,12 +120,14 @@ uint32_t SCHCLoRaWAN_NS_MQTT_Stack::getMtu()
         else if(_dr==3) return 53 - fOpt;
         else if(_dr==4) return 125 - fOpt;
         else if(_dr==4) return 242 - fOpt;
+        else if(_dr==8) return 53 - fOpt;
     }
     else
     {
         if(_dr==0 || _dr==1 || _dr==2) return 51 - fOpt;
         else if(_dr==3) return 115 - fOpt;
         else if(_dr==4 || _dr==5) return 222 - fOpt;
+        else if(_dr==8) return 53 - fOpt;
     }
 
 
