@@ -47,9 +47,17 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
                 /* [SAT-SIM] almaceno el tiempo del All-1 para post-procesamiento */
                 save_time_all_1();
 
-                /* Envía el mensaje a la capa 2*/
-                _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
 
+                /* Envía el mensaje a la capa 2*/
+                if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+                {
+
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message, _ctx._dev_id);
+                }
+                else
+                {
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
+                }
 
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_SEND --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
@@ -128,7 +136,16 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
             save_time();
 
             /* Envía el mensaje a la capa 2*/
-            _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+            if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+            {
+
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message, _ctx._dev_id);
+            }
+            else
+            {
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+            }
+
 
             _ctx._currentTile_ptr    = _ctx._currentTile_ptr + n_tiles_to_send;
 
@@ -171,9 +188,20 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
             /* Grabamos los tiempos para post procesamiento*/
             save_time();
 
-            /* Envía el mensaje a la capa 2*/
-            _ctx._stack->send_frame(_ctx._ruleID, schc_message);
             
+            /* Envía el mensaje a la capa 2*/
+            if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+            {
+
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message, _ctx._dev_id);
+            }
+            else
+            {
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+            }
+
+
+
             _ctx._currentTile_ptr    = _ctx._currentTile_ptr + n_tiles_to_send;
         
             /* ******************* SCHC ALL-1 *********************************** */
@@ -189,8 +217,20 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
                 /* [SAT-SIM] almaceno el tiempo del All-1 para post-procesamiento */
                 save_time_all_1();
 
+
                 /* Envía el mensaje a la capa 2*/
-                _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
+                if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+                {
+
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message, _ctx._dev_id);
+                }
+                else
+                {
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message);
+                }
+
+
+
 
             }
 
@@ -235,8 +275,18 @@ void SCHCArqFecSender_SEND::timerExpired()
     _ctx._schcSession._msgTimes_vector.push_back(elapsed);
     _ctx._schcSession._msgTimesType_vector.push_back(1);
 
+
+
     /* Envía el mensaje a la capa 2*/
-    _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
+    if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+    {
+
+        _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg, _ctx._dev_id);
+    }
+    else
+    {
+        _ctx._stack->send_frame(_ctx._ruleID, _ctx._first_fragment_msg);
+    }
 
     _ctx.executeAgain();
 

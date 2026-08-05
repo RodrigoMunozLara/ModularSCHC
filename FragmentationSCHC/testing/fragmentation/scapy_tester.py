@@ -1,7 +1,7 @@
 from scapy.all import *
 
 eth = Ether(src="00:15:5d:02:6e:40", dst="00:00:00:00:00:00")
-ipv6 = IPv6(src="2001:470:1f2b:12e::6", dst="2001:4860:4860::8888")
+ipv6 = IPv6(src="2001:470:8:3c2::6", dst="2001:4860:4860::8888")
 icmp = ICMPv6EchoRequest(data='A'*903)
 pkt = eth / ipv6 / icmp
 

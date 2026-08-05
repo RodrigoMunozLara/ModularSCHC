@@ -157,8 +157,18 @@ void SCHCArqFecSender_WAIT_X_SESSION_ACK::timerExpired()
     /* [SAT-SIM] Almaceno el tiempo del ACK REQ para post-procesamiento */
     save_time_ack_req();
 
+
     /* Envía el mensaje a la capa 2*/
-    _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+    if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+    {
+
+        _ctx._stack->send_frame(_ctx._ruleID, schc_message, _ctx._dev_id);
+    }
+    else
+    {
+        _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+    }
+
 
     SPDLOG_DEBUG("There are no more windows with missing tiles.");
     SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");

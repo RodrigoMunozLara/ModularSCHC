@@ -187,7 +187,20 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
             encoder.print_msg(SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG, schc_message);
 
             /* Envía el mensaje a la capa 2*/
-            _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+            if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+            {
+
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message, _ctx._dev_id);
+            }
+            else
+            {
+                _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+            }
+
+
+
+
+
 
             /* Marca con 1 los tiles que se han retransmitido */
             for(int i = bitmap_ptr; i < (bitmap_ptr + n_tiles_to_send); i++)
@@ -229,8 +242,18 @@ void SCHCArqFecSender_RESEND_MISSING_FRAGS::execute(const std::vector<uint8_t>& 
                 save_time_ack_req();
 
                 /* Envía el mensaje a la capa 2*/
-                _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+                if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
+                {
 
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_message, _ctx._dev_id);
+                }
+                else
+                {
+                    _ctx._stack->send_frame(_ctx._ruleID, schc_message);
+                }
+
+
+                
                 SPDLOG_DEBUG("There are no more windows with missing tiles.");
                 SPDLOG_DEBUG("Changing STATE: From STATE_TX_RESEND_MISSING_FRAG --> STATE_TX_WAIT_x_SESSION_ACK");
                 _ctx._nextStateStr = SCHCArqFecSenderStates::STATE_WAIT_x_SESSION_ACK;
