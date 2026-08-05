@@ -121,6 +121,8 @@ SCHCArqFecSender::~SCHCArqFecSender()
 
 void SCHCArqFecSender::execute(const std::vector<uint8_t>& msg)
 {
+    _dev_id = _schcSession.getDevId();
+    
     if (msg.empty()) 
     {
         SPDLOG_DEBUG("Calling the execute() method of the current state");
