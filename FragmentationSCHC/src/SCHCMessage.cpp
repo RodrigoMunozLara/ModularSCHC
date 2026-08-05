@@ -327,18 +327,19 @@ std::vector<uint8_t> SCHCMessage::create_schc_ack_compound(uint8_t rule_id, uint
 
 SCHCMsgType SCHCMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, const std::vector<uint8_t>& msg)
 {
-    
+    uint8_t schc_header = msg[0];
+    int len = msg.size();
+    _fcn    = (0x3F) & schc_header;
+    _dtag   = 0;                      // In LoRaWAN, dtag is not used
+    _c      = (schc_header >> 5) & 0x01;
+    _w      = (schc_header >> 6) & 0x03;
+
+    SCHCLoRaWANFragRule         _rule_id;
+    if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
+    else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
+
     if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA)
     {
-        int len = msg.size();
-        uint8_t schc_header = msg[0];
-        uint8_t _c = (schc_header >> 5) & 0x01;
-
-        SCHCLoRaWANFragRule         _rule_id;
-        if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-        else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
-
-
         if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==1 && len==2)
             _msg_type = SCHCMsgType::SCHC_RECEIVER_ABORT_MSG;
         else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==1)
@@ -356,21 +357,9 @@ SCHCMsgType SCHCMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, co
         else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID && len>1)
             _msg_type = SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG;
 
-
-
-
     }
     else if(protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS)
     {
-        uint8_t schc_header = msg[0];
-        int len = msg.size();
-        uint8_t fcn_mask = 0x3F;                // Mask definition
-        uint8_t _fcn = fcn_mask & schc_header;
-        uint8_t _dtag = 0;                      // In LoRaWAN, dtag is not used
-
-        SCHCLoRaWANFragRule         _rule_id;
-        if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-        else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
 
         if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && len==1 && _fcn==0)
             _msg_type = SCHCMsgType::SCHC_ACK_REQ_MSG;
@@ -396,17 +385,21 @@ SCHCMsgType SCHCMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, co
 
 uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::vector<uint8_t>& msg, SCHCAckMechanism ack_type, std::vector<std::vector<uint8_t>>* bitmap_array)
 {
+    uint8_t schc_header = msg[0];
+    int len     = msg.size();
+    _fcn        = (0x3F) & schc_header;
+    _dtag       = 0;                      // In LoRaWAN, dtag is not used
+    _c          = (schc_header >> 5) & 0x01;
+    _w          = (schc_header >> 6) & 0x03;
+
+    SCHCLoRaWANFragRule         _rule_id;
+    if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
+    else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
+
     if(protocol==ProtocolType::LORAWAN || protocol==ProtocolType::MYRIOTA)
     {
-        int len = msg.size();
-
-        SCHCLoRaWANFragRule         _rule_id;
-        if(rule_id == 20)
+        if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID)
         {
-            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-            uint8_t schc_header = msg[0];
-            _c = (schc_header >> 5) & 0x01;
-            _w = (schc_header >> 6) & 0x03;
 
             if(_c==1 && len==2 && msg[1] == 0xFF)
             {
@@ -494,18 +487,9 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
                 }
             }
             
-            
-
         }
-        else if (rule_id == 21)
+        else if (_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID)
         {
-            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
-
-            uint8_t schc_header = msg[0];          
-            _w                  = (schc_header >> 6) & 0x03;
-            _fcn                = schc_header & 0x3F;
-            _dtag               = 0;                            // In LoRaWAN, dtag is not used
-
             if(len==1 && _fcn==0)
             {
                 SPDLOG_DEBUG("Decoding SCHC ACK REQ message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
@@ -534,7 +518,6 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
                 std::copy(msg.begin()+1, msg.end(), _schc_payload.begin());
                 SPDLOG_DEBUG("Decoding SCHC Regular message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
             }   
-
 
         }
         else
@@ -545,18 +528,8 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
     }
     else if(protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS)
     {
-        int len = msg.size();
-
-        SCHCLoRaWANFragRule         _rule_id;
-        if(rule_id == 20)
+        if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID)
         {
-            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
-
-            uint8_t schc_header = msg[0];          
-            _w                  = (schc_header >> 6) & 0x03;
-            _fcn                = schc_header & 0x3F;
-            _dtag               = 0;                            // In LoRaWAN, dtag is not used
-
             if(len==1 && _fcn==0)
             {
                 SPDLOG_DEBUG("Decoding SCHC ACK REQ message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
@@ -587,14 +560,8 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
             }   
 
         }
-        else if (rule_id == 21)
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID)
         {
-            _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
-
-            uint8_t schc_header = msg[0];
-            _c = (schc_header >> 5) & 0x01;
-            _w = (schc_header >> 6) & 0x03;
-
             if(_c==1 && len==2 && msg[1] == 0xFF)
             {
                 // TODO: Se ha recibido un SCHC Receiver-Abort.
@@ -680,8 +647,7 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
                     }
                 }
             }
-            
-        
+             
         }
 
     }
