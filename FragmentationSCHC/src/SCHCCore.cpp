@@ -189,6 +189,17 @@ void SCHCCore::runTx()
         if(_appConfig.schc.schc_type.compare("schc_node") == 0)
         {
             SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned UPLINK session");
+
+            /* I check if the incoming packet has a source IP address equal to that of the node registered in the "lorawan_node-->ipv6_address" section*/
+            std::string src_addr        = msg->meta.source_address;
+            std::string node_ipv6_adr   = _appConfig.lorawan_node.ipv6_address;
+            if(node_ipv6_adr.compare(src_addr) != 0)
+            {
+                SPDLOG_ERROR("The packet has a source IPv6 address that does not match that of the node. Discarting Message");
+                continue;
+            }
+
+
             /* Obtaining a unsigned session*/
             if (_uplinkSessionCounter < _uplinkSessionCounterMax)
             {

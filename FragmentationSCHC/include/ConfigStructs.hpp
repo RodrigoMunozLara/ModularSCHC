@@ -41,6 +41,7 @@ struct LoRaWAN_Node_Config {
     std::string appeui;
     std::string appkey;
     std::string node_class;
+    std::string ipv6_address;
 };
 
 struct Myriota_Node_Config {

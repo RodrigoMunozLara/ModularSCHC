@@ -94,8 +94,8 @@ std::string SCHCLoRaWAN_NS_MQTT_Stack::send_frame(int ruleid, std::vector<uint8_
         SPDLOG_DEBUG("Message sent successfully");
     }
     
-    SPDLOG_DEBUG("Waiting 2000 ms.....");
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    SPDLOG_DEBUG("Waiting 3000 ms.....");
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
     return "OK";
 }

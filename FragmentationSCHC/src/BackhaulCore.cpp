@@ -19,6 +19,7 @@ CoreId BackhaulCore::id()
 
 void BackhaulCore::enqueueFromOrchestator(std::unique_ptr<RoutedMessage> msg)
 {
+    SPDLOG_DEBUG("Enqueue RoutedMessage in txQueue. Message from SCHCCore to BackhaulCore");
     {
         std::lock_guard<std::mutex> lock(txMtx);
         txQueue.push(std::move(msg));

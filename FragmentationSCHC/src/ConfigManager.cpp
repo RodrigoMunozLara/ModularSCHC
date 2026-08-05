@@ -38,12 +38,13 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     config.mqtt.devices             = j["mqtt"]["devices"].get<std::vector<std::string>>();
 
     // LoRaWAN Node
-    config.lorawan_node.serial_port = j["lorawan_node"]["serial_port"].get<std::string>();
-    config.lorawan_node.deveui      = j["lorawan_node"]["deveui"].get<std::string>();
-    config.lorawan_node.appeui      = j["lorawan_node"]["appeui"].get<std::string>();
-    config.lorawan_node.appkey      = j["lorawan_node"]["appkey"].get<std::string>();
-    config.lorawan_node.data_rate   = j["lorawan_node"]["data_rate"].get<std::string>();
-    config.lorawan_node.node_class  = j["lorawan_node"]["class"].get<std::string>();
+    config.lorawan_node.serial_port     = j["lorawan_node"]["serial_port"].get<std::string>();
+    config.lorawan_node.deveui          = j["lorawan_node"]["deveui"].get<std::string>();
+    config.lorawan_node.appeui          = j["lorawan_node"]["appeui"].get<std::string>();
+    config.lorawan_node.appkey          = j["lorawan_node"]["appkey"].get<std::string>();
+    config.lorawan_node.data_rate       = j["lorawan_node"]["data_rate"].get<std::string>();
+    config.lorawan_node.node_class      = j["lorawan_node"]["class"].get<std::string>();
+    config.lorawan_node.ipv6_address    = j["lorawan_node"]["ipv6_address"].get<std::string>();
 
     // Myriota Node
     config.myriota_node.serial_port = j["myriota_node"]["serial_port"].get<std::string>();
