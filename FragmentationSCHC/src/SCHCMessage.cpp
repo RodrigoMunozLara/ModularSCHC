@@ -368,14 +368,26 @@ SCHCMsgType SCHCMessage::get_msg_type(ProtocolType protocol, uint8_t rule_id, co
         uint8_t _fcn = fcn_mask & schc_header;
         uint8_t _dtag = 0;                      // In LoRaWAN, dtag is not used
 
-        if(rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len==1 && _fcn==0)
+        SCHCLoRaWANFragRule         _rule_id;
+        if(rule_id == 20) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID;
+        else if (rule_id == 21) _rule_id = SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID;
+
+        if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && len==1 && _fcn==0)
             _msg_type = SCHCMsgType::SCHC_ACK_REQ_MSG;
-        else if(rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len==1 && _fcn==63)
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && len==1 && _fcn==63)
             _msg_type = SCHCMsgType::SCHC_SENDER_ABORT_MSG;
-        else if (rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len>1 && _fcn==63)
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && len>1 && _fcn==63)
             _msg_type = SCHCMsgType::SCHC_ALL1_FRAGMENT_MSG;
-        else if (rule_id==static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID) && len>1)
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && len>1)
             _msg_type = SCHCMsgType::SCHC_REGULAR_FRAGMENT_MSG;
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID && _c==1 && len==2)
+            _msg_type = SCHCMsgType::SCHC_RECEIVER_ABORT_MSG;
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID && _c==1)
+            _msg_type = SCHCMsgType::SCHC_ACK_MSG;
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID && _c==0 && len>9)
+            _msg_type = SCHCMsgType::SCHC_COMPOUND_ACK;
+        else if(_rule_id == SCHCLoRaWANFragRule::SCHC_FRAG_DOWNDIR_RULE_ID && _c==0)     
+            _msg_type = SCHCMsgType::SCHC_ACK_MSG;    
     }
 
 
@@ -530,48 +542,6 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
             SPDLOG_ERROR("RuleID not supported");
         }
 
-        // else if(_rule_id==SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID && _c==0 && len>9)
-        // {
-        //     // * Se ha recibido un SCHC Compound ACK (con errores)
-        //     SPDLOG_DEBUG("Receiving a SCHC Compound ACK with errors");
-        //     int n_total_bits    = len*8;                    // en bits
-        //     int n_win           = ceil((n_total_bits - 1)/65);     // window_size + M = 65. Se resta un bit a len debido al bit C.
-        //     //int n_padding_bits  = n_total_bits - 1 - n_win*65;
-        //     bool first_win      = true;
-
-        //     std::vector<uint8_t> bitVector;
-            
-        //     for (int i = 0; i < len; ++i)
-        //     {
-        //         for (int j = 7; j >= 0; --j)
-        //         {
-        //             bitVector.push_back((msg[i] >> j) & 1);
-        //         }
-        //     }
-
-        //     for(int i=0; i<n_win; i++)
-        //     {
-        //         if(first_win)
-        //         {
-        //             _windows_with_error.push_back(_w);      // almacena en el vector el numero de la primera ventana con error en el SCHC Compound ACK
-                    
-        //             bitVector.erase(bitVector.begin(), bitVector.begin()+3); // Se elimina del vector la ventana (2 bits) y c (1 bit)
-        //             std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[_w].begin());
-        //             bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-        //             first_win = false;
-        //         }
-        //         else
-        //         {
-        //             uint8_t win = (bitVector[0] << 1) | bitVector[1];
-        //             _windows_with_error.push_back(win);
-        //             bitVector.erase(bitVector.begin(), bitVector.begin()+2);
-        //             std::copy(bitVector.begin(), bitVector.begin() + 63, (*bitmap_array)[win].begin());
-        //             bitVector.erase(bitVector.begin(), bitVector.begin()+63);
-        //         }
-        //     }
-
-        // }
-
     }
     else if(protocol==ProtocolType::LORAWAN_NS || protocol==ProtocolType::MYRIOTA_NS)
     {
@@ -615,7 +585,6 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
                 std::copy(msg.begin()+1, msg.end(), _schc_payload.begin());
                 SPDLOG_DEBUG("Decoding SCHC Regular message. RuleID:{}, W:{}, FCN:{}", rule_id, _w, _fcn);
             }   
-
 
         }
         else if (rule_id == 21)
@@ -712,8 +681,7 @@ uint8_t SCHCMessage::decodeMsg(ProtocolType protocol, int rule_id, const std::ve
                 }
             }
             
-          
-
+        
         }
 
     }
