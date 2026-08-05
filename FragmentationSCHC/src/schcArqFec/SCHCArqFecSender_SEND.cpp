@@ -51,7 +51,8 @@ void SCHCArqFecSender_SEND::execute(const std::vector<uint8_t>& msg)
                 /* Envía el mensaje a la capa 2*/
                 if(_ctx._appConfig.schc.schc_type.compare("schc_gateway") == 0)
                 {
-
+                    SPDLOG_DEBUG("Waiting 5000 ms.....");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
                     _ctx._stack->send_frame(_ctx._ruleID, schc_all_1_message, _ctx._dev_id);
                 }
                 else
