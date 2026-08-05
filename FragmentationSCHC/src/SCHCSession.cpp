@@ -101,7 +101,7 @@ void SCHCSession::init()
     }
     else
     {
-        SPDLOG_ERROR("There is no setting in the configuration file specifying which state machine to start");
+        _stateMachine = std::make_unique<SCHCArqFecReceiver>(_dir, _appConfig, _schcCore, *this);
     }
 
     running.store(true);

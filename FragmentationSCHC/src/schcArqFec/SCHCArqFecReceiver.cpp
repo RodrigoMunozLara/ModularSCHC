@@ -76,6 +76,50 @@ SCHCArqFecReceiver::SCHCArqFecReceiver(SCHCFragDir dir, AppConfig &appConfig, SC
         _overhead               = appConfig.schc.overhead;
 
     }
+    else if(appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0)
+    {
+        /* Static SCHC parameters */
+        _protoType              = ProtocolType::LORAWAN;
+        _ruleID                 = 21;
+        _dTag                   = -1;
+        _windowSize             = 63;
+        _tileSize               = 10;
+        _inactivityTimer        = 10;    /* seconds */
+        _maxAckReq              = 8;
+        _m                      = 2;
+        _nTotalTiles            = _windowSize * pow(2,_m);
+        _nMaxWindows            = 4;
+         
+        /* Dynamic SCHC parameters */
+        _nFullTiles             = 0;
+        _lastTileSize           = 0;             
+        _rtxAttemptsCounter     = 0;
+        _all_tiles_sent         = false;
+        _last_confirmed_window  = 0;
+        _current_L2_MTU         = _schcCore._stack->getMtu();
+        SPDLOG_DEBUG("Using MTU: {}", _current_L2_MTU);
+
+        SPDLOG_DEBUG("Changing STATE to STATE_INIT");
+        _currentState = std::make_unique<SCHCArqFecReceiver_INIT>(*this);
+        _currentStateStr = SCHCArqFecReceiverStates::STATE_INIT;
+        _nextStateStr = SCHCArqFecReceiverStates::STATE_INIT;
+
+        _enable_to_process_msg = false;
+
+        _counter = 1;
+
+        /* ARQ-FEC parameters inictialization*/
+        _mbits                  = 8;
+        _S                      = _tileSize;
+        _overhead               = appConfig.schc.overhead;
+
+
+        if(appConfig.schc.schc_ack_mechanism.compare("ack_end_win") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_WIN;
+        else if (appConfig.schc.schc_ack_mechanism.compare("ack_end_session") == 0) _ackMechanism = SCHCAckMechanism::ACK_END_SES;
+        else if (appConfig.schc.schc_ack_mechanism.compare("compound_ack") == 0) _ackMechanism = SCHCAckMechanism::ACK_COMPOUND;
+        else if (appConfig.schc.schc_ack_mechanism.compare("arq_fec") == 0) _ackMechanism = SCHCAckMechanism::ARQ_FEC;
+
+    }
     
 }
 
@@ -91,7 +135,8 @@ void SCHCArqFecReceiver::execute(const std::vector<uint8_t>& msg)
     if (msg.empty()) 
     {
         _currentState->execute();
-    } else 
+    } 
+    else 
     {
         _currentState->execute(msg);
     }

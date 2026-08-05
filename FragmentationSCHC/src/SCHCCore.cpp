@@ -353,7 +353,7 @@ void SCHCCore::runRx()
             /* Identifying whether the message is an uplink or downlink message */
             if(msg->ruleId == 20)
             {
-                SPDLOG_DEBUG("Receiving an UPLINK message");
+                SPDLOG_DEBUG("Receiving a UPLINK message");
                 currentId = msg->ruleId;
                 {
                     std::lock_guard<std::mutex> lock(sessionsMtx);
@@ -387,6 +387,46 @@ void SCHCCore::runRx()
                     }
                 }/* Mutex */
             } /* Uplink Message */
+            else if(msg->ruleId == 21)
+            {
+                SPDLOG_DEBUG("Receiving a DOWNLINK message");
+                currentId = msg->ruleId;
+                {
+                    std::lock_guard<std::mutex> lock(sessionsMtx);
+                    auto it = downlinkSessions.find(currentId);
+
+                    if (it == downlinkSessions.end()) 
+                    {
+                        SPDLOG_DEBUG("Creating a new session with ID {}, and storing it on the map", currentId);
+                        auto [it2, inserted] = downlinkSessions.try_emplace(currentId, std::make_unique<SCHCSession>(currentId, SCHCFragDir::DOWNLINK_DIR, _appConfig, *this));
+
+                        it2->second->init();
+                        it2->second->setDevId(msg->deviceId);
+                        
+                        SPDLOG_DEBUG("DOWNLINK Session with id '{}' started", currentId);
+
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it2->second->enqueueEvent(std::move(evMsg));
+                        _downlinkSessionCounter++;
+                    }
+                    else
+                    {
+                        SPDLOG_DEBUG("There is already a session associated with the message with ID {}", currentId);
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it->second->enqueueEvent(std::move(evMsg));
+                    }
+                }/* Mutex */
+            }
+
+
+
+
         } /* SCHC Gateway + LoRaWAN_NT */     
         else if ((_appConfig.schc.schc_type.compare("schc_node") == 0) 
             && (_appConfig.schc.schc_l2_protocol.compare("lorawan_at") == 0))
@@ -396,7 +436,7 @@ void SCHCCore::runRx()
             /* Identifying whether the message is an uplink or downlink message */
             if(msg->ruleId == 20)
             {
-                SPDLOG_DEBUG("Receiving an UPLINK response message");
+                SPDLOG_DEBUG("Receiving a UPLINK message");
                 currentId = msg->ruleId;
                 {
                     std::lock_guard<std::mutex> lock(sessionsMtx);
@@ -416,6 +456,43 @@ void SCHCCore::runRx()
                         it->second->enqueueEvent(std::move(evMsg));
                     }
                 }/* Mutex */
+            }
+            else if(msg->ruleId == 21)
+            {
+                SPDLOG_DEBUG("Receiving a DOWNLINK message");
+                currentId = msg->ruleId;
+                {
+                    std::lock_guard<std::mutex> lock(sessionsMtx);
+                    auto it = downlinkSessions.find(currentId);
+
+                    if (it == downlinkSessions.end()) 
+                    {
+                        SPDLOG_DEBUG("Creating a new session with ID {}, and storing it on the map", currentId);
+                        auto [it2, inserted] = downlinkSessions.try_emplace(currentId, std::make_unique<SCHCSession>(currentId, SCHCFragDir::DOWNLINK_DIR, _appConfig, *this));
+
+                        it2->second->init();
+                        //it2->second->setDevId(msg->deviceId);
+                        
+                        SPDLOG_DEBUG("DOWNLINK Session with id '{}' started", currentId);
+
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it2->second->enqueueEvent(std::move(evMsg));
+                        _downlinkSessionCounter++;
+                    }
+                    else
+                    {
+                        SPDLOG_DEBUG("There is already a session associated with the message with ID {}", currentId);
+                        auto evMsg = std::make_unique<EventMessage>();
+                        evMsg->payload = msg->payload;
+                        evMsg->evType = EventType::StackMsgReceived;
+
+                        it->second->enqueueEvent(std::move(evMsg));
+                    }
+                }/* Mutex */                
+
             }
         }
         else if ((_appConfig.schc.schc_type.compare("schc_gateway") == 0) 

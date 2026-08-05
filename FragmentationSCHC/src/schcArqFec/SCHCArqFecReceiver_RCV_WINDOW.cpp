@@ -128,7 +128,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             uint8_t w                   = 1;
             std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
 
-            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+            _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
             SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
@@ -184,7 +184,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
                 uint8_t w                   = 3;
                 std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);
@@ -222,7 +222,7 @@ void SCHCArqFecReceiver_RCV_WINDOW::execute(const std::vector<uint8_t>& msg)
             SCHCMessage encoder; 
             std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize); 
 
-            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+            _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
             //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");

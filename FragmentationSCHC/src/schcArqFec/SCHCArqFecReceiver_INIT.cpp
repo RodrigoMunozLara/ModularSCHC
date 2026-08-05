@@ -100,12 +100,13 @@ void SCHCArqFecReceiver_INIT::execute(const std::vector<uint8_t>& msg)
         payload_len     = decoder.get_schc_payload_len();   // largo del payload SCHC. En bits
         
         /* Creacion de buffer para almacenar el schc payload del SCHC fragment */
-        payload = decoder.get_schc_payload();
+        payload = decoder.get_schc_payload();   // bits
 
         /* Extrae el primer byte del payload que corresponde al parametro k*/
         _ctx._ksymbols = static_cast<int>(payload.front());
         payload.erase(payload.begin());
         SPDLOG_DEBUG("k parameter received: {}", _ctx._ksymbols);
+        payload_len = payload_len - 8;
 
         _ctx._rsymbols  = ceil(_ctx._ksymbols * _ctx._overhead);
         _ctx._nsymbols  = _ctx._ksymbols + _ctx._rsymbols;

@@ -42,7 +42,7 @@ void SCHCArqFecReceiver_END::execute(const std::vector<uint8_t>& msg)
             uint8_t w                   = 3;
             std::vector<uint8_t> buffer = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c);
 
-            _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+            _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
             SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --|", w, c);        
         }

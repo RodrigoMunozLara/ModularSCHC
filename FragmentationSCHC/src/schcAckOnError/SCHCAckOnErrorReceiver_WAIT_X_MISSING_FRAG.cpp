@@ -92,7 +92,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
                 _ctx._last_ack_sent_buffer = buffer;
                 _ctx._last_ack_sent_c = c;
                 _ctx._last_ack_sent_w = w;
@@ -147,7 +147,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
                 _ctx._last_ack_sent_buffer = buffer;
                 _ctx._last_ack_sent_c = c;
                 _ctx._last_ack_sent_w = w;
@@ -175,7 +175,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
                 _ctx._last_ack_sent_buffer = buffer;
                 _ctx._last_ack_sent_c = c;
                 _ctx._last_ack_sent_w = w;
@@ -214,7 +214,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
                 _ctx._last_ack_sent_buffer = buffer;
                 _ctx._last_ack_sent_c = c;
                 _ctx._last_ack_sent_w = w;
@@ -243,7 +243,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", w, c, get_bitmap_array_str(w));
@@ -333,7 +333,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                     std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); // obtiene el bitmap expresado como un arreglo de char    
                     std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                    _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                    _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                     //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                     SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", w, c, get_bitmap_array_str(w));
@@ -356,7 +356,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                         SCHCMessage    encoder;
                         std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char    
                         std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);
-                        _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                        _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                         //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                         SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", w, c, get_bitmap_array_str(w));
@@ -374,7 +374,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 int c                               = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", _ctx._last_window, c, get_bitmap_array_str(_ctx._last_window));
@@ -405,7 +405,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 int c                               = 1;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", _ctx._last_window, c, get_bitmap_array_str(_ctx._last_window));
@@ -429,7 +429,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                         SCHCMessage    encoder;
                         std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(i); // obtiene el bitmap expresado como un arreglo de char    
                         std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, i, c, bitmap_vector);
-                        _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                        _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                         //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                         SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", i, c, get_bitmap_array_str(i));
@@ -447,7 +447,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 int c                               = 0;
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(_ctx._last_window); // obtiene el bitmap expresado como un arreglo de char    
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, _ctx._last_window, c, bitmap_vector);
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", _ctx._last_window, c, get_bitmap_array_str(_ctx._last_window));
@@ -488,7 +488,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 uint8_t c                           = get_c_from_bitmap(w);
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -517,7 +517,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -600,7 +600,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t>    windows_with_error;  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -634,7 +634,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t>    windows_with_error;  
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
@@ -660,7 +660,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 SCHCMessage    encoder;
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
 
@@ -700,7 +700,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 std::vector<uint8_t> bitmap_vector  = this->get_bitmap_array_vec(w); 
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack(_ctx._ruleID, dtag, w, c, bitmap_vector);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
                 SPDLOG_INFO("|<-- ACK, W={:<1}, C={:<1} --| Bitmap:{}", w, c, get_bitmap_array_str(w));
@@ -734,7 +734,7 @@ void SCHCAckOnErrorReceiver_WAIT_X_MISSING_FRAG::execute(const std::vector<uint8
                 SCHCMessage    encoder;
                 std::vector<uint8_t> buffer         = encoder.create_schc_ack_compound(_ctx._ruleID, _ctx._dTag, _ctx._last_window, windows_with_error, _ctx._bitmapArray, _ctx._windowSize);
 
-                _ctx._stack->send_frame(static_cast<int>(SCHCLoRaWANFragRule::SCHC_FRAG_UPDIR_RULE_ID), buffer, _ctx._dev_id);
+                _ctx._stack->send_frame(_ctx._ruleID, buffer, _ctx._dev_id);
 
 
                 //spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$][%t] %v");
