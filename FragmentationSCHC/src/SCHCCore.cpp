@@ -188,7 +188,7 @@ void SCHCCore::runTx()
 
         if(_appConfig.schc.schc_type.compare("schc_node") == 0)
         {
-            SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned UPLINK session");
+            
 
             /* I check if the incoming packet has a source IP address equal to that of the node registered in the "lorawan_node-->ipv6_address" section*/
             std::string src_addr        = msg->meta.source_address;
@@ -196,10 +196,11 @@ void SCHCCore::runTx()
             if(node_ipv6_adr.compare(src_addr) != 0)
             {
                 SPDLOG_ERROR("The packet has a source IPv6 address that does not match that of the node. Discarting Message");
+                SPDLOG_INFO("\033[31m************** Message has not been processed *********************\033[0m");
                 continue;
             }
 
-
+            SPDLOG_DEBUG("Message received from the Orchestrator, obtaining an unassigned UPLINK session");
             /* Obtaining a unsigned session*/
             if (_uplinkSessionCounter < _uplinkSessionCounterMax)
             {
@@ -237,7 +238,7 @@ void SCHCCore::runTx()
             else
             {
                 SPDLOG_WARN("No free SCHC uplinkSessions available");
-                SPDLOG_INFO("\033[31m************************* Message not transmited ********************************************\033[0m");
+                SPDLOG_INFO("\033[31m************** Message has not been processed *********************\033[0m");
                 SPDLOG_DEBUG("");
                 SPDLOG_DEBUG("");
                 continue;
@@ -258,6 +259,7 @@ void SCHCCore::runTx()
             else 
             {
                 SPDLOG_ERROR("The DevEUI does not exist in the configuration. Discarting Message");
+                SPDLOG_INFO("\033[31m************** Message has not been processed *********************\033[0m");
                 continue;
             }
 
@@ -297,7 +299,7 @@ void SCHCCore::runTx()
             else
             {
                 SPDLOG_WARN("No free SCHC downlinkSessions available");
-                SPDLOG_INFO("\033[31m************************* Message not transmited ********************************************\033[0m");
+                SPDLOG_INFO("\033[31m************** Message has not been processed *********************\033[0m");
                 SPDLOG_DEBUG("");
                 SPDLOG_DEBUG("");
                 continue;
@@ -648,8 +650,8 @@ void SCHCCore::handleRxFrame(const std::vector<uint8_t>& frame)
     msg->meta.payloadSize = frame.size();
     msg->payload = frame;
 
-    SPDLOG_DEBUG("Message in hex: {:Xp}", spdlog::to_hex(frame));
-    SPDLOG_DEBUG("Message size: {}", msg->meta.payloadSize);
+    SPDLOG_TRACE("Message in hex: {:Xp}", spdlog::to_hex(frame));
+    SPDLOG_TRACE("Message size: {}", msg->meta.payloadSize);
 
 
     // Forward immediately to the Orchestrator

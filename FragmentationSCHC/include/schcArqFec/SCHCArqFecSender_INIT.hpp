@@ -31,6 +31,7 @@ class SCHCArqFecSender_INIT: public ISCHCState
         void                    printMatrixHex(const std::vector<std::vector<uint8_t>>& matrix);
         std::vector<uint8_t>    extractTiles(uint8_t firstTileID, uint8_t nTiles);
         std::vector<uint8_t>    packBitsWithPadding(const std::vector<uint8_t>& bits);
+        void                    save_time_all_1();
 
         SCHCArqFecSender& _ctx;
 };
