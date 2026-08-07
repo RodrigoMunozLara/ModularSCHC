@@ -17,11 +17,10 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
             });
     
 
-    uid_t real_uid = getuid();
-    struct passwd* pw = getpwuid(real_uid);
-    _ngrok_user = pw->pw_name;
+    char* login_user = getlogin();
+    _ngrok_user = login_user;
 
-    if (pw != nullptr) {
+    if (login_user != nullptr && login_user[0] != '\0') {
         SPDLOG_DEBUG("Calling ngrok from the user’s account: {}", _ngrok_user);
     } else {
         SPDLOG_ERROR("There is a problem when trying to retrieve the Linux username running this binary");
