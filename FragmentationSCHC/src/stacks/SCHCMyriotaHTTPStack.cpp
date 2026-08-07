@@ -180,7 +180,7 @@ void SCHCMyriotaHTTPStack::init()
     SPDLOG_DEBUG("Starting the thread that will process incoming messages to the web server");
     _server_thread = std::thread([this]() {
                 _app.loglevel(crow::LogLevel::Warning);
-                _app.port(_ngrok_port).run();
+                _app.bindaddr("127.0.0.1").port(_ngrok_port).run();
             });
     SPDLOG_DEBUG("Thread started");
 }
