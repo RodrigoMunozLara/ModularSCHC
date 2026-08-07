@@ -17,10 +17,8 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
             });
     
 
-    uid_t uid = geteuid();
-    
-    // getpwuid() busca la información de la cuenta asociada a ese UID
-    struct passwd* pw = getpwuid(uid);
+    uid_t real_uid = getuid();
+    struct passwd* pw = getpwuid(real_uid);
     _ngrok_user = pw->pw_name;
 
     if (pw != nullptr) {
@@ -43,7 +41,7 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
 
 SCHCMyriotaHTTPStack::~SCHCMyriotaHTTPStack()
 {
-SPDLOG_DEBUG("Executing SCHCMyriotaStack destructor()");
+    SPDLOG_DEBUG("Executing SCHCMyriotaStack destructor()");
 
     _app.stop();
 
