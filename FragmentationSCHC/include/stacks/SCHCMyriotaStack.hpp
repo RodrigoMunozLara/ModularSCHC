@@ -16,6 +16,9 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
+#include <condition_variable>
+#include <thread>
+#include <atomic>
 
 // forward declaration
 class SCHCCore;
@@ -31,9 +34,10 @@ class SCHCMyriotaStack: public ISCHCStack
         uint32_t    getMtu() override;
         void        init() override;
     private:
+        std::string             send_command(const std::string& command, int timeoutMs=5000);
         std::string             toHexString(const std::vector<uint8_t>& data);
-        std::vector<uint8_t>    parseATresponse(const std::string& input);
-
+        void                    serial_reader_loop();
+        void                    print_buffer_hex(const std::string& buffer);
 
         AppConfig   _appConfig;
         SCHCCore&   _schcCore;
@@ -46,5 +50,19 @@ class SCHCMyriotaStack: public ISCHCStack
         std::mutex  _mtx; // To protect the multi-threaded port
 
         bool    _isFirstMsg = true;
+    
+    private:
+        std::atomic<bool> _keep_reading{true};
+        std::thread _serial_reader_thread;
+
+        std::mutex _serial_write_mtx;         // Protege el write() si dos hilos quieren transmitir a la vez
+
+        // Sincronización para comandos AT síncronos
+        std::mutex _cmd_mtx;
+        std::condition_variable _cmd_cv;
+        std::string _cmd_response;            // Aquí el lector guardará la respuesta del comando AT
+        bool _cmd_ready = false;              // Bandera para evitar despertares espurios
+
+        bool _joined = true;
 
 };

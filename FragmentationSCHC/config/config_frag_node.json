@@ -34,7 +34,8 @@
     "appeui" : "0000000000000001",
     "appkey" : "1F0B7A29E13C0D1D6E7CA1913DF81464",
     "data_rate": "DR4",
-    "class": "A"
+    "class": "A",
+    "ipv6_address": "2001:470:8:3c2::6"
   },
   "myriota_node": {
     "serial_port":"/dev/ttyACM0"
@@ -44,6 +45,6 @@
     "ngrok_user":"rodrigo"
   },
   "end_devices":{
-    "2001:470:1f2b:12e::6": "AC1F09FFFE0CEFD0"
+    "2001:470:8:3c2::6": "AC1F09FFFE0CEFD0"
   }
 }

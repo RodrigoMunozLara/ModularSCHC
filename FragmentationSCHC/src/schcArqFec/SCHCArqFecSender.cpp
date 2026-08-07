@@ -43,7 +43,7 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
 
 
     }
-    else if(appConfig.schc.schc_l2_protocol.compare("myriota_at") == 0 || appConfig.schc.schc_l2_protocol.compare("myriota_ns_http") == 0)
+    else if(appConfig.schc.schc_l2_protocol.compare("myriota_at") == 0)
     {
         /* Static SCHC parameters */
         _protoType              = ProtocolType::MYRIOTA;
@@ -75,7 +75,8 @@ SCHCArqFecSender::SCHCArqFecSender(SCHCFragDir dir, AppConfig& appConfig, SCHCCo
         _nextStateStr = SCHCArqFecSenderStates::STATE_INIT;
 
         /* ARQ-FEC parameters inictialization*/
-        _S                      = _tileSize;
+        _mbits                  = 8;
+
     }
     else if(appConfig.schc.schc_l2_protocol.compare("lorawan_ns_mqtt") == 0)
     {
