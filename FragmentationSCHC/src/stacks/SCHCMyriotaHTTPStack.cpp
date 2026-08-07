@@ -17,7 +17,7 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
             });
     
 
-    char* login_user = getlogin();
+    char* login_user = std::getenv("SUDO_USER");
     _ngrok_user = login_user;
 
     if (login_user != nullptr && login_user[0] != '\0') {
