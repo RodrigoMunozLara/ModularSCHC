@@ -38,10 +38,6 @@
   "myriota_node": {
     "serial_port":"/dev/ttyACM0"
   },
-  "myriota_http": {
-    "port":"18080",
-    "ngrok_user":"rodrigo"
-  },
   "end_devices":{
     "2001:470:1f2b:12e::6": "AC1F09FFFE0CEFD0"
   }

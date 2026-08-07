@@ -354,22 +354,3 @@ following subsections:
 
     -   example: `“serial_port”: “/dev/ttyACM0”`
 
-## myriota_http section
-
-This section configures the connection parameters to the Myriota
-Servers. This section must be used on an SCHC gateway. It is represented
-by HTTP server protocol block (see Protocol Layer in figure
-[1](#fig:modularschc_architecture){reference-type="ref"
-reference="fig:modularschc_architecture"}). It is divided into the
-following subsections:
-
--   **port**: Define the port on which the Linux machine listens for
-    messages from Myriota servers. It is represented as an string.
-
-    -   example: `“port”: “18080”`
-
--   **ngrok_user**: Defines the ngrok service user that exposes the port
-    on the Linux machine to which the Myriota server should connect. It
-    is represented as an string.
-
-    -   example: `“ngrok_user”: “schc”`

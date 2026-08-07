@@ -16,6 +16,8 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
+#include <sys/types.h>
+#include <pwd.h>
 #include "crow/crow_all.h"
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;

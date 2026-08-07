@@ -7,9 +7,7 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
 {
     SPDLOG_DEBUG("Executing SCHCMyriotaStack constructor()");
 
-    this->_ngrok_port = _appConfig.myriota_http.port;
-    this->_ngrok_user = _appConfig.myriota_http.ngrok_user;   
-
+    _ngrok_port = 18080;
     SPDLOG_DEBUG("Instantiating WebServer on port {}", _ngrok_port);
 
     CROW_ROUTE(_app, "/income").methods(crow::HTTPMethod::Post)
@@ -18,8 +16,27 @@ SCHCMyriotaHTTPStack::SCHCMyriotaHTTPStack(AppConfig& appConfig, SCHCCore& schcC
                 return crow::response(200, "OK");
             });
     
-    SPDLOG_DEBUG("Starting ngrok on port {} and user {} ...", this->_ngrok_port, this->_ngrok_user);
-    std::string comando = "sudo -u " + this->_ngrok_user + " ngrok http " + std::to_string(this->_ngrok_port) + " --log=stdout --log-level=info > ngrok.log 2>&1 &";
+
+    uid_t uid = geteuid();
+    
+    // getpwuid() busca la información de la cuenta asociada a ese UID
+    struct passwd* pw = getpwuid(uid);
+    _ngrok_user = pw->pw_name;
+
+    if (pw != nullptr) {
+        SPDLOG_DEBUG("Calling ngrok from the user’s account: {}", _ngrok_user);
+    } else {
+        SPDLOG_ERROR("There is a problem when trying to retrieve the Linux username running this binary");
+ 
+ 
+ 
+ 
+        return;
+    }
+
+    
+    SPDLOG_DEBUG("Starting ngrok on port {} and user {} ...", _ngrok_port, _ngrok_user);
+    std::string comando = "sudo -u " + _ngrok_user + " ngrok http " + std::to_string(_ngrok_port) + " --log=stdout --log-level=info > ngrok.log 2>&1 &";
     system(comando.c_str());
 
 }
@@ -30,7 +47,7 @@ SPDLOG_DEBUG("Executing SCHCMyriotaStack destructor()");
 
     _app.stop();
 
-    std::string kill_cmd = "sudo -u " + this->_ngrok_user + " killall ngrok";
+    std::string kill_cmd = "sudo -u " + _ngrok_user + " killall ngrok";
     system(kill_cmd.c_str());
 
     if (_server_thread.joinable()) {

@@ -48,11 +48,6 @@ struct Myriota_Node_Config {
     std::string serial_port;
 };
 
-struct Myriota_HTTP_Config {
-    int         port;
-    std::string ngrok_user;
-};
-
 struct AppConfig {
     GeneralConfig                       general;
     LoggingConfig                       logging;
@@ -61,6 +56,5 @@ struct AppConfig {
     MQTTConfig                          mqtt;
     SCHCCoreConfig                      schc;
     Myriota_Node_Config                 myriota_node;
-    Myriota_HTTP_Config                 myriota_http;
     std::map<std::string, std::string>  end_devices;
 };

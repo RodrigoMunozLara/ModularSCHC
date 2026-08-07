@@ -49,10 +49,6 @@ bool loadConfig(const std::string& filePath, AppConfig& config)
     // Myriota Node
     config.myriota_node.serial_port = j["myriota_node"]["serial_port"].get<std::string>();
 
-    // Myriota HTTP
-    config.myriota_http.port        = std::stoi(j["myriota_http"]["port"].get<std::string>());
-    config.myriota_http.ngrok_user  = j["myriota_http"]["ngrok_user"].get<std::string>();
-
     // Load association betweem ed devices and IPv6 address
     if (j.contains("end_devices") && j["end_devices"].is_object())
     {
